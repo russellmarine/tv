@@ -35,7 +35,7 @@ window.CHANNELS = {
   gijoe:     { type: "yt",  label: "GI Joe",        url: window.YT_CHANNELS.gijoe },
   euronews:  { type: "yt",  label: "Euronews",      url: window.YT_CHANNELS.euronews },
   aljazeera: { type: "yt",  label: "Al Jazeera",    url: window.YT_CHANNELS.aljazeera },
-  trt:       { type: "hls", label: "TRT World",     url: window.STREAMS.trt }
+  trt:       { type: "yt", label: "TRT World",      url: window.YT_CHANNELS.trt }
 };
 
 window.CHANNEL_ORDER = [
