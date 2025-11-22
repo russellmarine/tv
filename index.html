@@ -561,6 +561,48 @@
     const hlsGrid = {};         // cell -> Hls instance
     const YT_PLAYERS = {};      // key -> YT.Player
 
+    // ---------- Remember last channel + view ----------
+    const STORAGE_KEYS = {
+      channel: "russelltv.lastChannel",
+      view: "russelltv.lastView",
+    };
+
+    function saveLastChannel(key) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.channel, key);
+      } catch (e) {
+        // ignore storage errors (private mode, etc.)
+      }
+    }
+
+    function saveLastView(view) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.view, view);
+      } catch (e) {
+        // ignore storage errors
+      }
+    }
+
+    function loadLastChannel() {
+      try {
+        return localStorage.getItem(STORAGE_KEYS.channel);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function loadLastView() {
+      try {
+        return localStorage.getItem(STORAGE_KEYS.view);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function channelExists(key) {
+      return !!(window.CHANNELS && window.CHANNELS[key]);
+    }
+
     function onYouTubeIframeAPIReady() {
       // Defined for API; players created lazily
     }
@@ -690,6 +732,9 @@
       const ch = window.CHANNELS[key];
       if (!ch) return;
 
+      // Remember this as the last single-channel selection
+      saveLastChannel(key);
+
       highlightHeaderButton(key);
 
       // Sync mobile dropdown
@@ -735,6 +780,9 @@
       btnGrid.classList.remove("active");
       singleView.style.display = "block";
       gridView.style.display = "none";
+
+      // Remember last view
+      saveLastView("single");
       // In single mode, channel buttons can be highlighted
     }
 
@@ -882,6 +930,9 @@
       singleView.style.display = "none";
       gridView.style.display = "block";
 
+      // Remember last view
+      saveLastView("grid");
+
       stopSingle();
 
       // In grid mode, no channel button should look selected
@@ -950,14 +1001,28 @@
       buildGrid();
       initMobileChannelSelect();
 
-      // Default to first channel in order, or CBS if present
+      // Base default: first in order, or "cbs"
       let initialChannel = "cbs";
       if (window.CHANNEL_ORDER && window.CHANNEL_ORDER.length > 0) {
         initialChannel = window.CHANNEL_ORDER[0];
       }
 
-      enterSingleMode();
-      setSingleChannel(initialChannel);
+      // Try to restore last saved state
+      const savedView = loadLastView();
+      const savedChannel = loadLastChannel();
+
+      if (savedChannel && channelExists(savedChannel)) {
+        initialChannel = savedChannel;
+      }
+
+      if (savedView === "grid") {
+        // Restore grid if that was last
+        enterGridMode();
+      } else {
+        // Default / saved single view
+        enterSingleMode();
+        setSingleChannel(initialChannel);
+      }
 
       initMobileTicker();
     });
