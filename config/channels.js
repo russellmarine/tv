@@ -6,9 +6,7 @@
 window.STREAMS = {
   cbs: "/channels/cbs/hls/stream.m3u8",
   nbc: "/channels/nbc/hls/stream.m3u8",
-  fox: "/channels/fox/hls/stream.m3u8",
-  // New: TRT World (remote HLS)
-  trt: "https://tv-trtworld.live.trt.com.tr/master.m3u8"
+  fox: "/channels/fox/hls/stream.m3u8"
 };
 
 window.YT_CHANNELS = {
@@ -20,7 +18,8 @@ window.YT_CHANNELS = {
   gijoe:     "https://www.youtube.com/embed/TZ3mxF4U__k?autoplay=1&mute=1",
   euronews:  "https://www.youtube.com/embed/pykpO5kQJ98?autoplay=1&mute=1",
   aljazeera: "https://www.youtube.com/embed/gCNeDWCI0vo?autoplay=1&mute=1",
-  abc:       "https://www.youtube.com/embed/iipR5yUp36o?autoplay=1&mute=1"
+  abc:       "https://www.youtube.com/embed/iipR5yUp36o?autoplay=1&mute=1",
+  trt:       "https://www.youtube.com/embed/nuunj2Gpcrg?autoplay=1&mute=1"
 };
 
 window.CHANNELS = {
