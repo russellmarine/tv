@@ -6,7 +6,9 @@
 window.STREAMS = {
   cbs: "/channels/cbs/hls/stream.m3u8",
   nbc: "/channels/nbc/hls/stream.m3u8",
-  fox: "/channels/fox/hls/stream.m3u8"
+  fox: "/channels/fox/hls/stream.m3u8",
+  // New: TRT World (remote HLS)
+  trt: "https://tv-trtworld.live.trt.com.tr/master.m3u8"
 };
 
 window.YT_CHANNELS = {
@@ -25,18 +27,16 @@ window.CHANNELS = {
   cbs:       { type: "hls", label: "CBS 2.1",       url: window.STREAMS.cbs },
   nbc:       { type: "hls", label: "NBC 4.1",       url: window.STREAMS.nbc },
   fox:       { type: "hls", label: "FOX 5.1",       url: window.STREAMS.fox },
-
   abc:       { type: "yt",  label: "ABC News",      url: window.YT_CHANNELS.abc },
-
   bloomberg: { type: "yt",  label: "Bloomberg",     url: window.YT_CHANNELS.bloomberg },
   foxnation: { type: "yt",  label: "Fox Nation",    url: window.YT_CHANNELS.foxnation },
   skynews:   { type: "yt",  label: "Sky News",      url: window.YT_CHANNELS.skynews },
   france24:  { type: "yt",  label: "France 24",     url: window.YT_CHANNELS.france24 },
   dw:        { type: "yt",  label: "DW",            url: window.YT_CHANNELS.dw },
   gijoe:     { type: "yt",  label: "GI Joe",        url: window.YT_CHANNELS.gijoe },
-
   euronews:  { type: "yt",  label: "Euronews",      url: window.YT_CHANNELS.euronews },
-  aljazeera: { type: "yt",  label: "Al Jazeera",    url: window.YT_CHANNELS.aljazeera }
+  aljazeera: { type: "yt",  label: "Al Jazeera",    url: window.YT_CHANNELS.aljazeera },
+  trt:       { type: "hls", label: "TRT World",     url: window.STREAMS.trt }
 };
 
 window.CHANNEL_ORDER = [
@@ -51,7 +51,8 @@ window.CHANNEL_ORDER = [
   "dw",
   "gijoe",
   "euronews",
-  "aljazeera"
+  "aljazeera",
+  "trt"
 ];
 
 window.GRID_DEFAULTS = {
