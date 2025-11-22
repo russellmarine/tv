@@ -818,6 +818,8 @@
 
         sel.addEventListener("change", (e) => {
           const c = parseInt(e.target.dataset.cell, 10);
+          const key = e.target.value;
+          saveGridCell(c, key);   // NEW: remember this selection
           playGridCell(c, e.target.value);
         });
 
@@ -938,17 +940,26 @@
       // In grid mode, no channel button should look selected
       clearHeaderHighlights();
 
-      for (let cell = 1; cell <= 4; cell++) {
-        const defaultKey = window.GRID_DEFAULTS && window.GRID_DEFAULTS[cell];
-        if (!defaultKey) continue;
+  // Load saved grid selections
+  const saved = loadGridSelections();
 
-        const selector = gridView.querySelector('select[data-cell="' + cell + '"]');
-        if (selector) {
-          selector.value = defaultKey;
-        }
-        playGridCell(cell, defaultKey);
-      }
-    }
+  for (let cell = 1; cell <= 4; cell++) {
+    const selector = gridView.querySelector('select[data-cell="' + cell + '"]');
+    if (!selector) continue;
+
+    let key = saved[String(cell)];
+
+    // If there's no saved value, fall back to GRID_DEFAULTS
+    if (!key && window.GRID_DEFAULTS && window.GRID_DEFAULTS[cell]) {
+      key = window.GRID_DEFAULTS[cell];
+  }
+
+    // Apply to dropdown
+    if (key) selector.value = key;
+
+    // Actually play it
+    if (key) playGridCell(cell, key);
+  }
 
     // ---------- Mode Buttons ----------
     btnSingle.addEventListener("click", enterSingleMode);
@@ -1042,7 +1053,29 @@
   const RT_STORAGE = {
     channel: "russelltv.lastChannel",
     view: "russelltv.lastView",
+    grid: "russelltv.gridSelections",   // NEW: store grid cell selections
   };
+
+  function saveGridCell(cell, key) {
+    try {
+      const raw = localStorage.getItem(RT_STORAGE.grid);
+      const map = raw ? JSON.parse(raw) : {};
+      map[String(cell)] = key;
+      localStorage.setItem(RT_STORAGE.grid, JSON.stringify(map));
+    } catch (e) {
+      console.warn("Could not save grid cell", e);
+    }
+  }
+
+  function loadGridSelections() {
+    try {
+      const raw = localStorage.getItem(RT_STORAGE.grid);
+      if (!raw) return {};
+      return JSON.parse(raw) || {};
+    } catch (e) {
+      return {};
+    }
+  }
 
   function rtSaveLastChannel(id) {
     try {
