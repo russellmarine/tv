@@ -1,9 +1,8 @@
 # 📺 **RussellTV — Adding a New Channel**
 *A complete guide for adding video streams + headlines + mobile support*
 
-![RussellTV Screenshot](../assets/russelltv-screenshot.png)
-> **Replace this image:** Upload a screenshot into  
-> `assets/russelltv-screenshot.png` in your repo.
+<img width="1700" height="1108" alt="image" src="https://github.com/user-attachments/assets/50451c3f-4d4a-41a5-bdff-0d4f0f5c78f0" />
+
 
 ---
 
