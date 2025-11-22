@@ -1,0 +1,59 @@
+window.CHANNEL_NEWS_CONFIG = {
+  // OTA locals (New York)
+  cbs: {
+    label: "CBS 2.1 – New York",
+    file:  "news-cache/cbs-ny.json",
+  },
+  nbc: {
+    label: "NBC 4.1 – New York",
+    file:  "news-cache/nbc-ny.json",
+  },
+  fox: {
+    label: "FOX 5.1 – New York",
+    file:  "news-cache/fox-ny.json",
+  },
+
+  // National cable / streaming
+  foxnation: {
+    label: "Fox Nation (National)",
+    file:  "news-cache/fox-national.json",   // we’ll populate this from foxnews.com in your fetch script
+  },
+  abc: {
+    label: "ABC News Live",
+    file:  "news-cache/abc.json",           // will be abcnews.go.com in the fetch script
+  },
+
+  // YouTube international news channels – each gets its own file
+  bloomberg: {
+    label: "Bloomberg",
+    file:  "news-cache/bloomberg.json",
+  },
+  dw: {
+    label: "DW News",
+    file:  "news-cache/dw.json",
+  },
+  france24: {
+    label: "France 24",
+    file:  "news-cache/france24.json",
+  },
+  aljazeera: {
+    label: "Al Jazeera English",
+    file:  "news-cache/aljazeera.json",
+  },
+  euronews: {
+    label: "Euronews",
+    file:  "news-cache/euronews.json",
+  },
+
+  // GI Joe fun channel
+  gijoe: {
+    label: "GI Joe Channel",
+    file:  "news-cache/gi-joe.json",
+  },
+
+  // Marines side panel (separate box)
+  marines: {
+    label: "Marine Corps News",
+    file:  "news-cache/marines.json",
+  },
+};

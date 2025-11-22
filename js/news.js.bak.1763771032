@@ -1,0 +1,145 @@
+(function () {
+  const cfg = window.CHANNEL_NEWS_CONFIG || {};
+
+  const channelStatusEl  = document.getElementById('channel-headlines-status');
+  const channelListEl    = document.getElementById('channel-headlines-list');
+  const marinesStatusEl  = document.getElementById('marines-headlines-status');
+  const marinesListEl    = document.getElementById('marines-headlines-list');
+  const titleEl          = document.getElementById('channel-headlines-title');
+
+  function setStatus(el, msg) {
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.display = msg ? "block" : "none";
+  }
+
+  function renderList(listEl, articles) {
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    if (!Array.isArray(articles) || !articles.length) {
+      return;
+    }
+
+    articles.forEach(a => {
+      const li = document.createElement("li");
+      li.className = "headline-item";
+
+      const title = a.title || "Untitled";
+
+      if (a.url) {
+        const link = document.createElement("a");
+        link.href = a.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = title;
+        li.appendChild(link);
+      } else {
+        li.textContent = title;
+      }
+
+      if (a.source && a.source.name) {
+        const src = document.createElement("div");
+        src.className = "headline-source";
+        src.textContent = a.source.name;
+        li.appendChild(src);
+      }
+
+      listEl.appendChild(li);
+    });
+  }
+
+  async function fetchJson(path) {
+    const res = await fetch(path, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error("HTTP " + res.status + " loading " + path);
+    }
+    return res.json();
+  }
+
+  async function loadChannelHeadlines(channelId, labelOverride) {
+    if (!channelListEl || !channelStatusEl) return;
+
+    const cfgEntry = cfg[channelId];
+    if (!cfgEntry || !cfgEntry.file) {
+      titleEl && (titleEl.textContent = "Channel Headlines");
+      channelListEl.innerHTML = "";
+      setStatus(channelStatusEl, "No headlines configured for this channel.");
+      return;
+    }
+
+    const label = labelOverride || cfgEntry.label || channelId;
+    titleEl && (titleEl.textContent = "Channel Headlines – " + label);
+
+    channelListEl.innerHTML = "";
+    setStatus(channelStatusEl, "Loading headlines…");
+
+    try {
+      const data = await fetchJson(cfgEntry.file);
+      const articles = Array.isArray(data.articles)
+        ? data.articles.slice(0, 5)
+        : [];
+
+      if (!articles.length) {
+        setStatus(channelStatusEl, "No headlines found for this channel.");
+        return;
+      }
+
+      renderList(channelListEl, articles);
+      setStatus(channelStatusEl, "");
+    } catch (err) {
+      console.error("Error loading channel headlines", err);
+      setStatus(channelStatusEl, "Error loading headlines.");
+    }
+  }
+
+  async function loadMarines() {
+    if (!marinesListEl || !marinesStatusEl) return;
+
+    marinesListEl.innerHTML = "";
+    setStatus(marinesStatusEl, "Loading Marine Corps news…");
+
+    const cfgEntry = cfg.marines || { file: "news-cache/marines.json" };
+    try {
+      const data = await fetchJson(cfgEntry.file);
+      const articles = Array.isArray(data.articles)
+        ? data.articles.slice(0, 5)
+        : [];
+
+      if (!articles.length) {
+        setStatus(marinesStatusEl, "No recent Marine Corps stories found.");
+        return;
+      }
+
+      renderList(marinesListEl, articles);
+      setStatus(marinesStatusEl, "");
+    } catch (err) {
+      console.error("Error loading Marine Corps headlines", err);
+      setStatus(marinesStatusEl, "Error loading Marine Corps news.");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // Wire up every channel button that already has data-channel
+    document.querySelectorAll("[data-channel]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id    = btn.dataset.channel;
+        const label = btn.textContent.trim();
+        if (!id) return;
+        loadChannelHeadlines(id, label);
+      });
+    });
+
+    // Initial channel = whichever channel button is active, otherwise CBS
+    const activeBtn = document.querySelector("[data-channel].active");
+    const initialId = activeBtn?.dataset.channel || "cbs";
+    const initialLabel =
+      activeBtn?.textContent.trim() ||
+      (cfg[initialId]?.label || "CBS 2.1 – New York");
+
+    loadChannelHeadlines(initialId, initialLabel);
+
+    // Marines side panel
+    loadMarines();
+  });
+})();

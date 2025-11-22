@@ -1,0 +1,60 @@
+window.CHANNEL_NEWS_CONFIG = {
+  // HLS locals
+  cbs: {
+    file: "cbs.json",
+    label: "CBS 2.1 – New York Headlines"
+  },
+  nbc: {
+    file: "nbc.json",
+    label: "NBC 4.1 – New York Headlines"
+  },
+  fox: {
+    file: "fox.json",
+    label: "FOX 5.1 – New York Headlines"
+  },
+
+  // YouTube channels
+  abc: {
+    file: "abc.json",
+    label: "ABC News Headlines"
+  },
+
+  bloomberg: {
+    file: "bloomberg.json",
+    label: "Bloomberg Headlines"
+  },
+  foxnation: {
+    file: "fox-news.json",
+    label: "Fox News Headlines"
+  },
+  skynews: {
+    file: "skynews.json",
+    label: "Sky News Headlines"
+  },
+  france24: {
+    file: "france24.json",
+    label: "France 24 Headlines"
+  },
+  dw: {
+    file: "dw.json",
+    label: "DW Headlines"
+  },
+  gijoe: {
+    file: "gi-joe.json",
+    label: "GI Joe – Military Headlines"
+  },
+  euronews: {
+    file: "euronews.json",
+    label: "Euronews Headlines"
+  },
+  aljazeera: {
+    file: "aljazeera.json",
+    label: "Al Jazeera Headlines"
+  },
+
+  // Sidebar Marines (news.js should have a dedicated loader for this)
+  marines: {
+    file: "marines.json",
+    label: "Marine Corps News"
+  }
+};

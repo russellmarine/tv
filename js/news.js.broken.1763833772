@@ -1,0 +1,242 @@
+(function () {
+  // Expect /config/news-config.js to define:
+  // window.RSS_CONFIG = {
+  //   channelFeeds: { cbs: ["https://..."], fox: ["https://..."], ... },
+  //   marinesFeeds: ["https://...", ...]
+  // };
+  var cfg = window.RSS_CONFIG || {};
+  var channelFeeds = cfg.channelFeeds || {};
+  var marinesFeeds = cfg.marinesFeeds || [];
+
+  // ---- RSS Fetching / Parsing ----
+  async function fetchRSS(url) {
+    try {
+      var res = await fetch(url);
+      if (!res.ok) {
+        console.warn("RSS fetch error", url, res.status);
+        return [];
+      }
+      var text = await res.text();
+      var parser = new DOMParser();
+      var xml = parser.parseFromString(text, "application/xml");
+      var items = xml.querySelectorAll("item, entry");
+      var out = [];
+      items.forEach(function (item) {
+        var title =
+          item.querySelector("title") &&
+          item.querySelector("title").textContent.trim();
+        var linkNode =
+          item.querySelector("link[rel='alternate']") ||
+          item.querySelector("link") ||
+          null;
+        var link = linkNode
+          ? (linkNode.getAttribute("href") || linkNode.textContent || "").trim()
+          : "#";
+        var pub =
+          (item.querySelector("pubDate") &&
+            item.querySelector("pubDate").textContent) ||
+          (item.querySelector("updated") &&
+            item.querySelector("updated").textContent) ||
+          (item.querySelector("dc\\:date") &&
+            item.querySelector("dc\\:date").textContent) ||
+          "";
+
+        var sourceNode =
+          item.querySelector("source") ||
+          item.querySelector("author") ||
+          null;
+        var source = sourceNode
+          ? sourceNode.textContent.trim()
+          : (new URL(url)).hostname.replace(/^www\./, "");
+
+        var date = pub ? new Date(pub) : null;
+        out.push({
+          title: title || "(no title)",
+          link: link || "#",
+          pubDate: date && !isNaN(date.getTime()) ? date : null,
+          source: source
+        });
+      });
+      return out;
+    } catch (e) {
+      console.error("RSS fetch failed", url, e);
+      return [];
+    }
+  }
+
+  async function fetchFromFeeds(feedList, limit) {
+    limit = limit || 5;
+    if (!feedList || feedList.length === 0) return [];
+    // Ensure array
+    if (typeof feedList === "string") {
+      feedList = [feedList];
+    }
+
+    var all = [];
+    for (var i = 0; i < feedList.length; i++) {
+      var url = feedList[i];
+      var items = await fetchRSS(url);
+      all = all.concat(items);
+    }
+
+    // Sort newest first by pubDate
+    all.sort(function (a, b) {
+      var ta = a.pubDate ? a.pubDate.getTime() : 0;
+      var tb = b.pubDate ? b.pubDate.getTime() : 0;
+      return tb - ta;
+    });
+
+    return all.slice(0, limit);
+  }
+
+  // ---- Rendering helpers ----
+  function renderHeadlineList(containerId, articles, emptyText) {
+    var listEl = document.getElementById(containerId);
+    if (!listEl) return;
+
+    listEl.innerHTML = "";
+
+    if (!articles || articles.length === 0) {
+      var liEmpty = document.createElement("li");
+      liEmpty.className = "headline-empty";
+      liEmpty.textContent = emptyText;
+      listEl.appendChild(liEmpty);
+      return;
+    }
+
+    articles.forEach(function (article) {
+      var li = document.createElement("li");
+      li.className = "headline-item";
+
+      var a = document.createElement("a");
+      a.href = article.link || "#";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = article.title || "(no title)";
+
+      var meta = document.createElement("div");
+      meta.className = "headline-meta";
+
+      var parts = [];
+      if (article.source) parts.push(article.source);
+      if (article.pubDate) {
+        try {
+          parts.push(
+            article.pubDate.toLocaleString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit"
+            })
+          );
+        } catch (e) {}
+      }
+      meta.textContent = parts.join(" • ");
+
+      li.appendChild(a);
+      if (meta.textContent) {
+        li.appendChild(meta);
+      }
+
+      listEl.appendChild(li);
+    });
+  }
+
+  function setUpdatedText(elementId, prefix) {
+    var el = document.getElementById(elementId);
+    if (!el) return;
+    el.textContent =
+      (prefix || "Last updated: ") +
+      new Date().toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+  }
+
+  // ---- Channel Headlines (per-channel) ----
+  async function loadChannelHeadlines(channelId, channelLabel) {
+    var titleEl = document.getElementById("channel-headlines-title");
+    if (titleEl) {
+      titleEl.textContent =
+        "Channel Headlines – " + (channelLabel || channelId);
+    }
+
+    // Loading state
+    renderHeadlineList("channel-headlines-list", [], "Loading…");
+    var chanMeta = document.getElementById("channel-headlines-updated");
+    if (chanMeta) chanMeta.textContent = "Loading…";
+
+    var feeds = channelFeeds[channelId] || [];
+    if (typeof feeds === "string") {
+      feeds = [feeds];
+    }
+
+    if (!feeds || feeds.length === 0) {
+      renderHeadlineList(
+        "channel-headlines-list",
+        [],
+        "No RSS feeds configured for this channel."
+      );
+      if (chanMeta) chanMeta.textContent = "No feed configured.";
+      return;
+    }
+
+    var articles = await fetchFromFeeds(feeds, 5);
+
+    renderHeadlineList(
+      "channel-headlines-list",
+      articles,
+      "No headlines found for this channel."
+    );
+
+    // Always set Last updated, even if zero articles
+    setUpdatedText("channel-headlines-updated", "Last updated: ");
+  }
+
+  // ---- Marine Corps Headlines ----
+  async function loadMarinesHeadlines() {
+    renderHeadlineList(
+      "marines-headlines-list",
+      [],
+      "Loading Marine Corps news…"
+    );
+    var meta = document.getElementById("marines-headlines-updated");
+    if (meta) meta.textContent = "Loading…";
+
+    var feeds = marinesFeeds || [];
+    if (typeof feeds === "string") {
+      feeds = [feeds];
+    }
+
+    if (!feeds || feeds.length === 0) {
+      renderHeadlineList(
+        "marines-headlines-list",
+        [],
+        "No Marine Corps RSS feeds configured."
+      );
+      if (meta) meta.textContent = "No feed configured.";
+      return;
+    }
+
+    var articles = await fetchFromFeeds(feeds, 5);
+
+    renderHeadlineList(
+      "marines-headlines-list",
+      articles,
+      "No recent Marine Corps stories found."
+    );
+
+    setUpdatedText("marines-headlines-updated", "Last updated: ");
+  }
+
+  // Export to global so index.html can call it
+  window.loadChannelHeadlines = loadChannelHeadlines;
+
+  // Marines news on load + refresh every 15 minutes
+  window.addEventListener("load", function () {
+    loadMarinesHeadlines();
+    setInterval(loadMarinesHeadlines, 15 * 60 * 1000);
+  });
+})();

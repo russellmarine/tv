@@ -1,0 +1,67 @@
+/**
+ * News → cache file mapping for RussellTV
+ * Keys here MUST match the channel keys in window.CHANNELS / CHANNEL_ORDER.
+ */
+
+window.CHANNEL_NEWS_CONFIG = {
+  // Local OTA HLS
+  cbs: {
+    cacheFile: "news-cache/cbs-ny.json",
+    label: "CBS 2.1 – New York Headlines"
+  },
+  nbc: {
+    cacheFile: "news-cache/nbc-ny.json",
+    label: "NBC 4.1 – New York Headlines"
+  },
+  fox: {
+    cacheFile: "news-cache/fox-ny.json",
+    label: "FOX 5.1 – New York Headlines"
+  },
+
+  // ABC is national, not local affiliate
+  abc: {
+    cacheFile: "news-cache/abc-news.json",
+    label: "ABC News Headlines"
+  },
+
+  // YouTube / national / international
+  bloomberg: {
+    cacheFile: "news-cache/bloomberg.json",
+    label: "Bloomberg Headlines"
+  },
+  foxnation: {
+    // This should carry Fox News national type stories
+    cacheFile: "news-cache/foxnation.json",
+    label: "Fox News Headlines"
+  },
+  skynews: {
+    cacheFile: "news-cache/skynews.json",
+    label: "Sky News Headlines"
+  },
+  france24: {
+    cacheFile: "news-cache/france24.json",
+    label: "France 24 Headlines"
+  },
+  dw: {
+    cacheFile: "news-cache/dw.json",
+    label: "DW News Headlines"
+  },
+  gijoe: {
+    cacheFile: "news-cache/gi-joe.json",
+    label: "GI Joe Headlines"
+  },
+  euronews: {
+    cacheFile: "news-cache/euronews.json",
+    label: "Euronews Headlines"
+  },
+  aljazeera: {
+    cacheFile: "news-cache/aljazeera.json",
+    label: "Al Jazeera Headlines"
+  },
+
+  // Marines block in the sidebar
+  marines: {
+    cacheFile: "news-cache/marines.json",
+    label: "Marine Corps News"
+  }
+};

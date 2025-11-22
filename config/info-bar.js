@@ -1,0 +1,209 @@
+// RussellTV Combined Time + Weather Footer (with tooltips & temp color)
+// Uses: window.TIME_ZONES, window.WEATHER_QUERIES, window.OPENWEATHER_API_KEY
+
+(function() {
+  if (!window.TIME_ZONES) {
+    console.warn("TIME_ZONES missing; footer not initialized.");
+    return;
+  }
+  if (!window.WEATHER_QUERIES) {
+    console.warn("WEATHER_QUERIES missing; footer not initialized.");
+    return;
+  }
+  if (!window.OPENWEATHER_API_KEY) {
+    console.warn("OPENWEATHER_API_KEY missing; footer not initialized.");
+    return;
+  }
+
+  // ---------- Styles ----------
+  const style = document.createElement("style");
+  style.textContent = `
+    #info-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.90);
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      z-index: 9999;
+      box-sizing: border-box;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .info-block {
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      cursor: default;
+    }
+    .info-block strong {
+      font-weight: 600;
+    }
+    /* Temperature color bands (based on current temp, °F) */
+    .temp-neutral {
+      background: rgba(255,255,255,0.05);
+    }
+    .temp-freezing {
+      background: rgba(135,206,250,0.30);   /* light sky blue */
+      border-color: rgba(135,206,250,0.9);
+    }
+    .temp-cold {
+      background: rgba(100,149,237,0.30);   /* cornflower blue */
+      border-color: rgba(100,149,237,0.9);
+    }
+    .temp-mild {
+      background: rgba(144,238,144,0.30);   /* light green */
+      border-color: rgba(144,238,144,0.9);
+    }
+    .temp-warm {
+      background: rgba(255,165,0,0.28);     /* orange */
+      border-color: rgba(255,165,0,0.9);
+    }
+    .temp-hot {
+      background: rgba(220,20,60,0.30);     /* crimson */
+      border-color: rgba(220,20,60,0.9);
+    }
+  `;
+  document.head.appendChild(style);
+
+  // ---------- Create bar ----------
+  const bar = document.createElement("div");
+  bar.id = "info-bar";
+  document.body.appendChild(bar);
+
+  // Weather details cache keyed by TIME_ZONES label
+  // { icon, temp, hi, lo, main, desc, humidity, wind }
+  let weatherMap = {};
+
+  // ---------- Temp -> class ----------
+  function tempClass(temp) {
+    if (temp == null || isNaN(temp)) return "temp-neutral";
+    if (temp <= 32) return "temp-freezing";
+    if (temp <= 50) return "temp-cold";
+    if (temp <= 70) return "temp-mild";
+    if (temp <= 85) return "temp-warm";
+    return "temp-hot";
+  }
+
+  // ---------- Icon logic ----------
+  function iconFor(main, desc) {
+    const w = `${main} ${desc}`.toLowerCase();
+    if (w.includes("thunder")) return "⛈";
+    if (w.includes("storm"))   return "⛈";
+    if (w.includes("rain") || w.includes("drizzle")) return "🌧";
+    if (w.includes("snow") || w.includes("sleet"))   return "❄️";
+    if (w.includes("wind"))    return "💨";
+    if (w.includes("cloud"))   return "☁️";
+    return "☀️";
+  }
+
+  // ---------- Fetch weather for all mapped locations ----------
+  async function updateWeather() {
+    const apiKey = window.OPENWEATHER_API_KEY;
+    const entries = Object.entries(window.WEATHER_QUERIES);
+    const newMap = {};
+
+    for (const [label, query] of entries) {
+      const url =
+        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(query)}` +
+        `&appid=${apiKey}&units=imperial`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          console.warn("Weather HTTP error for", label, res.status);
+          newMap[label] = null;
+          continue;
+        }
+        const d = await res.json();
+        const main = d.weather?.[0]?.main || "";
+        const desc = d.weather?.[0]?.description || "";
+        const temp = Math.round(d.main.temp);
+        const hi = Math.round(d.main.temp_max);
+        const lo = Math.round(d.main.temp_min);
+        const humidity = Math.round(d.main.humidity);
+        const wind = d.wind && typeof d.wind.speed === "number"
+          ? Math.round(d.wind.speed)
+          : null;
+        const icon = iconFor(main, desc);
+
+        newMap[label] = {
+          icon,
+          temp,
+          hi,
+          lo,
+          main,
+          desc,
+          humidity,
+          wind
+        };
+      } catch (e) {
+        console.warn("Weather fetch failed for", label, e);
+        newMap[label] = null;
+      }
+    }
+
+    weatherMap = newMap;
+    render();
+  }
+
+  // ---------- Render combined time + weather ----------
+  function render() {
+    bar.innerHTML = "";
+
+    window.TIME_ZONES.forEach(loc => {
+      const time = new Date().toLocaleString("en-US", {
+        timeZone: loc.tz,
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      let cls = "info-block temp-neutral";
+      let content = `<strong>${loc.label}</strong> ${time}`;
+      let tooltip = `${loc.label} — ${time}`;
+
+      // Zulu stays time-only, no weather lookup
+      const isZulu = /zulu/i.test(loc.label);
+
+      if (!isZulu) {
+        const w = weatherMap[loc.label];
+        if (w) {
+          cls = "info-block " + tempClass(w.temp);
+          content += ` • ${w.icon} ${w.hi}°/${w.lo}°`;
+          let tip = `${loc.label}\n`;
+          tip += `Time: ${time}\n`;
+          tip += `Conditions: ${w.main} (${w.desc})\n`;
+          tip += `Current: ${w.temp}°F\n`;
+          tip += `High/Low: ${w.hi}°F / ${w.lo}°F`;
+          if (w.humidity != null) tip += `\nHumidity: ${w.humidity}%`;
+          if (w.wind != null) tip += `\nWind: ${w.wind} mph`;
+          tooltip = tip;
+        }
+      } else {
+        tooltip = `${loc.label}\nTime (UTC): ${time}`;
+      }
+
+      const div = document.createElement("div");
+      div.className = cls;
+      div.innerHTML = content;
+      div.title = tooltip;
+
+      bar.appendChild(div);
+    });
+  }
+
+  // ---------- Loops ----------
+  render();                  // times only at first
+  updateWeather();           // fetch weather now
+  setInterval(render, 10 * 1000);            // update times every 10s
+  setInterval(updateWeather, 10 * 60 * 1000); // refresh weather every 10m
+})();
