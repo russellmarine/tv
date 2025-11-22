@@ -1,6 +1,6 @@
 // Weather config for RussellTV (NO API KEY IN FRONTEND)
 
-// Map TIME_ZONES.label -> OpenWeather "q" query
+// Map TIME_ZONES.label -> city query for the backend proxy
 // (city[,state],[country])
 window.WEATHER_QUERIES = {
   "6th Comm - Brooklyn, NY":     "Brooklyn,NY,US",
@@ -15,7 +15,7 @@ window.WEATHER_QUERIES = {
   "Darwin, AU":                  "Darwin,AU"
 };
 
-// Helper: fetch weather via secure local proxy at /weather
+// Helper: fetch weather via secure local proxy
 window.fetchWeather = async function(query) {
   try {
     const r = await fetch(`/weather?q=${encodeURIComponent(query)}`);

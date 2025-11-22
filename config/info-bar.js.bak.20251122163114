@@ -1,9 +1,17 @@
 // RussellTV Combined Time + Weather Footer (with tooltips & temp color)
-// Uses: window.TIME_ZONES, optional window.WEATHER_QUERIES + window.fetchWeather
+// Uses: window.TIME_ZONES, window.WEATHER_QUERIES, window.fetchWeather
 
 (function() {
   if (!window.TIME_ZONES) {
     console.warn("TIME_ZONES missing; footer not initialized.");
+    return;
+  }
+  if (!window.WEATHER_QUERIES) {
+    console.warn("WEATHER_QUERIES missing; footer not initialized.");
+    return;
+  }
+  if (typeof window.fetchWeather !== "function") {
+    console.warn("fetchWeather helper missing; footer not initialized.");
     return;
   }
 
@@ -44,23 +52,23 @@
       background: rgba(255,255,255,0.05);
     }
     .temp-freezing {
-      background: rgba(135,206,250,0.30);
+      background: rgba(135,206,250,0.30);   /* light sky blue */
       border-color: rgba(135,206,250,0.9);
     }
     .temp-cold {
-      background: rgba(100,149,237,0.30);
+      background: rgba(100,149,237,0.30);   /* cornflower blue */
       border-color: rgba(100,149,237,0.9);
     }
     .temp-mild {
-      background: rgba(144,238,144,0.30);
+      background: rgba(144,238,144,0.30);   /* light green */
       border-color: rgba(144,238,144,0.9);
     }
     .temp-warm {
-      background: rgba(255,165,0,0.28);
+      background: rgba(255,165,0,0.28);     /* orange */
       border-color: rgba(255,165,0,0.9);
     }
     .temp-hot {
-      background: rgba(220,20,60,0.30);
+      background: rgba(220,20,60,0.30);     /* crimson */
       border-color: rgba(220,20,60,0.9);
     }
   `;
@@ -87,7 +95,7 @@
 
   // ---------- Icon logic ----------
   function iconFor(main, desc) {
-    const w = `${main} ${desc}`.toLowerCase();
+    const w = \`\${main} \${desc}\`.toLowerCase();
     if (w.includes("thunder")) return "⛈";
     if (w.includes("storm"))   return "⛈";
     if (w.includes("rain") || w.includes("drizzle")) return "🌧";
@@ -99,13 +107,6 @@
 
   // ---------- Fetch weather for all mapped locations ----------
   async function updateWeather() {
-    // If we don't have queries or fetchWeather, just clear weather & render time-only
-    if (!window.WEATHER_QUERIES || typeof window.fetchWeather !== "function") {
-      weatherMap = {};
-      render();
-      return;
-    }
-
     const entries = Object.entries(window.WEATHER_QUERIES);
     const newMap = {};
 
@@ -156,7 +157,7 @@
     render();
   }
 
-  // ---------- Render combined time + (optional) weather ----------
+  // ---------- Render combined time + weather ----------
   function render() {
     bar.innerHTML = "";
 
@@ -169,25 +170,27 @@
       });
 
       let cls = "info-block temp-neutral";
-      let content = `<strong>${loc.label}</strong> ${time}`;
-      let tooltip = `${loc.label} — ${time}`;
+      let content = \`<strong>\${loc.label}</strong> \${time}\`;
+      let tooltip = \`\${loc.label} — \${time}\`;
 
       const isZulu = /zulu/i.test(loc.label);
-      const w = weatherMap[loc.label];
 
-      if (!isZulu && w) {
-        cls = "info-block " + tempClass(w.temp);
-        content += ` • ${w.icon} ${w.hi}°/${w.lo}°`;
-        let tip = `${loc.label}\n`;
-        tip += `Time: ${time}\n`;
-        tip += `Conditions: ${w.main} (${w.desc})\n`;
-        tip += `Current: ${w.temp}°F\n`;
-        tip += `High/Low: ${w.hi}°F / ${w.lo}°F`;
-        if (w.humidity != null) tip += `\nHumidity: ${w.humidity}%`;
-        if (w.wind != null) tip += `\nWind: ${w.wind} mph`;
-        tooltip = tip;
-      } else if (isZulu) {
-        tooltip = `${loc.label}\nTime (UTC): ${time}`;
+      if (!isZulu) {
+        const w = weatherMap[loc.label];
+        if (w) {
+          cls = "info-block " + tempClass(w.temp);
+          content += \` • \${w.icon} \${w.hi}°/\${w.lo}°\`;
+          let tip = \`\${loc.label}\n\`;
+          tip += \`Time: \${time}\n\`;
+          tip += \`Conditions: \${w.main} (\${w.desc})\n\`;
+          tip += \`Current: \${w.temp}°F\n\`;
+          tip += \`High/Low: \${w.hi}°F / \${w.lo}°F\`;
+          if (w.humidity != null) tip += \`\\nHumidity: \${w.humidity}%\`;
+          if (w.wind != null) tip += \`\\nWind: \${w.wind} mph\`;
+          tooltip = tip;
+        }
+      } else {
+        tooltip = \`\${loc.label}\nTime (UTC): \${time}\`;
       }
 
       const div = document.createElement("div");
@@ -201,7 +204,7 @@
 
   // ---------- Loops ----------
   render();                                   // times only at first
-  updateWeather();                            // attempt weather now (or no-op)
+  updateWeather();                            // fetch weather now
   setInterval(render, 10 * 1000);             // update times every 10s
   setInterval(updateWeather, 10 * 60 * 1000); // refresh weather every 10m
 })();
