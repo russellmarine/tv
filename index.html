@@ -971,5 +971,127 @@
   <!-- NEWS CONFIG + LOGIC (external) -->
   <script src="/config/news-config.js"></script>
   <script src="/js/news.js"></script>
+<script>
+  // --- RussellTV: Remember last channel + view using localStorage ---
+
+  const RT_STORAGE = {
+    channel: "russelltv.lastChannel",
+    view: "russelltv.lastView",
+  };
+
+  function rtSaveLastChannel(id) {
+    try {
+      localStorage.setItem(RT_STORAGE.channel, id);
+    } catch (e) {
+      // ignore if storage not available
+    }
+  }
+
+  function rtSaveLastView(view) {
+    try {
+      localStorage.setItem(RT_STORAGE.view, view);
+    } catch (e) {
+      // ignore if storage not available
+    }
+  }
+
+  function rtLoadLastChannel() {
+    try {
+      return localStorage.getItem(RT_STORAGE.channel);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function rtLoadLastView() {
+    try {
+      return localStorage.getItem(RT_STORAGE.view);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const channelButtons = document.querySelectorAll("[data-channel-id]");
+    const singleBtn = document.querySelector('[data-view="single"]');
+    const gridBtn = document.querySelector('[data-view="grid"]');
+
+    // 1. Whenever user clicks a channel, remember that channel
+    channelButtons.forEach((btn) => {
+      const id = btn.dataset.channelId;
+      if (!id) return;
+
+      btn.addEventListener("click", () => {
+        rtSaveLastChannel(id);
+        // clicking a channel implies single view is active
+        rtSaveLastView("single");
+      });
+    });
+
+    // 2. Whenever user switches view, remember "single" or "grid"
+    if (singleBtn) {
+      singleBtn.addEventListener("click", () => {
+        rtSaveLastView("single");
+      });
+    }
+
+    if (gridBtn) {
+      gridBtn.addEventListener("click", () => {
+        rtSaveLastView("grid");
+      });
+    }
+
+    // 3. Restore last view + channel on load
+    const savedView = rtLoadLastView();
+    const savedChannel = rtLoadLastChannel();
+
+    const viewToUse =
+      savedView === "grid" || savedView === "single" ? savedView : "single";
+
+    // Helper: click a button only if it exists
+    function safeClick(btn) {
+      if (btn && typeof btn.click === "function") {
+        btn.click();
+        return true;
+      }
+      return false;
+    }
+
+    // If last view was grid, go straight to grid
+    if (viewToUse === "grid") {
+      safeClick(gridBtn);
+
+      // Still remember last single-channel selection for when they switch back
+      if (savedChannel) {
+        rtSaveLastChannel(savedChannel);
+      }
+    } else {
+      // Default / saved single view
+      safeClick(singleBtn);
+
+      // If we have a saved channel, click its button
+      if (savedChannel) {
+        const chanBtn = document.querySelector(
+          `[data-channel-id="${savedChannel}"]`
+        );
+        if (!safeClick(chanBtn)) {
+          // fallback to first channel button if saved one doesn't exist
+          if (channelButtons.length > 0) {
+            safeClick(channelButtons[0]);
+          }
+        }
+      } else {
+        // No saved channel -> just click first one as default (e.g. CBS)
+        if (channelButtons.length > 0) {
+          safeClick(channelButtons[0]);
+          const firstId = channelButtons[0].dataset.channelId;
+          if (firstId) {
+            rtSaveLastChannel(firstId);
+          }
+        }
+      }
+    }
+  });
+</script>
 </body>
 </html>
