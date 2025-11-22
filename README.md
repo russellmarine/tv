@@ -1,8 +1,8 @@
 # 📺 **RussellTV**
 *A lightweight, self-hosted livestream & news dashboard powered by HLS, YouTube Live, and automated RSS aggregation.*
 
-![RussellTV Screenshot](docs/assets/russelltv-screenshot.png)
-> *(Replace the screenshot above with your actual PNG image.)*
+<img width="1688" height="1264" alt="image" src="https://github.com/user-attachments/assets/d69c0e48-dfca-4ffd-a966-1faf358c15cd" />
+
 
 ---
 
