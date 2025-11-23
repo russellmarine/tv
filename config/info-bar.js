@@ -327,6 +327,8 @@
 
   // ---------- Render ----------
   function render() {
+    const spaceWeather = document.getElementByID('space-weather-indicators');
+    
     bar.innerHTML = "";
 
     window.TIME_ZONES.forEach(loc => {
