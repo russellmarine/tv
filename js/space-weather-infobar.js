@@ -485,16 +485,25 @@
     const propPanel = document.getElementById('propagation-panel');
     
     // Don't hide tooltip if clicking on propagation panel or its button
-    if (propPanel && propPanel.style.display === 'block' && e.target.closest('#propagation-panel')) {
+    if (
+      propPanel &&
+      propPanel.style.display === 'block' &&
+      e.target.closest('#propagation-panel')
+    ) {
       return;
     }
     
-    if (tooltip && 
-        !e.target.closest('.sw-indicator') && 
-        !e.target.closest('#space-weather-tooltip') &&
-        !e.target.closest('#propagation-panel-btn') &&
-        !e.target.closest('#propagation-panel')) {
+    if (
+      tooltip &&
+      !e.target.closest('.sw-indicator') &&
+      !e.target.closest('#space-weather-tooltip') &&
+      !e.target.closest('#propagation-panel-btn') &&
+      !e.target.closest('#propagation-panel')
+    ) {
+      // Fully close & unlock when clicking outside
       hideTooltip();
+      tooltipLocked = false;
+      currentTooltipBand = null;
     }
   });
 
