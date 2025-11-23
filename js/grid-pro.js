@@ -206,7 +206,7 @@
         const video = document.createElement('video');
         video.id = `grid-video-${cellNum}`;
         video.autoplay = true;
-        video.muted = true; // ALWAYS start muted for autoplay to work
+        video.muted = true; // Start muted for autoplay
         video.controls = false;
         video.playsInline = true;
         video.setAttribute('playsinline', '');
@@ -314,6 +314,50 @@
             try {
                 window.playGridCell(cellNum, channelKey);
                 console.log('    playGridCell called successfully');
+                
+                // Wait longer for the video/player to be created by playGridCell
+                setTimeout(() => {
+                    console.log(`    Checking and updating audio for cell ${cellNum}...`);
+                    const video = document.getElementById(`grid-video-${cellNum}`);
+                    
+                    if (video) {
+                        console.log(`    Video element exists for cell ${cellNum}`);
+                        console.log(`    Video paused: ${video.paused}, muted: ${video.muted}`);
+                        
+                        // Set mute state based on our logic
+                        const shouldBeMuted = allMuted || (cellNum !== audioCell);
+                        video.muted = shouldBeMuted;
+                        console.log(`    Set video muted to: ${shouldBeMuted}`);
+                        
+                        // Try to play if paused
+                        if (video.paused) {
+                            video.play().then(() => {
+                                console.log(`    Video playing for cell ${cellNum}`);
+                            }).catch(e => {
+                                console.warn(`    Autoplay failed for cell ${cellNum}:`, e.message);
+                            });
+                        }
+                    }
+                    
+                    // Also check YouTube player
+                    const ytPlayerKey = `grid-${cellNum}`;
+                    if (window.YT_PLAYERS && window.YT_PLAYERS[ytPlayerKey]) {
+                        console.log(`    YouTube player exists for cell ${cellNum}`);
+                        try {
+                            if (!allMuted && cellNum === audioCell) {
+                                window.YT_PLAYERS[ytPlayerKey].unMute();
+                                window.YT_PLAYERS[ytPlayerKey].setVolume(100);
+                                console.log(`    YouTube unmuted for cell ${cellNum}`);
+                            } else {
+                                window.YT_PLAYERS[ytPlayerKey].mute();
+                                console.log(`    YouTube muted for cell ${cellNum}`);
+                            }
+                        } catch (e) {
+                            console.warn(`    YouTube control error for cell ${cellNum}:`, e);
+                        }
+                    }
+                }, 1000); // Wait 1 second for playGridCell to finish
+                
             } catch (e) {
                 console.error('    ERROR calling playGridCell:', e);
             }
@@ -321,31 +365,6 @@
             console.error('    ERROR: window.playGridCell is not a function!');
             console.log('    Available functions:', Object.keys(window).filter(k => typeof window[k] === 'function').slice(0, 20));
         }
-
-        // Update audio after playback starts
-        setTimeout(() => {
-            console.log('    Updating audio states...');
-            updateAudioStates();
-            
-            // Force the video to actually play if it's not
-            const video = document.getElementById(`grid-video-${cellNum}`);
-            if (video) {
-                if (video.paused) {
-                    console.log(`    Cell ${cellNum} video is paused - attempting to play`);
-                    video.play().catch(e => console.log(`    Autoplay prevented:`, e));
-                } else {
-                    console.log(`    Cell ${cellNum} video is playing`);
-                }
-                
-                // After ensuring it's playing, unmute if needed
-                setTimeout(() => {
-                    if (cellNum === audioCell && !allMuted) {
-                        video.muted = false;
-                        console.log(`    Cell ${cellNum} unmuted after playback started`);
-                    }
-                }, 300);
-            }
-        }, 500);
     }
 
     // Save grid channel selections
