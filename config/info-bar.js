@@ -153,7 +153,7 @@
       opacity: 1;
     }
 
-    /* ======== WEATHER ICONS (SVG) ======== */
+    /* ======== WEATHER ICONS (SVG + REAL ANIMATION) ======== */
 
     .wx-icon-wrap {
       display: inline-flex;
@@ -163,76 +163,80 @@
     }
 
     .wx-icon {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       display: inline-block;
       vertical-align: middle;
+      transform-origin: center center;  /* IMPORTANT for visible animation */
     }
 
-    /* Subtle animations per condition */
+    /* ---- Stronger, visible animations ---- */
+
     .wx-sunny {
-      animation: wx-sun-pulse 6s ease-in-out infinite;
+      animation: wx-sun-pulse 3s ease-in-out infinite;
     }
 
     .wx-cloudy {
-      animation: wx-cloud-drift 10s ease-in-out infinite;
+      animation: wx-cloud-drift 5s ease-in-out infinite;
     }
 
     .wx-rain {
-      animation: wx-rain-bob 2.4s ease-in-out infinite;
+      animation: wx-rain-bob 1.4s ease-in-out infinite;
     }
 
     .wx-storm {
-      animation: wx-storm-flash 4s ease-in-out infinite;
+      animation: wx-storm-flash 2.2s ease-in-out infinite;
     }
 
     .wx-snow {
-      animation: wx-snow-float 5s ease-in-out infinite;
+      animation: wx-snow-float 3.2s ease-in-out infinite;
     }
 
     .wx-wind {
-      animation: wx-wind-sway 4s ease-in-out infinite;
+      animation: wx-wind-sway 3s ease-in-out infinite;
     }
 
     .wx-fog {
-      animation: wx-fog-breathe 7s ease-in-out infinite;
+      animation: wx-fog-breathe 4.5s ease-in-out infinite;
     }
+
+    /* ---- Keyframes ---- */
 
     @keyframes wx-sun-pulse {
       0%, 100% { transform: scale(1);   filter: brightness(1); }
-      50%      { transform: scale(1.06); filter: brightness(1.15); }
+      50%      { transform: scale(1.12); filter: brightness(1.25); }
     }
 
     @keyframes wx-cloud-drift {
       0%, 100% { transform: translateX(0); }
-      50%      { transform: translateX(2px); }
+      50%      { transform: translateX(4px); }
     }
 
     @keyframes wx-rain-bob {
       0%, 100% { transform: translateY(0); }
-      50%      { transform: translateY(1px); }
+      50%      { transform: translateY(3px); }
     }
 
     @keyframes wx-storm-flash {
-      0%, 100% { filter: brightness(1); }
-      45%      { filter: brightness(1); }
-      50%      { filter: brightness(1.4); }
-      55%      { filter: brightness(1); }
+      0%, 100% { filter: brightness(1); transform: translateY(0); }
+      40%      { filter: brightness(1); transform: translateY(0); }
+      50%      { filter: brightness(1.6); transform: translateY(1px); }
+      60%      { filter: brightness(1); transform: translateY(0); }
     }
 
     @keyframes wx-snow-float {
       0%, 100% { transform: translateY(0); }
-      50%      { transform: translateY(-1px); }
+      50%      { transform: translateY(-3px); }
     }
 
     @keyframes wx-wind-sway {
       0%, 100% { transform: translateX(0); }
-      50%      { transform: translateX(-2px); }
+      50%      { transform: translateX(-4px); }
     }
 
     @keyframes wx-fog-breathe {
-      0%, 100% { opacity: 0.95; }
-      50%      { opacity: 0.75; }
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.6; }
     }
   `;
   document.head.appendChild(style);
