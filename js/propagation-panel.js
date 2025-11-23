@@ -46,14 +46,101 @@ window.RussellTV.PropagationPanel = (function() {
     }
   }
 
-  function calculateMUF(solarFlux, isDay) {
-    const baseMUF = Math.sqrt(solarFlux / 100) * 10;
-    const timeFactor = isDay ? 1.2 : 0.7;
-    return baseMUF * timeFactor;
+  // Enhanced MUF calculation with latitude and geomagnetic factors
+  function calculateMUF(solarFlux, isDay, latitude, kpIndex) {
+    // Critical frequency of F2 layer (foF2) - the foundation of MUF
+    // Based on empirical models (simplified URSI coefficients)
+    
+    // Solar zenith angle factor (simplified - based on day/night)
+    const solarZenithFactor = isDay ? 1.0 : 0.5;
+    
+    // Latitude factor - ionosphere varies by latitude
+    // Equatorial: Higher electron density, higher MUF
+    // Mid-latitude: Moderate
+    // High-latitude (auroral zone): Lower, more variable
+    const absLat = Math.abs(latitude);
+    let latitudeFactor;
+    
+    if (absLat < 15) {
+      // Equatorial zone - enhanced ionization
+      latitudeFactor = 1.15;
+    } else if (absLat < 30) {
+      // Low-mid latitude - good conditions
+      latitudeFactor = 1.1;
+    } else if (absLat < 50) {
+      // Mid-latitude - standard
+      latitudeFactor = 1.0;
+    } else if (absLat < 60) {
+      // High-mid latitude - auroral effects start
+      latitudeFactor = 0.9;
+    } else {
+      // High latitude/polar - auroral zone, unstable
+      latitudeFactor = 0.75;
+    }
+    
+    // Geomagnetic activity factor (Kp index impact)
+    // Higher Kp = disturbed ionosphere = lower MUF
+    let kpFactor = 1.0;
+    if (kpIndex >= 7) {
+      kpFactor = 0.7; // Severe storm
+    } else if (kpIndex >= 5) {
+      kpFactor = 0.8; // Minor/moderate storm
+    } else if (kpIndex >= 4) {
+      kpFactor = 0.9; // Active conditions
+    }
+    
+    // Critical frequency foF2 (in MHz)
+    // Empirical formula based on solar flux (SSN proxy)
+    // foF2 ≈ sqrt(0.9 * (SSN + 100)) for mid-latitudes at noon
+    const ssn = (solarFlux - 60) / 0.9; // Convert SFU to approximate SSN
+    const foF2_base = Math.sqrt(0.9 * (Math.max(ssn, 0) + 100));
+    
+    // Apply all factors
+    const foF2 = foF2_base * solarZenithFactor * latitudeFactor * kpFactor;
+    
+    // MUF calculation
+    // For 3000 km path (typical DX): MUF ≈ foF2 * M-factor
+    // M-factor depends on skip distance (simplified to 3.5 for DX)
+    const mFactor = 3.5;
+    const muf3000 = foF2 * mFactor;
+    
+    return {
+      muf: muf3000,
+      foF2: foF2,
+      latitudeFactor: latitudeFactor,
+      kpFactor: kpFactor,
+      conditions: getConditionDescription(latitude, kpIndex, isDay)
+    };
   }
 
-  function getBestBands(muf, conditions) {
+  function getConditionDescription(latitude, kpIndex, isDay) {
+    const absLat = Math.abs(latitude);
+    let desc = [];
+    
+    if (absLat < 15) {
+      desc.push('Equatorial enhancement');
+    } else if (absLat > 55) {
+      desc.push('High-latitude variability');
+      if (kpIndex >= 4) {
+        desc.push('auroral absorption likely');
+      }
+    }
+    
+    if (kpIndex >= 5) {
+      desc.push('geomagnetic storm degradation');
+    }
+    
+    if (!isDay && absLat > 60) {
+      desc.push('polar darkness - very limited propagation');
+    }
+    
+    return desc.length > 0 ? desc.join(', ') : 'nominal conditions';
+  }
+
+  function getBestBands(mufData, conditions) {
+  function getBestBands(mufData, conditions) {
     const bands = [];
+    const muf = mufData.muf;
     
     if (!conditions.isDay && muf > 5) {
       bands.push({ band: '80m', freq: '3.5-4.0 MHz', quality: 'good', note: 'Night DX' });
@@ -398,23 +485,34 @@ window.RussellTV.PropagationPanel = (function() {
       localTime = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) + ' UTC';
     }
 
-    // Calculate MUF
-    const muf = calculateMUF(solarData.solarFlux, isDay);
+    // Get latitude for selected location
+    let latitude = 35.0; // Default to mid-latitude
     
-    // Get space weather data
+    if (locationName && window.TIME_ZONES) {
+      const tzInfo = window.TIME_ZONES.find(tz => tz.label === locationName);
+      if (tzInfo && tzInfo.lat) {
+        latitude = tzInfo.lat;
+      }
+    }
+
+    // Get space weather data for Kp index
     const swData = window.RussellTV?.SpaceWeather?.getCurrentData();
+    const kpIndex = swData?.kpIndex || solarData.kIndex || 3;
+
+    // Calculate MUF with latitude and geomagnetic factors
+    const mufData = calculateMUF(solarData.solarFlux, isDay, latitude, kpIndex);
     
     // Determine conditions
     const conditions = {
       isDay,
       solarFlux: solarData.solarFlux,
       sunspotNumber: solarData.sunspotNumber,
-      kIndex: swData?.kpIndex || solarData.kIndex,
+      kIndex: kpIndex,
       rScale: swData?.scales.R || 0
     };
 
     // Get best HF bands
-    const bestBands = getBestBands(muf, conditions);
+    const bestBands = getBestBands(mufData, conditions);
 
     // Assess SATCOM
     const satcomStatus = swData?.status.satcom || 'green';
@@ -441,8 +539,8 @@ window.RussellTV.PropagationPanel = (function() {
             <div style="font-size: 1.1rem; font-weight: bold;">${solarData.sunspotNumber}</div>
           </div>
           <div>
-            <div style="opacity: 0.7; font-size: 0.75rem;">MUF (Max Usable)</div>
-            <div style="font-size: 1.1rem; font-weight: bold; color: #00ff00;">${muf.toFixed(1)} MHz</div>
+            <div style="opacity: 0.7; font-size: 0.75rem;">MUF (3000km)</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #00ff00;">${mufData.muf.toFixed(1)} MHz</div>
           </div>
           <div>
             <div style="opacity: 0.7; font-size: 0.75rem;">Kp Index</div>
