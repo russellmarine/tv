@@ -81,9 +81,9 @@
       white-space: pre-line;
       max-width: 260px;
       border-radius: 4px;
-      background: rgba(0,0,0,0.85); /* fallback */
+      background: rgba(0,0,0,0.85); /* fallback for neutral/no-weather */
       border: 1px solid rgba(255,255,255,0.45);
-      color: #fff;
+      /* no default color here; temp bands will set it */
       opacity: 0;
       pointer-events: none;
       z-index: 10000;
@@ -147,35 +147,33 @@
       border-color: rgba(220,20,60,1.0) transparent transparent transparent;
     }
 
-    /* ======== TEMP-COLORED TOOLTIP TEXT COLOR (adaptive) ======== */
+    /* ======== TEMP-COLORED TOOLTIP TEXT COLOR (adaptive, forced) ======== */
 
-    /* Freezing + Cold → lighter backgrounds → use dark text */
+    /* Freezing + Cold + Mild → bright backgrounds → dark text */
     .temp-freezing.has-tooltip::after,
     .temp-freezing.has-tooltip::after * {
-      color: #000;
+      color: #000 !important;
     }
 
     .temp-cold.has-tooltip::after,
     .temp-cold.has-tooltip::after * {
-      color: #000;
+      color: #000 !important;
     }
 
-    /* Mild → green background → dark text still works */
     .temp-mild.has-tooltip::after,
     .temp-mild.has-tooltip::after * {
-      color: #000;
+      color: #000 !important;
     }
 
-    /* Warm → orange → white text is better */
+    /* Warm + Hot → intense orange/red → white text */
     .temp-warm.has-tooltip::after,
     .temp-warm.has-tooltip::after * {
-      color: #fff;
+      color: #fff !important;
     }
 
-    /* Hot → red → white text is required for readability */
     .temp-hot.has-tooltip::after,
     .temp-hot.has-tooltip::after * {
-      color: #fff;
+      color: #fff !important;
     }
 
     /* Hover to show */
