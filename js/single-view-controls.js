@@ -41,28 +41,31 @@ window.RussellTV.SingleViewControls = (function() {
     audioBtn.innerHTML = '🔇';
     audioBtn.title = 'Click for audio (or press M)';
     audioBtn.style.cssText = `
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.26);
       border-radius: 6px;
       padding: 0.4rem 0.6rem;
       font-size: 1.1rem;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.12s ease, border-color 0.25s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       min-width: 40px;
       height: 36px;
+      color: #fff;
     `;
 
     audioBtn.addEventListener('click', toggleMute);
     audioBtn.addEventListener('mouseenter', () => {
-      audioBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-      audioBtn.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+      audioBtn.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
+      audioBtn.style.boxShadow = '0 0 8px rgba(255,120,0,0.6), 0 0 12px rgba(255,80,0,0.4)';
+      audioBtn.style.transform = 'translateY(-1px)';
     });
     audioBtn.addEventListener('mouseleave', () => {
-      audioBtn.style.background = 'rgba(255, 255, 255, 0.1)';
-      audioBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      audioBtn.style.background = 'rgba(0, 0, 0, 0.7)';
+      audioBtn.style.boxShadow = 'none';
+      audioBtn.style.transform = 'translateY(0)';
     });
 
     // Center: Channel info
@@ -85,28 +88,31 @@ window.RussellTV.SingleViewControls = (function() {
     fullscreenBtn.innerHTML = '⛶';
     fullscreenBtn.title = 'Fullscreen (or press F)';
     fullscreenBtn.style.cssText = `
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.26);
       border-radius: 6px;
       padding: 0.4rem 0.6rem;
       font-size: 1.1rem;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.12s ease, border-color 0.25s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       min-width: 40px;
       height: 36px;
+      color: #fff;
     `;
 
     fullscreenBtn.addEventListener('click', toggleFullscreen);
     fullscreenBtn.addEventListener('mouseenter', () => {
-      fullscreenBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-      fullscreenBtn.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+      fullscreenBtn.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
+      fullscreenBtn.style.boxShadow = '0 0 8px rgba(255,120,0,0.6), 0 0 12px rgba(255,80,0,0.4)';
+      fullscreenBtn.style.transform = 'translateY(-1px)';
     });
     fullscreenBtn.addEventListener('mouseleave', () => {
-      fullscreenBtn.style.background = 'rgba(255, 255, 255, 0.1)';
-      fullscreenBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      fullscreenBtn.style.background = 'rgba(0, 0, 0, 0.7)';
+      fullscreenBtn.style.boxShadow = 'none';
+      fullscreenBtn.style.transform = 'translateY(0)';
     });
 
     // Assemble control bar
@@ -146,11 +152,16 @@ window.RussellTV.SingleViewControls = (function() {
     if (isMuted) {
       audioBtn.innerHTML = '🔇';
       audioBtn.title = 'Click for audio (or press M)';
-      audioBtn.style.opacity = '0.7';
+      audioBtn.style.background = 'rgba(0, 0, 0, 0.7)';
+      audioBtn.style.boxShadow = 'none';
+      audioBtn.style.borderColor = 'rgba(255, 255, 255, 0.26)';
     } else {
       audioBtn.innerHTML = '🔊';
       audioBtn.title = 'Mute audio (or press M)';
-      audioBtn.style.opacity = '1';
+      // Active state - fiery glow
+      audioBtn.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.4), rgba(255,150,0,0.4))';
+      audioBtn.style.boxShadow = '0 0 10px rgba(255,120,0,0.8), 0 0 14px rgba(255,80,0,0.6)';
+      audioBtn.style.borderColor = 'rgba(255,180,0,0.9)';
     }
   }
 
