@@ -261,7 +261,7 @@ function render() {
         (w.wind != null ? `\nWind: ${w.wind} mph` : "");
     }
 
-    // Zulu gets *no tooltip* and no temp class
+    // Zulu gets no tooltip and no temp class
     if (isZulu) {
       cls = "info-block temp-neutral";
     }
@@ -272,6 +272,15 @@ function render() {
 
     if (tooltip) {
       div.setAttribute("data-tooltip", tooltip);
+    }
+
+    // ---- Weather Underground link hookup ----
+    const wuUrl = window.WU_LINKS && window.WU_LINKS[loc.label];
+    if (wuUrl && !isZulu) {
+      div.style.cursor = "pointer";
+      div.addEventListener("click", () => {
+        window.open(wuUrl, "_blank", "noopener");
+      });
     }
 
     bar.appendChild(div);
