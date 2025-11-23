@@ -206,7 +206,7 @@
         const video = document.createElement('video');
         video.id = `grid-video-${cellNum}`;
         video.autoplay = true;
-        video.muted = (cellNum !== audioCell);
+        video.muted = true; // ALWAYS start muted for autoplay to work
         video.controls = false;
         video.playsInline = true;
         video.setAttribute('playsinline', '');
@@ -329,11 +329,21 @@
             
             // Force the video to actually play if it's not
             const video = document.getElementById(`grid-video-${cellNum}`);
-            if (video && !video.paused) {
-                console.log(`    Cell ${cellNum} video is playing`);
-            } else if (video) {
-                console.log(`    Cell ${cellNum} video is paused - attempting to play`);
-                video.play().catch(e => console.log(`    Autoplay prevented:`, e));
+            if (video) {
+                if (video.paused) {
+                    console.log(`    Cell ${cellNum} video is paused - attempting to play`);
+                    video.play().catch(e => console.log(`    Autoplay prevented:`, e));
+                } else {
+                    console.log(`    Cell ${cellNum} video is playing`);
+                }
+                
+                // After ensuring it's playing, unmute if needed
+                setTimeout(() => {
+                    if (cellNum === audioCell && !allMuted) {
+                        video.muted = false;
+                        console.log(`    Cell ${cellNum} unmuted after playback started`);
+                    }
+                }, 300);
             }
         }, 500);
     }
@@ -507,14 +517,13 @@
         console.log('Defaults:', defaults);
         console.log('Saved selections:', savedSelections);
         
-        // Shorter delays for faster loading
+        // Load channels with staggered delays
         for (let i = 1; i <= numCells; i++) {
             const channelKey = savedSelections[i] || defaults[i];
             
             console.log(`Cell ${i}: Will load "${channelKey}"`);
             
             if (channelKey && window.CHANNELS && window.CHANNELS[channelKey]) {
-                // Much faster - just stagger by 150ms each
                 setTimeout(() => {
                     console.log(`>>> Attempting to load cell ${i} with ${channelKey}`);
                     const cell = document.querySelector(`[data-cell="${i}"]`);
@@ -530,6 +539,13 @@
                 console.warn(`Cell ${i}: No valid channel (key: ${channelKey})`);
             }
         }
+        
+        // After all channels load, unmute the active cell
+        setTimeout(() => {
+            console.log('=== All channels loaded, updating final audio state ===');
+            updateAudioStates();
+        }, (numCells * 150) + 1000);
+        
         console.log('========================');
     }
 
