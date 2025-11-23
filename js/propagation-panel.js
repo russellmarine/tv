@@ -120,19 +120,32 @@ window.RussellTV.PropagationPanel = (function() {
     return null;
   }
 
-  // Get all available locations
+  // Get all available locations from weather config
   function getAvailableLocations() {
     const locations = [];
-    const infoBlocks = document.querySelectorAll('.info-block');
     
-    for (const block of infoBlocks) {
-      const text = block.textContent;
-      if (!text.includes('Zulu') && text.includes('°')) {
-        const match = text.match(/^([^0-9]+)/);
-        if (match) {
-          const location = match[1].trim();
-          if (!locations.includes(location)) {
-            locations.push(location);
+    // Get from TIME_ZONES config
+    if (window.TIME_ZONES) {
+      window.TIME_ZONES.forEach(tz => {
+        // Skip Zulu
+        if (!/zulu/i.test(tz.label)) {
+          locations.push(tz.label);
+        }
+      });
+    }
+    
+    // Fallback: parse from DOM if config not available
+    if (locations.length === 0) {
+      const infoBlocks = document.querySelectorAll('.info-block');
+      for (const block of infoBlocks) {
+        const text = block.textContent;
+        if (!text.includes('Zulu') && text.includes('°')) {
+          const match = text.match(/^([^0-9]+)/);
+          if (match) {
+            const location = match[1].trim();
+            if (!locations.includes(location)) {
+              locations.push(location);
+            }
           }
         }
       }
@@ -490,6 +503,29 @@ window.RussellTV.PropagationPanel = (function() {
     if (!panel) {
       createPanel();
       return;
+    }
+
+    // Repopulate location selector in case locations changed
+    const locationSelector = document.getElementById('location-selector');
+    if (locationSelector) {
+      // Clear existing options except first
+      while (locationSelector.options.length > 1) {
+        locationSelector.remove(1);
+      }
+      
+      // Add all locations
+      const locations = getAvailableLocations();
+      locations.forEach(loc => {
+        const option = document.createElement('option');
+        option.value = loc;
+        option.textContent = loc;
+        locationSelector.appendChild(option);
+      });
+      
+      // Restore selected location if any
+      if (selectedLocation) {
+        locationSelector.value = selectedLocation;
+      }
     }
 
     panel.style.display = 'block';
