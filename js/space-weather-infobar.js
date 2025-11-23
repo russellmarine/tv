@@ -1,6 +1,6 @@
 /**
  * space-weather-infobar.js - Space weather indicators for info bar
- * Survives info-bar re-renders and maintains event listeners
+ * Simple, reliable version
  */
 
 (function() {
@@ -8,28 +8,35 @@
 
   console.log('🛰️ Space weather info bar loading...');
 
-  let updateInterval = null;
-  let checkInterval = null;
+  let hideTooltipTimer = null;
 
-  function addSpaceWeatherToInfoBar() {
+  function init() {
+    // Wait for both info-bar and space weather data to be ready
+    const checkReady = setInterval(() => {
+      const infoBar = document.getElementById('info-bar');
+      const hasConfig = window.SPACE_WEATHER_CONFIG;
+      const hasData = window.RussellTV?.SpaceWeather;
+
+      if (infoBar && hasConfig && hasData) {
+        clearInterval(checkReady);
+        addIndicators();
+        startMaintenance();
+      }
+    }, 500);
+  }
+
+  function addIndicators() {
     const infoBar = document.getElementById('info-bar');
-    if (!infoBar) {
-      console.warn('⚠️ Info bar not found, retrying...');
-      setTimeout(addSpaceWeatherToInfoBar, 1000);
-      return;
-    }
+    if (!infoBar) return;
 
     // Check if already added
-    let container = document.getElementById('space-weather-indicators');
-    if (container) {
-      // Already exists, just update it
-      updateIndicators();
-      reattachEventListeners();
+    if (document.getElementById('space-weather-indicators')) {
+      console.log('✅ Space weather indicators already exist');
       return;
     }
 
-    // Create space weather container
-    container = document.createElement('span');
+    // Create container
+    const container = document.createElement('span');
     container.id = 'space-weather-indicators';
     container.style.cssText = `
       display: inline-flex;
@@ -40,82 +47,39 @@
       border-left: 1px solid rgba(255, 255, 255, 0.2);
     `;
 
-    // Create indicators for each band
-    const bands = ['hf', 'gps', 'satcom'];
-    
-    bands.forEach(bandKey => {
-      const indicator = createIndicator(bandKey);
-      container.appendChild(indicator);
+    // Create indicators
+    ['hf', 'gps', 'satcom'].forEach(bandKey => {
+      container.appendChild(createIndicator(bandKey));
     });
 
-    // Add propagation panel button
-    const propButton = createPropagationButton();
-    container.appendChild(propButton);
+    // Add propagation button
+    container.appendChild(createPropButton());
 
-    // Add to info bar
+    // Add to bar
     infoBar.appendChild(container);
-
+    
     console.log('✅ Space weather indicators added to info bar');
 
-    // Attach event listeners
-    reattachEventListeners();
+    // Attach event listeners and update colors
+    attachListeners();
+    updateColors();
 
-    // Start updating indicators
-    updateIndicators();
-    
-    // Update indicators every minute
-    if (updateInterval) clearInterval(updateInterval);
-    updateInterval = setInterval(updateIndicators, 60000);
-
-    // Check if we need to re-add after info-bar re-renders (every 11 seconds)
-    if (checkInterval) clearInterval(checkInterval);
-    checkInterval = setInterval(() => {
-      const existing = document.getElementById('space-weather-indicators');
-      if (existing) {
-        // Still exists, but might need event listeners re-attached
-        reattachEventListeners();
-      } else {
-        // Was removed, re-add it
-        console.log('🔄 Space weather indicators removed by re-render, re-adding...');
-        addSpaceWeatherToInfoBar();
-      }
-    }, 11000);
-  }
-
-  function createPropagationButton() {
-    const button = document.createElement('button');
-    button.id = 'propagation-panel-btn';
-    button.innerHTML = '📊';
-    button.title = 'View HF Propagation';
-    button.style.cssText = `
-      background: rgba(0, 0, 0, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.26);
-      border-radius: 4px;
-      padding: 0.15rem 0.4rem;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.12s ease;
-      margin-left: 0.5rem;
-    `;
-
-    // Event listeners will be attached by reattachEventListeners()
-    return button;
+    // Update colors every minute
+    setInterval(updateColors, 60000);
   }
 
   function createIndicator(bandKey) {
-    const config = window.SPACE_WEATHER_CONFIG;
-    const band = config.bands[bandKey];
+    const band = window.SPACE_WEATHER_CONFIG.bands[bandKey];
 
-    const indicator = document.createElement('span');
-    indicator.id = `sw-indicator-${bandKey}`;
-    indicator.className = 'sw-indicator';
-    indicator.dataset.band = bandKey;
-    indicator.style.cssText = `
+    const span = document.createElement('span');
+    span.id = `sw-indicator-${bandKey}`;
+    span.className = 'sw-indicator';
+    span.dataset.band = bandKey;
+    span.style.cssText = `
       display: inline-flex;
       align-items: center;
       gap: 0.25rem;
       cursor: help;
-      position: relative;
       padding: 0.15rem 0.4rem;
       border-radius: 4px;
       transition: background 0.2s ease;
@@ -123,14 +87,13 @@
 
     // Icon
     const icon = document.createElement('span');
-    icon.className = 'sw-icon';
     icon.textContent = band.icon;
     icon.style.fontSize = '0.9rem';
 
-    // Status indicator (colored dot)
-    const status = document.createElement('span');
-    status.className = 'sw-status-dot';
-    status.style.cssText = `
+    // Status dot
+    const dot = document.createElement('span');
+    dot.className = 'sw-status-dot';
+    dot.style.cssText = `
       width: 8px;
       height: 8px;
       border-radius: 50%;
@@ -138,107 +101,114 @@
       display: inline-block;
     `;
 
-    indicator.appendChild(icon);
-    indicator.appendChild(status);
+    span.appendChild(icon);
+    span.appendChild(dot);
 
-    // Event listeners will be attached by reattachEventListeners()
-    return indicator;
+    return span;
   }
 
-  let hideTooltipTimer = null;
+  function createPropButton() {
+    const btn = document.createElement('button');
+    btn.id = 'propagation-panel-btn';
+    btn.innerHTML = '📊';
+    btn.title = 'View HF Propagation';
+    btn.style.cssText = `
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      border-radius: 4px;
+      padding: 0.15rem 0.4rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      margin-left: 0.5rem;
+    `;
 
-  function reattachEventListeners() {
-    // Attach listeners to indicators
-    const bands = ['hf', 'gps', 'satcom'];
-    
-    bands.forEach(bandKey => {
+    return btn;
+  }
+
+  function attachListeners() {
+    // Attach to each indicator
+    ['hf', 'gps', 'satcom'].forEach(bandKey => {
       const indicator = document.getElementById(`sw-indicator-${bandKey}`);
-      if (!indicator) return;
-
-      // Check if already has our listeners - don't re-attach if already attached
-      if (indicator.dataset.listenersAttached === 'true') return;
+      if (!indicator || indicator._hasListeners) return;
       
-      indicator.dataset.listenersAttached = 'true';
+      indicator._hasListeners = true;
 
-      indicator.addEventListener('mouseenter', () => {
-        indicator.style.background = 'rgba(255, 255, 255, 0.1)';
+      indicator.onmouseenter = function() {
+        this.style.background = 'rgba(255, 255, 255, 0.1)';
         if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-        showTooltip(indicator, bandKey);
-      });
+        showTooltip(this, bandKey);
+      };
 
-      indicator.addEventListener('mouseleave', () => {
-        indicator.style.background = 'transparent';
-        // Delay hiding so user can move to tooltip
+      indicator.onmouseleave = function() {
+        this.style.background = 'transparent';
         hideTooltipTimer = setTimeout(() => {
           const tooltip = document.getElementById('space-weather-tooltip');
           if (tooltip && !tooltip.matches(':hover')) {
             hideTooltip();
           }
         }, 200);
-      });
+      };
     });
 
-    // Attach listeners to propagation button
-    const propBtn = document.getElementById('propagation-panel-btn');
-    if (propBtn && propBtn.dataset.listenersAttached !== 'true') {
-      propBtn.dataset.listenersAttached = 'true';
+    // Attach to propagation button
+    const btn = document.getElementById('propagation-panel-btn');
+    if (btn && !btn._hasListeners) {
+      btn._hasListeners = true;
 
-      propBtn.addEventListener('click', (e) => {
+      btn.onclick = function(e) {
         e.stopPropagation();
-        togglePropagationPanel();
-      });
+        if (window.RussellTV?.PropagationPanel) {
+          window.RussellTV.PropagationPanel.toggle();
+        }
+      };
 
-      propBtn.addEventListener('mouseenter', () => {
-        propBtn.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
-        propBtn.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
-        propBtn.style.transform = 'translateY(-1px)';
-      });
+      btn.onmouseenter = function() {
+        this.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
+        this.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
+        this.style.transform = 'translateY(-1px)';
+      };
 
-      propBtn.addEventListener('mouseleave', () => {
-        propBtn.style.background = 'rgba(0, 0, 0, 0.7)';
-        propBtn.style.boxShadow = 'none';
-        propBtn.style.transform = 'translateY(0)';
-      });
+      btn.onmouseleave = function() {
+        this.style.background = 'rgba(0, 0, 0, 0.7)';
+        this.style.boxShadow = 'none';
+        this.style.transform = 'translateY(0)';
+      };
     }
   }
 
-  function updateIndicators() {
-    const data = window.RussellTV?.SpaceWeather?.getCurrentData();
-    if (!data) {
-      // Data not ready yet, show gray dots
-      const bands = ['hf', 'gps', 'satcom'];
-      bands.forEach(bandKey => {
-        const indicator = document.getElementById(`sw-indicator-${bandKey}`);
-        if (!indicator) return;
-        const statusDot = indicator.querySelector('.sw-status-dot');
-        if (statusDot) {
-          statusDot.style.background = '#888';
-          statusDot.style.boxShadow = 'none';
-        }
-      });
-      return;
-    }
+  function startMaintenance() {
+    // Re-attach listeners every 6 seconds (after info-bar re-renders every 10 seconds)
+    setInterval(() => {
+      const container = document.getElementById('space-weather-indicators');
+      if (container) {
+        // Container exists, make sure listeners are attached
+        attachListeners();
+      } else {
+        // Container was removed, re-add it
+        console.log('🔄 Re-adding space weather indicators');
+        addIndicators();
+      }
+    }, 6000);
+  }
 
-    const bands = ['hf', 'gps', 'satcom'];
-    
-    bands.forEach(bandKey => {
+  function updateColors() {
+    const data = window.RussellTV?.SpaceWeather?.getCurrentData();
+    if (!data) return;
+
+    ['hf', 'gps', 'satcom'].forEach(bandKey => {
       const indicator = document.getElementById(`sw-indicator-${bandKey}`);
       if (!indicator) return;
 
-      const statusDot = indicator.querySelector('.sw-status-dot');
+      const dot = indicator.querySelector('.sw-status-dot');
       const status = data.status[bandKey];
-      const config = window.SPACE_WEATHER_CONFIG;
-      const statusInfo = config.statusLevels[status];
+      const statusInfo = window.SPACE_WEATHER_CONFIG.statusLevels[status];
 
-      if (statusDot && statusInfo) {
-        statusDot.style.background = statusInfo.color;
-        
-        // Add glow effect for warnings
-        if (status === 'red' || status === 'orange') {
-          statusDot.style.boxShadow = `0 0 8px ${statusInfo.color}`;
-        } else {
-          statusDot.style.boxShadow = 'none';
-        }
+      if (dot && statusInfo) {
+        dot.style.background = statusInfo.color;
+        dot.style.boxShadow = (status === 'red' || status === 'orange') 
+          ? `0 0 8px ${statusInfo.color}` 
+          : 'none';
       }
     });
   }
@@ -247,7 +217,7 @@
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
     if (!data) return;
 
-    hideTooltip(); // Remove any existing tooltip
+    hideTooltip();
 
     const detailed = window.RussellTV.SpaceWeather.getDetailedStatus(bandKey);
     if (!detailed) return;
@@ -269,14 +239,12 @@
       max-width: 350px;
     `;
 
-    // Position tooltip above indicator
     const rect = indicator.getBoundingClientRect();
     tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
     tooltip.style.bottom = `${window.innerHeight - rect.top + 10}px`;
     tooltip.style.transform = 'translateX(-50%)';
 
-    // Build tooltip content with propagation links
-    const html = `
+    tooltip.innerHTML = `
       <div style="font-weight: bold; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-size: 1.2rem;">${detailed.icon}</span>
         <span>${detailed.band}</span>
@@ -311,51 +279,33 @@
       <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.75rem; opacity: 0.7;">
         <strong>Current Conditions:</strong><br>
         Radio: R${data.scales.R} | Solar: S${data.scales.S} | Geo: G${data.scales.G}<br>
-        Kp Index: ${data.kpIndex.toFixed(1)}
-        <br>
+        Kp Index: ${data.kpIndex.toFixed(1)}<br>
         Updated: ${formatTime(data.timestamp)}
       </div>
     `;
 
-    tooltip.innerHTML = html;
     document.body.appendChild(tooltip);
 
-    // Cancel any pending hide
     if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
 
-    // Keep tooltip open when hovering over it
-    tooltip.addEventListener('mouseenter', () => {
+    tooltip.onmouseenter = () => {
       if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-    });
+    };
 
-    tooltip.addEventListener('mouseleave', () => {
-      // Delay hiding slightly
-      hideTooltipTimer = setTimeout(() => {
-        hideTooltip();
-      }, 200);
-    });
+    tooltip.onmouseleave = () => {
+      hideTooltipTimer = setTimeout(hideTooltip, 200);
+    };
   }
 
   function hideTooltip() {
     if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
     const tooltip = document.getElementById('space-weather-tooltip');
-    if (tooltip) {
-      tooltip.remove();
-    }
-  }
-
-  function togglePropagationPanel() {
-    if (window.RussellTV && window.RussellTV.PropagationPanel) {
-      window.RussellTV.PropagationPanel.toggle();
-    } else {
-      console.warn('PropagationPanel not loaded yet');
-    }
+    if (tooltip) tooltip.remove();
   }
 
   function formatTime(date) {
     const now = new Date();
-    const diff = Math.floor((now - date) / 60000); // minutes ago
-
+    const diff = Math.floor((now - date) / 60000);
     if (diff < 1) return 'Just now';
     if (diff < 60) return `${diff}m ago`;
     const hours = Math.floor(diff / 60);
@@ -363,15 +313,12 @@
     return date.toLocaleString();
   }
 
-  // Initialize when DOM is ready
+  // Start
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', addSpaceWeatherToInfoBar);
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    addSpaceWeatherToInfoBar();
+    init();
   }
-
-  // Also listen for space weather data updates
-  document.addEventListener('spaceweather:updated', updateIndicators);
 
   console.log('✅ Space weather info bar loaded');
 })();
