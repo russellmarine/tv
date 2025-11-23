@@ -231,7 +231,21 @@
       btn.onclick = function(e) {
         e.stopPropagation();
         e.preventDefault();
-        hideTooltip(); // Hide any tooltips first
+        
+        // Force unlock and hide tooltips
+        tooltipLocked = false;
+        hideTooltip();
+        
+        // Reset all indicators
+        ['hf', 'gps', 'satcom'].forEach(key => {
+          const ind = document.getElementById(`sw-indicator-${key}`);
+          if (ind) {
+            ind.style.background = 'rgba(0, 0, 0, 0.5)';
+            ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+            ind.style.boxShadow = 'none';
+          }
+        });
+        
         if (window.RussellTV?.PropagationPanel) {
           window.RussellTV.PropagationPanel.toggle();
         }
@@ -448,7 +462,10 @@
   // Close tooltip when clicking outside
   document.addEventListener('click', (e) => {
     const tooltip = document.getElementById('space-weather-tooltip');
-    if (tooltip && !e.target.closest('.sw-indicator') && !e.target.closest('#space-weather-tooltip')) {
+    if (tooltip && 
+        !e.target.closest('.sw-indicator') && 
+        !e.target.closest('#space-weather-tooltip') &&
+        !e.target.closest('#propagation-panel-btn')) {
       hideTooltip();
     }
   });
