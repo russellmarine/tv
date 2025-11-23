@@ -1,4 +1,4 @@
-// RussellTV Combined Time + Weather Footer (with readable temp-colored tooltips)
+// RussellTV Combined Time + Weather Footer (with tooltips & temp color)
 // Uses: window.TIME_ZONES, optional window.WEATHER_QUERIES + window.fetchWeather
 
 (function() {
@@ -27,6 +27,7 @@
       justify-content: center;
       backdrop-filter: blur(4px);
       border-top: 1px solid rgba(255,255,255,0.1);
+      overflow: visible !important; /* make sure tooltips aren't clipped */
     }
     .info-block {
       padding: 2px 8px;
@@ -35,12 +36,10 @@
       border: 1px solid rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.04);
       cursor: default;
-      position: relative; /* needed for tooltip positioning */
     }
     .info-block strong {
       font-weight: 600;
     }
-
     /* Temperature color bands (based on current temp, °F) */
     .temp-neutral {
       background: rgba(255,255,255,0.05);
@@ -66,19 +65,23 @@
       border-color: rgba(220,20,60,0.9);
     }
 
-    /* ---------- Readable custom tooltips (use title text) ---------- */
+    /* ---------- Custom readable tooltip (no native title) ---------- */
+    .info-block.has-tooltip {
+      position: relative;
+    }
+
     .info-block.has-tooltip::after {
-      content: attr(title);
+      content: attr(data-tooltip);
       position: absolute;
       left: 50%;
-      bottom: 135%;                 /* little above the pill row */
+      bottom: 135%;
       transform: translateX(-50%);
       padding: 6px 10px;
       font-size: 0.70rem;
-      white-space: pre-line;        /* respect \\n in title */
+      white-space: pre-line;        /* respect \n in tooltip text */
       max-width: 260px;
       border-radius: 4px;
-      background: rgba(0,0,0,0.94); /* solid dark background for readability */
+      background: rgba(0,0,0,0.94); /* dark, solid background */
       border: 1px solid rgba(255,255,255,0.45);
       color: #fff;
       opacity: 0;
@@ -103,7 +106,7 @@
       transition: opacity 0.12s ease-out;
     }
 
-    /* Accent arrow + border by temp band */
+    /* Tint border/arrow by temp band for subtle color tie-in */
     .temp-freezing.has-tooltip::after {
       border-color: rgba(135,206,250,0.9);
     }
@@ -139,7 +142,6 @@
       border-color: rgba(220,20,60,0.9) transparent transparent transparent;
     }
 
-    /* Show on hover */
     .info-block.has-tooltip:hover::after,
     .info-block.has-tooltip:hover::before {
       opacity: 1;
@@ -249,7 +251,7 @@
         minute: "2-digit"
       });
 
-      let cls = "info-block temp-neutral has-tooltip";
+      let cls = "info-block temp-neutral";
       let content = `<strong>${loc.label}</strong> ${time}`;
       let tooltip = `${loc.label} — ${time}`;
 
@@ -257,7 +259,7 @@
       const w = weatherMap[loc.label];
 
       if (!isZulu && w) {
-        cls = "info-block " + tempClass(w.temp) + " has-tooltip";
+        cls = "info-block " + tempClass(w.temp);
         content += ` • ${w.icon} ${w.hi}°/${w.lo}°`;
         let tip = `${loc.label}\n`;
         tip += `Time: ${time}\n`;
@@ -272,11 +274,11 @@
       }
 
       const div = document.createElement("div");
-      div.className = cls;
+      div.className = cls + " has-tooltip";
       div.innerHTML = content;
 
-      // Keep native title tooltip as a fallback AND use it for CSS content
-      div.title = tooltip;
+      // Use data-tooltip for custom CSS tooltip; no native title
+      div.setAttribute("data-tooltip", tooltip);
 
       bar.appendChild(div);
     });
