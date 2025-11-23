@@ -364,10 +364,39 @@ window.RussellTV.PropagationPanel = (function() {
     const locationName = getCurrentLocation();
     const weather = locationName ? getLocationWeather(locationName) : null;
 
-    // Get current time for location (use UTC as fallback)
-    const now = new Date();
-    const hour = now.getUTCHours();
-    const isDay = hour >= 6 && hour < 18;
+    // Get timezone for selected location
+    let isDay = false;
+    let localTime = 'Unknown';
+    
+    if (locationName && window.TIME_ZONES) {
+      const tzInfo = window.TIME_ZONES.find(tz => tz.label === locationName);
+      if (tzInfo) {
+        const now = new Date();
+        const localTimeStr = now.toLocaleString("en-US", {
+          timeZone: tzInfo.tz,
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+        localTime = localTimeStr;
+        
+        // Get hour in local timezone
+        const localHour = parseInt(now.toLocaleString("en-US", {
+          timeZone: tzInfo.tz,
+          hour12: false,
+          hour: "2-digit"
+        }));
+        
+        // Day = 6am to 6pm local time
+        isDay = localHour >= 6 && localHour < 18;
+      }
+    } else {
+      // Fallback to UTC
+      const now = new Date();
+      const hour = now.getUTCHours();
+      isDay = hour >= 6 && hour < 18;
+      localTime = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) + ' UTC';
+    }
 
     // Calculate MUF
     const muf = calculateMUF(solarData.solarFlux, isDay);
@@ -396,6 +425,7 @@ window.RussellTV.PropagationPanel = (function() {
       ${locationName ? `
       <div style="background: rgba(100, 150, 255, 0.15); border-left: 3px solid rgba(100, 150, 255, 0.6); padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px;">
         <div style="font-weight: bold; margin-bottom: 0.25rem;">📍 ${locationName}</div>
+        <div style="font-size: 0.85rem; opacity: 0.9;">Local Time: ${localTime} ${isDay ? '☀️' : '🌙'}</div>
         ${weather ? `<div style="font-size: 0.85rem; opacity: 0.9;">Weather: ${weather.main} (${weather.desc})</div>` : ''}
       </div>
       ` : ''}
@@ -417,6 +447,22 @@ window.RussellTV.PropagationPanel = (function() {
           <div>
             <div style="opacity: 0.7; font-size: 0.75rem;">Kp Index</div>
             <div style="font-size: 1.1rem; font-weight: bold;">${conditions.kIndex.toFixed(1)}</div>
+          </div>
+        </div>
+        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem; opacity: 0.8;">
+          <strong>Current Conditions:</strong>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
+            <span style="background: ${isDay ? 'rgba(255,200,0,0.2)' : 'rgba(0,100,255,0.2)'}; padding: 0.25rem 0.5rem; border-radius: 4px;">
+              ${isDay ? '☀️ Daytime' : '🌙 Nighttime'}
+            </span>
+            <span style="background: rgba(255,255,255,0.1); padding: 0.25rem 0.5rem; border-radius: 4px;">
+              ${solarData.solarFlux > 150 ? '📈 High' : solarData.solarFlux > 100 ? '📊 Moderate' : '📉 Low'} Solar Activity
+            </span>
+            ${conditions.rScale > 0 ? `
+              <span style="background: rgba(255,0,0,0.3); padding: 0.25rem 0.5rem; border-radius: 4px;">
+                ⚠️ R${conditions.rScale} Blackout
+              </span>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -551,7 +597,14 @@ window.RussellTV.PropagationPanel = (function() {
     }
   }
 
-  // Auto-update every 15 minutes
+  // Auto-update every minute for real-time HF band changes
+  setInterval(() => {
+    if (panelVisible) {
+      updatePanelContent(); // Update more frequently to show day/night transitions
+    }
+  }, 60 * 1000); // Every 1 minute
+
+  // Fetch fresh solar data every 15 minutes
   setInterval(() => {
     if (panelVisible) {
       fetchSolarData().then(updatePanelContent);
