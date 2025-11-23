@@ -188,6 +188,14 @@
       indicator.onclick = function(e) {
         e.stopPropagation();
         
+        // Close propagation panel if open
+        if (window.RussellTV?.PropagationPanel) {
+          const panel = document.getElementById('propagation-panel');
+          if (panel && panel.style.display === 'block') {
+            window.RussellTV.PropagationPanel.hide();
+          }
+        }
+        
         if (tooltipLocked && currentTooltipBand === bandKey) {
           // Clicking same locked indicator - unlock and hide
           tooltipLocked = false;
@@ -233,23 +241,27 @@
         e.stopPropagation();
         e.preventDefault();
         
-        // Force unlock and hide tooltips
-        tooltipLocked = false;
-        hideTooltip();
-        
-        // Reset all indicators
-        ['hf', 'gps', 'satcom'].forEach(key => {
-          const ind = document.getElementById(`sw-indicator-${key}`);
-          if (ind) {
-            ind.style.background = 'rgba(0, 0, 0, 0.5)';
-            ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
-            ind.style.boxShadow = 'none';
+        // Small delay to ensure any pending tooltip operations complete
+        setTimeout(() => {
+          // Force unlock and hide tooltips
+          tooltipLocked = false;
+          currentTooltipBand = null;
+          hideTooltip();
+          
+          // Reset all indicators
+          ['hf', 'gps', 'satcom'].forEach(key => {
+            const ind = document.getElementById(`sw-indicator-${key}`);
+            if (ind) {
+              ind.style.background = 'rgba(0, 0, 0, 0.5)';
+              ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+              ind.style.boxShadow = 'none';
+            }
+          });
+          
+          if (window.RussellTV?.PropagationPanel) {
+            window.RussellTV.PropagationPanel.toggle();
           }
-        });
-        
-        if (window.RussellTV?.PropagationPanel) {
-          window.RussellTV.PropagationPanel.toggle();
-        }
+        }, 10);
       };
 
       btn.onmouseenter = function() {
