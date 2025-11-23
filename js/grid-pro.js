@@ -278,13 +278,52 @@
         const btn = cell.querySelector('.channel-selector-btn');
         if (btn) btn.textContent = channelLabel;
 
-        // Load the channel
-        if (window.playGridCell) {
+        // Use the original playGridCell function if it exists
+        if (typeof window.playGridCell === 'function') {
             window.playGridCell(cellNum, channelKey);
+        } else {
+            // Fallback: manually play the channel
+            playChannelInCell(cellNum, channelKey);
         }
 
         // Update mute state
         updateAudioStates();
+    }
+
+    // Fallback function to play channel if playGridCell doesn't exist
+    function playChannelInCell(cellNum, channelKey) {
+        const ch = window.CHANNELS && window.CHANNELS[channelKey];
+        if (!ch) return;
+
+        const video = document.getElementById(`grid-video-${cellNum}`);
+        const ytDiv = document.getElementById(`grid-yt-${cellNum}`);
+
+        if (!video || !ytDiv) return;
+
+        if (ch.type === 'yt') {
+            video.style.display = 'none';
+            ytDiv.style.display = 'flex';
+            
+            if (typeof window.createOrReplaceYTPlayer === 'function') {
+                window.createOrReplaceYTPlayer(ytDiv, `grid-${cellNum}`, ch.url);
+            }
+        } else {
+            ytDiv.style.display = 'none';
+            video.style.display = 'block';
+
+            if (window.Hls && Hls.isSupported()) {
+                if (window.hlsGrid && window.hlsGrid[cellNum]) {
+                    window.hlsGrid[cellNum].destroy();
+                }
+                const hls = new Hls({ lowLatencyMode: true });
+                hls.loadSource(ch.url);
+                hls.attachMedia(video);
+                if (!window.hlsGrid) window.hlsGrid = {};
+                window.hlsGrid[cellNum] = hls;
+            } else {
+                video.src = ch.url;
+            }
+        }
     }
 
     // Set which cell has audio
@@ -363,12 +402,18 @@
     function loadDefaultChannelsForLayout(numCells) {
         const defaults = window.GRID_DEFAULTS || {};
         
+        console.log('Loading default channels for', numCells, 'cells');
+        
         for (let i = 1; i <= numCells; i++) {
             const defaultKey = defaults[i];
             if (defaultKey && window.CHANNELS && window.CHANNELS[defaultKey]) {
+                console.log(`Scheduling load for cell ${i}: ${defaultKey}`);
                 setTimeout(() => {
+                    console.log(`Loading cell ${i}: ${defaultKey}`);
                     selectChannel(i, defaultKey, window.CHANNELS[defaultKey].label);
                 }, 200 + (i * 150)); // Slightly longer initial delay, stagger loading
+            } else {
+                console.log(`No default channel for cell ${i}`);
             }
         }
     }
