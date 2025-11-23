@@ -16,7 +16,7 @@
     let currentLayout = '2x2';
     let focusedCell = null;
     let audioCell = 1; // Which cell has audio active
-    let allMuted = false; // Track if all streams are muted
+    let allMuted = true; // Start with everything muted
 
     // Replace the grid button with a dropdown version
     function replaceGridButton() {
@@ -168,7 +168,7 @@
         // Audio indicator
         const audioBtn = document.createElement('button');
         audioBtn.className = 'grid-audio-btn';
-        audioBtn.innerHTML = cellNum === audioCell ? '🔊' : '🔇';
+        audioBtn.innerHTML = '🔇'; // Start muted
         audioBtn.title = 'Click for audio from this cell';
         audioBtn.onclick = () => {
             if (cellNum === audioCell && !allMuted) {
@@ -726,9 +726,14 @@
             }
             
             const savedMuted = localStorage.getItem('russelltv.allMuted');
-            if (savedMuted === 'true') {
+            if (savedMuted === 'false') {
+                // Only unmute if user explicitly saved unmuted state
+                allMuted = false;
+                console.log('Loaded muted state: unmuted');
+            } else {
+                // Default to muted
                 allMuted = true;
-                console.log('Loaded muted state: all muted');
+                console.log('Loaded muted state: all muted (default)');
             }
             
             // Check saved channel selections
