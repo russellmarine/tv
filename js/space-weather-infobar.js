@@ -142,12 +142,13 @@
 
       indicator.onmouseleave = function() {
         this.style.background = 'transparent';
+        // Longer delay - gives user time to move to tooltip
         hideTooltipTimer = setTimeout(() => {
           const tooltip = document.getElementById('space-weather-tooltip');
           if (tooltip && !tooltip.matches(':hover')) {
             hideTooltip();
           }
-        }, 200);
+        }, 500); // Increased from 200ms to 500ms
       };
     });
 
@@ -327,11 +328,11 @@
     };
 
     tooltip.onmouseleave = () => {
-      // Longer delay before hiding
-      hideTooltipTimer = setTimeout(hideTooltip, 400);
+      // Much longer delay before hiding
+      hideTooltipTimer = setTimeout(hideTooltip, 600);
     };
 
-    // Also keep tooltip open when hovering over the indicator
+    // Keep tooltip open when hovering over the indicator
     indicator.onmouseenter = () => {
       if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
     };
