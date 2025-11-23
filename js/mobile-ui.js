@@ -233,8 +233,16 @@ window.RussellTV.MobileUI = (function() {
 
     function startTickerWhenReady() {
       const content = desktopBar.innerHTML.trim();
+      const spaceWeather = document.getElementById('space-weather-indicators');
+      
       if (!content) {
         setTimeout(startTickerWhenReady, 1000);
+        return;
+      }
+
+      // Wait for space weather to appear (it loads after ~1-2 seconds)
+      if (!spaceWeather) {
+        setTimeout(startTickerWhenReady, 500);
         return;
       }
 
@@ -244,15 +252,15 @@ window.RussellTV.MobileUI = (function() {
       // Add ticker animation class
       mobileInner.classList.add('ticker-running');
 
-      // Update ticker every 11 seconds (after info-bar re-renders)
+      // Update ticker every 6 seconds (in sync with space-weather maintenance)
       if (tickerUpdateInterval) clearInterval(tickerUpdateInterval);
-      tickerUpdateInterval = setInterval(updateTickerContent, 11000);
+      tickerUpdateInterval = setInterval(updateTickerContent, 6000);
 
       console.log('📱 Mobile ticker started with space weather support');
     }
 
     // Wait for info bar to be populated
-    setTimeout(startTickerWhenReady, 3000); // Wait 3 seconds for space weather to load
+    setTimeout(startTickerWhenReady, 2000);
   }
 
   // Public API
