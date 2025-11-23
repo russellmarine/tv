@@ -1,351 +1,454 @@
-/* Professional Grid System Styles */
+// Professional Grid System for RussellTV
+// Includes: Smart layouts, focus mode, solo audio, professional UI
 
-/* Grid button with dropdown */
-.grid-btn-container {
-    display: inline-flex;
-    align-items: center;
-    gap: 0;
-}
+(function() {
+    'use strict';
 
-.grid-dropdown-toggle {
-    border-top-left-radius: 0 !important;
-    border-bottom-left-radius: 0 !important;
-}
+    // Grid configuration
+    const GRID_LAYOUTS = {
+        '1x2': { rows: 1, cols: 2, cells: 2, label: '1×2 Split' },
+        '2x2': { rows: 2, cols: 2, cells: 4, label: '2×2 Grid' },
+        '1x3': { rows: 1, cols: 3, cells: 3, label: '1×3 Triple' },
+        '2x3': { rows: 2, cols: 3, cells: 6, label: '2×3 Grid' },
+        '1x4': { rows: 1, cols: 4, cells: 4, label: '1×4 Ultra' }
+    };
 
-#btn-grid-main {
-    border-top-right-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
-}
+    let currentLayout = '2x2';
+    let focusedCell = null;
+    let audioCell = 1; // Which cell has audio active
 
-/* Grid layout dropdown menu */
-.grid-layout-dropdown {
-    position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
-    background: rgba(10,10,10,0.98);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 8px;
-    min-width: 140px;
-    z-index: 1000;
-    display: none;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 20px rgba(255,80,0,0.2);
-}
+    // Replace the grid button with a dropdown version
+    function replaceGridButton() {
+        const gridBtn = document.getElementById('btn-grid');
+        if (!gridBtn) return;
 
-.grid-layout-dropdown.show {
-    display: block;
-    animation: dropdownSlide 0.2s ease;
-}
+        // Create container for button + dropdown
+        const container = document.createElement('div');
+        container.className = 'grid-btn-container';
+        container.style.position = 'relative';
+        container.style.display = 'inline-block';
 
-.grid-layout-option {
-    padding: 0.6rem 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 0.85rem;
-}
+        // Create the main button
+        const mainBtn = document.createElement('button');
+        mainBtn.id = 'btn-grid-main';
+        mainBtn.className = 'btn';
+        mainBtn.textContent = 'Grid (4)';
+        
+        // Create dropdown arrow button
+        const dropdownBtn = document.createElement('button');
+        dropdownBtn.className = 'btn grid-dropdown-toggle';
+        dropdownBtn.innerHTML = '▼';
+        dropdownBtn.style.padding = '0.35rem 0.5rem';
+        dropdownBtn.style.marginLeft = '-1px';
 
-.grid-layout-option:last-child {
-    border-bottom: none;
-}
+        // Create dropdown menu
+        const dropdown = document.createElement('div');
+        dropdown.className = 'grid-layout-dropdown';
 
-.grid-layout-option:hover {
-    background: linear-gradient(90deg, rgba(255,80,0,0.3), rgba(255,150,0,0.3));
-    box-shadow: inset 0 0 12px rgba(255,120,0,0.4);
-    padding-left: 1.2rem;
-}
+        Object.entries(GRID_LAYOUTS).forEach(([key, config]) => {
+            const option = document.createElement('div');
+            option.className = 'grid-layout-option';
+            option.textContent = config.label;
+            option.dataset.layout = key;
+            
+            if (key === currentLayout) {
+                option.classList.add('active');
+            }
+            
+            option.onclick = () => {
+                changeLayout(key);
+                dropdown.classList.remove('show');
+                mainBtn.textContent = `Grid (${config.cells})`;
+                
+                // Update active state
+                dropdown.querySelectorAll('.grid-layout-option').forEach(o => {
+                    o.classList.remove('active');
+                });
+                option.classList.add('active');
+            };
+            
+            dropdown.appendChild(option);
+        });
 
-.grid-layout-option.active {
-    background: linear-gradient(90deg, rgba(255,80,0,0.2), rgba(255,150,0,0.2));
-    border-left: 3px solid rgba(255,120,0,0.8);
-    padding-left: 0.9rem;
-}
+        // Toggle dropdown
+        dropdownBtn.onclick = (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        };
 
-/* Professional grid wrapper */
-#grid-view .grid-wrapper {
-    display: grid;
-    gap: 1rem;
-    height: calc(100vh - 180px);
-    padding: 0;
-    transition: all 0.3s ease;
-}
+        // Main button enters grid mode
+        mainBtn.onclick = () => {
+            if (window.enterGridMode) {
+                window.enterGridMode();
+            }
+        };
 
-/* Individual grid cell */
-.grid-cell-pro {
-    display: flex;
-    flex-direction: column;
-    background: rgba(0,0,0,0.7);
-    border-radius: 12px;
-    border: 2px solid rgba(255,255,255,0.1);
-    overflow: hidden;
-    transition: all 0.3s ease, border-color 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
+        // Close dropdown when clicking outside
+        document.addEventListener('click', () => {
+            dropdown.classList.remove('show');
+        });
 
-.grid-cell-pro:hover {
-    border-color: rgba(255,120,0,0.3);
-    box-shadow: 0 6px 20px rgba(255,80,0,0.2);
-}
+        container.appendChild(mainBtn);
+        container.appendChild(dropdownBtn);
+        container.appendChild(dropdown);
 
-/* Audio active cell highlight */
-.grid-cell-pro.audio-active {
-    border-color: rgba(255,120,0,0.6);
-    box-shadow: 0 0 20px rgba(255,120,0,0.4), 0 4px 12px rgba(0,0,0,0.3);
-}
-
-/* Focus mode styles */
-.grid-wrapper.focus-mode {
-    grid-template-columns: 1fr !important;
-    grid-template-rows: 3fr repeat(auto-fill, 1fr) !important;
-}
-
-.grid-cell-pro.focused {
-    grid-column: 1 / -1;
-    border-color: rgba(255,150,0,0.8);
-    box-shadow: 0 0 30px rgba(255,120,0,0.6), 0 8px 24px rgba(0,0,0,0.4);
-}
-
-.grid-cell-pro.unfocused {
-    opacity: 0.8;
-    max-height: 120px;
-}
-
-.grid-cell-pro.unfocused .grid-cell-body {
-    min-height: 80px;
-}
-
-/* Cell header */
-.grid-cell-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: rgba(0,0,0,0.6);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-
-/* Audio button */
-.grid-audio-btn {
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 6px;
-    padding: 0.3rem 0.5rem;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    line-height: 1;
-}
-
-.grid-audio-btn:hover {
-    background: rgba(255,120,0,0.3);
-    border-color: rgba(255,180,0,0.6);
-    box-shadow: 0 0 8px rgba(255,120,0,0.5);
-    transform: scale(1.05);
-}
-
-.audio-active .grid-audio-btn {
-    background: linear-gradient(135deg, rgba(255,80,0,0.4), rgba(255,150,0,0.4));
-    border-color: rgba(255,180,0,0.8);
-    box-shadow: 0 0 12px rgba(255,120,0,0.7);
-}
-
-/* Focus button */
-.grid-focus-btn {
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 6px;
-    padding: 0.3rem 0.5rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    line-height: 1;
-    color: #fff;
-}
-
-.grid-focus-btn:hover {
-    background: rgba(255,120,0,0.3);
-    border-color: rgba(255,180,0,0.6);
-    box-shadow: 0 0 8px rgba(255,120,0,0.5);
-    transform: scale(1.05);
-}
-
-/* Custom channel selector */
-.channel-selector-pro {
-    position: relative;
-    flex: 1;
-}
-
-.channel-selector-btn {
-    width: 100%;
-    background: rgba(0,0,0,0.9);
-    color: rgba(255,255,255,0.9);
-    border: 1px solid rgba(255,255,255,0.26);
-    border-radius: 8px;
-    padding: 0.4rem 0.8rem;
-    font-size: 0.85rem;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.25s ease;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.channel-selector-btn:hover {
-    background: linear-gradient(90deg, rgba(255,80,0,0.2), rgba(255,150,0,0.2));
-    border-color: rgba(255,180,0,0.5);
-    box-shadow: 0 0 8px rgba(255,120,0,0.4);
-    color: #fff;
-}
-
-/* Channel dropdown */
-.channel-dropdown {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    right: 0;
-    background: rgba(10,10,10,0.98);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 8px;
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 1000;
-    display: none;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 20px rgba(255,80,0,0.2);
-}
-
-.channel-dropdown.show {
-    display: block;
-    animation: dropdownSlide 0.2s ease;
-}
-
-@keyframes dropdownSlide {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
+        // Replace the old button
+        gridBtn.parentNode.replaceChild(container, gridBtn);
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+
+    // Change grid layout
+    function changeLayout(layoutKey) {
+        if (!GRID_LAYOUTS[layoutKey]) return;
+        
+        currentLayout = layoutKey;
+        const config = GRID_LAYOUTS[layoutKey];
+        
+        focusedCell = null; // Reset focus when changing layouts
+        
+        rebuildGrid(config);
+        
+        // Save preference
+        try {
+            localStorage.setItem('russelltv.gridLayout', layoutKey);
+        } catch (e) {}
     }
-}
 
-/* Channel options */
-.channel-option {
-    padding: 0.6rem 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 0.9rem;
-}
+    // Rebuild grid with new layout
+    function rebuildGrid(config) {
+        const wrapper = document.querySelector('#grid-view .grid-wrapper');
+        if (!wrapper) return;
 
-.channel-option:last-child {
-    border-bottom: none;
-}
+        // Stop all current streams
+        stopAllGridCells();
 
-.channel-option:hover {
-    background: linear-gradient(90deg, rgba(255,80,0,0.3), rgba(255,150,0,0.3));
-    box-shadow: inset 0 0 12px rgba(255,120,0,0.4);
-    padding-left: 1.2rem;
-}
+        // Update grid CSS
+        wrapper.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
+        wrapper.style.gridTemplateRows = `repeat(${config.rows}, 1fr)`;
+        
+        // Clear and rebuild cells
+        wrapper.innerHTML = '';
 
-/* Scrollbar styling for dropdown */
-.channel-dropdown::-webkit-scrollbar {
-    width: 8px;
-}
+        for (let cell = 1; cell <= config.cells; cell++) {
+            const cellDiv = createGridCell(cell);
+            wrapper.appendChild(cellDiv);
+        }
 
-.channel-dropdown::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.3);
-    border-radius: 4px;
-}
-
-.channel-dropdown::-webkit-scrollbar-thumb {
-    background: rgba(255,120,0,0.5);
-    border-radius: 4px;
-}
-
-.channel-dropdown::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,150,0,0.7);
-}
-
-/* Cell body */
-.grid-cell-body {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.4);
-    padding: 0.5rem;
-    min-height: 200px;
-}
-
-.grid-cell-frame {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.grid-cell-frame video,
-.grid-cell-frame iframe,
-.grid-cell-frame .yt-container {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: #000;
-}
-
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-    #grid-view .grid-wrapper {
-        height: auto;
-        min-height: calc(100vh - 200px);
+        // Load default channels for new layout
+        loadDefaultChannelsForLayout(config.cells);
     }
-    
-    .grid-cell-pro {
-        min-height: 200px;
-    }
-    
-    .grid-cell-body {
-        min-height: 150px;
-    }
-    
-    .grid-layout-selector {
-        font-size: 0.75rem;
-        padding: 0.3rem 0.6rem;
-    }
-    
-    .channel-selector-btn {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.6rem;
-    }
-    
-    .grid-audio-btn,
-    .grid-focus-btn {
-        font-size: 0.85rem;
-        padding: 0.25rem 0.4rem;
-    }
-    
-    /* Simplify focus mode on mobile */
-    .grid-wrapper.focus-mode .grid-cell-pro.unfocused {
-        display: none;
-    }
-}
 
-/* Ultrawide monitor optimization */
-@media (min-width: 2000px) {
-    #grid-view .grid-wrapper {
-        height: calc(100vh - 150px);
-    }
-}
+    // Create a professional grid cell
+    function createGridCell(cellNum) {
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell-pro';
+        cell.dataset.cell = cellNum;
+        
+        if (cellNum === audioCell) {
+            cell.classList.add('audio-active');
+        }
 
-/* Loading state */
-.grid-cell-pro.loading .grid-cell-body::after {
-    content: 'Loading...';
-    position: absolute;
-    color: rgba(255,255,255,0.5);
-    font-size: 0.9rem;
-}
+        // Header with custom channel selector
+        const header = document.createElement('div');
+        header.className = 'grid-cell-header';
+
+        // Audio indicator
+        const audioBtn = document.createElement('button');
+        audioBtn.className = 'grid-audio-btn';
+        audioBtn.innerHTML = cellNum === audioCell ? '🔊' : '🔇';
+        audioBtn.title = 'Click to make this cell the audio source';
+        audioBtn.onclick = () => setAudioCell(cellNum);
+        header.appendChild(audioBtn);
+
+        // Custom channel selector
+        const selector = createChannelSelector(cellNum);
+        header.appendChild(selector);
+
+        // Focus button
+        const focusBtn = document.createElement('button');
+        focusBtn.className = 'grid-focus-btn';
+        focusBtn.innerHTML = '⛶';
+        focusBtn.title = 'Focus this cell';
+        focusBtn.onclick = () => toggleFocus(cellNum);
+        header.appendChild(focusBtn);
+
+        cell.appendChild(header);
+
+        // Video container
+        const body = document.createElement('div');
+        body.className = 'grid-cell-body';
+
+        const frame = document.createElement('div');
+        frame.className = 'grid-cell-frame';
+
+        // HLS video element
+        const video = document.createElement('video');
+        video.id = `grid-video-${cellNum}`;
+        video.autoplay = true;
+        video.muted = (cellNum !== audioCell);
+        video.controls = false;
+        video.playsInline = true;
+        video.setAttribute('playsinline', '');
+
+        // YouTube container
+        const ytDiv = document.createElement('div');
+        ytDiv.id = `grid-yt-${cellNum}`;
+        ytDiv.className = 'yt-container';
+        ytDiv.style.display = 'none';
+
+        frame.appendChild(video);
+        frame.appendChild(ytDiv);
+        body.appendChild(frame);
+        cell.appendChild(body);
+
+        return cell;
+    }
+
+    // Create professional channel selector
+    function createChannelSelector(cellNum) {
+        const container = document.createElement('div');
+        container.className = 'channel-selector-pro';
+
+        const button = document.createElement('button');
+        button.className = 'channel-selector-btn';
+        button.textContent = 'Select Channel';
+        button.dataset.cell = cellNum;
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'channel-dropdown';
+
+        if (window.CHANNELS) {
+            Object.entries(window.CHANNELS).forEach(([key, channel]) => {
+                const option = document.createElement('div');
+                option.className = 'channel-option';
+                option.textContent = channel.label;
+                option.dataset.channel = key;
+                
+                option.onclick = () => {
+                    selectChannel(cellNum, key, channel.label);
+                    dropdown.classList.remove('show');
+                };
+                
+                dropdown.appendChild(option);
+            });
+        }
+
+        button.onclick = (e) => {
+            e.stopPropagation();
+            
+            // Close all other dropdowns
+            document.querySelectorAll('.channel-dropdown.show').forEach(d => {
+                if (d !== dropdown) d.classList.remove('show');
+            });
+            
+            dropdown.classList.toggle('show');
+        };
+
+        container.appendChild(button);
+        container.appendChild(dropdown);
+
+        return container;
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.channel-dropdown.show').forEach(d => {
+            d.classList.remove('show');
+        });
+    });
+
+    // Select a channel for a cell
+    function selectChannel(cellNum, channelKey, channelLabel) {
+        const cell = document.querySelector(`[data-cell="${cellNum}"]`);
+        if (!cell) return;
+
+        const btn = cell.querySelector('.channel-selector-btn');
+        if (btn) btn.textContent = channelLabel;
+
+        // Load the channel
+        if (window.playGridCell) {
+            window.playGridCell(cellNum, channelKey);
+        }
+
+        // Update mute state
+        updateAudioStates();
+    }
+
+    // Set which cell has audio
+    function setAudioCell(cellNum) {
+        audioCell = cellNum;
+        
+        // Update all audio buttons and mute states
+        document.querySelectorAll('.grid-cell-pro').forEach(cell => {
+            const num = parseInt(cell.dataset.cell);
+            const audioBtn = cell.querySelector('.grid-audio-btn');
+            
+            if (num === audioCell) {
+                cell.classList.add('audio-active');
+                if (audioBtn) audioBtn.innerHTML = '🔊';
+            } else {
+                cell.classList.remove('audio-active');
+                if (audioBtn) audioBtn.innerHTML = '🔇';
+            }
+        });
+
+        updateAudioStates();
+    }
+
+    // Update mute state on all video elements
+    function updateAudioStates() {
+        for (let i = 1; i <= 9; i++) {
+            const video = document.getElementById(`grid-video-${i}`);
+            if (video) {
+                video.muted = (i !== audioCell);
+            }
+
+            // Also update YouTube players if they exist
+            if (window.YT_PLAYERS && window.YT_PLAYERS[`grid-${i}`]) {
+                try {
+                    if (i === audioCell) {
+                        window.YT_PLAYERS[`grid-${i}`].unMute();
+                    } else {
+                        window.YT_PLAYERS[`grid-${i}`].mute();
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+
+    // Toggle focus mode
+    function toggleFocus(cellNum) {
+        const wrapper = document.querySelector('#grid-view .grid-wrapper');
+        if (!wrapper) return;
+
+        if (focusedCell === cellNum) {
+            // Exit focus mode
+            focusedCell = null;
+            wrapper.classList.remove('focus-mode');
+            document.querySelectorAll('.grid-cell-pro').forEach(cell => {
+                cell.classList.remove('focused', 'unfocused');
+            });
+        } else {
+            // Enter focus mode
+            focusedCell = cellNum;
+            wrapper.classList.add('focus-mode');
+            
+            document.querySelectorAll('.grid-cell-pro').forEach(cell => {
+                const num = parseInt(cell.dataset.cell);
+                if (num === cellNum) {
+                    cell.classList.add('focused');
+                    cell.classList.remove('unfocused');
+                } else {
+                    cell.classList.add('unfocused');
+                    cell.classList.remove('focused');
+                }
+            });
+        }
+    }
+
+    // Load default channels for layout
+    function loadDefaultChannelsForLayout(numCells) {
+        const defaults = window.GRID_DEFAULTS || {};
+        
+        for (let i = 1; i <= numCells; i++) {
+            const defaultKey = defaults[i];
+            if (defaultKey && window.CHANNELS && window.CHANNELS[defaultKey]) {
+                setTimeout(() => {
+                    selectChannel(i, defaultKey, window.CHANNELS[defaultKey].label);
+                }, i * 100); // Stagger loading
+            }
+        }
+    }
+
+    // Stop all grid cells
+    function stopAllGridCells() {
+        // Stop HLS instances
+        if (window.hlsGrid) {
+            Object.values(window.hlsGrid).forEach(hls => {
+                if (hls) hls.destroy();
+            });
+        }
+
+        // Stop YouTube players
+        if (window.YT_PLAYERS) {
+            Object.keys(window.YT_PLAYERS).forEach(key => {
+                if (key.startsWith('grid-')) {
+                    try {
+                        window.YT_PLAYERS[key].destroy();
+                    } catch (e) {}
+                }
+            });
+        }
+    }
+
+    // Keyboard shortcuts for layouts
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+            return;
+        }
+
+        const gridView = document.getElementById('grid-view');
+        if (!gridView || gridView.style.display === 'none') return;
+
+        // Layout shortcuts (when in grid mode)
+        const layoutMap = {
+            '2': '1x2',
+            '4': '2x2',
+            '3': '1x3',
+            '6': '2x3',
+            'u': '1x4',
+            'U': '1x4'
+        };
+
+        if (layoutMap[e.key]) {
+            e.preventDefault();
+            changeLayout(layoutMap[e.key]);
+            
+            // Update button text
+            const mainBtn = document.getElementById('btn-grid-main');
+            if (mainBtn) {
+                const config = GRID_LAYOUTS[layoutMap[e.key]];
+                mainBtn.textContent = `Grid (${config.cells})`;
+            }
+        }
+
+        // F key for focus mode
+        if (e.key === 'f' || e.key === 'F') {
+            e.preventDefault();
+            toggleFocus(focusedCell || 1);
+        }
+
+        // A key to cycle audio between cells
+        if (e.key === 'a' || e.key === 'A') {
+            e.preventDefault();
+            const config = GRID_LAYOUTS[currentLayout];
+            const nextCell = (audioCell % config.cells) + 1;
+            setAudioCell(nextCell);
+        }
+    });
+
+    // Initialize when grid button is clicked
+    const originalEnterGridMode = window.enterGridMode;
+    window.enterGridMode = function() {
+        if (originalEnterGridMode) originalEnterGridMode();
+        
+        // Initialize professional grid on first load
+        if (!document.querySelector('.grid-cell-pro')) {
+            const config = GRID_LAYOUTS[currentLayout];
+            rebuildGrid(config);
+        }
+    };
+
+    // Initialize
+    window.addEventListener('load', () => {
+        replaceGridButton();
+        
+        // Load saved layout preference
+        try {
+            const savedLayout = localStorage.getItem('russelltv.gridLayout');
+            if (savedLayout && GRID_LAYOUTS[savedLayout]) {
+                currentLayout = savedLayout;
+            }
+        } catch (e) {}
+    });
+
+})();
