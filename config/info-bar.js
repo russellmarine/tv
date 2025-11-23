@@ -1,4 +1,4 @@
-// RussellTV Combined Time + Weather Footer (with tooltips & temp color)
+// RussellTV Combined Time + Weather Footer (with colored tooltips)
 // Uses: window.TIME_ZONES, optional window.WEATHER_QUERIES + window.fetchWeather
 
 (function() {
@@ -22,7 +22,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
-      z-index: 9999;
+      z-index: 2147483647;
       box-sizing: border-box;
       justify-content: center;
       backdrop-filter: blur(4px);
@@ -64,54 +64,22 @@
       border-color: rgba(220,20,60,0.9);
     }
 
-    /* ---------- Colored tooltips tied to the pill's temp color ---------- */
-    .info-block.has-tooltip {
-      position: relative;
-    }
-
-    .info-block.has-tooltip::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      left: 50%;
-      bottom: 120%;
-      transform: translateX(-50%);
+    /* Global tooltip element */
+    #info-tooltip {
+      position: fixed;
       padding: 4px 8px;
       font-size: 0.70rem;
-      white-space: pre-line;          /* honor newlines in tooltip text */
+      white-space: pre-line;      /* honor newlines */
       max-width: 280px;
       border-radius: 4px;
-      background: inherit;            /* same bg color as the pill (temp band) */
+      background: rgba(0,0,0,0.9);
       color: #fff;
       opacity: 0;
       pointer-events: none;
+      z-index: 2147483647;
       box-shadow: 0 0 8px rgba(0,0,0,0.6);
-      z-index: 10000;
-      transition: opacity 0.12s ease-out, transform 0.12s ease-out;
-    }
-
-    .info-block.has-tooltip::before {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: 112%;
-      transform: translateX(-50%);
-      border-width: 5px;
-      border-style: solid;
-      /* arrow uses the same border color (temp band) as the pill */
-      border-color: inherit transparent transparent transparent;
-      opacity: 0;
-      pointer-events: none;
-      z-index: 9999;
-      transition: opacity 0.12s ease-out;
-    }
-
-    .info-block.has-tooltip:hover::after,
-    .info-block.has-tooltip:hover::before {
-      opacity: 1;
-    }
-
-    .info-block.has-tooltip:hover::after {
-      transform: translateX(-50%) translateY(-2px);
+      transform: translate(-50%, -8px);
+      transition: opacity 0.08s ease-out;
     }
   `;
   document.head.appendChild(style);
@@ -120,6 +88,11 @@
   const bar = document.createElement("div");
   bar.id = "info-bar";
   document.body.appendChild(bar);
+
+  // ---------- Global tooltip element ----------
+  const tooltipEl = document.createElement("div");
+  tooltipEl.id = "info-tooltip";
+  document.body.appendChild(tooltipEl);
 
   // Weather details cache keyed by TIME_ZONES label
   // { icon, temp, hi, lo, main, desc, humidity, wind }
@@ -160,7 +133,6 @@
     const newMap = {};
 
     for (const [label, query] of entries) {
-      // Skip Zulu / pure time locations if they somehow end up configured
       const isZulu = /zulu/i.test(label);
       if (isZulu) {
         newMap[label] = null;
@@ -218,7 +190,7 @@
         minute: "2-digit"
       });
 
-      let cls = "info-block temp-neutral has-tooltip";
+      let cls = "info-block temp-neutral";
       let content = `<strong>${loc.label}</strong> ${time}`;
       let tooltip = `${loc.label}\n${time}`;
 
@@ -226,7 +198,7 @@
       const w = weatherMap[loc.label];
 
       if (!isZulu && w) {
-        cls = "info-block " + tempClass(w.temp) + " has-tooltip";
+        cls = "info-block " + tempClass(w.temp);
         content += ` • ${w.icon} ${w.hi}°/${w.lo}°`;
         let tip = `${loc.label}\n`;
         tip += `Time: ${time}\n`;
@@ -244,8 +216,27 @@
       div.className = cls;
       div.innerHTML = content;
 
-      // Custom tooltip instead of native title
-      div.setAttribute("data-tooltip", tooltip);
+      const tooltipText = tooltip;
+
+      // Hover handlers for global tooltip
+      div.addEventListener("mouseenter", () => {
+        const rect = div.getBoundingClientRect();
+        const pillStyle = window.getComputedStyle(div);
+
+        const bg = pillStyle.backgroundColor || "rgba(0,0,0,0.9)";
+        const borderColor = pillStyle.borderColor || "rgba(255,255,255,0.5)";
+
+        tooltipEl.textContent = tooltipText;
+        tooltipEl.style.left = (rect.left + rect.width / 2) + "px";
+        tooltipEl.style.top = rect.top + "px";
+        tooltipEl.style.backgroundColor = bg;
+        tooltipEl.style.border = `1px solid ${borderColor}`;
+        tooltipEl.style.opacity = "1";
+      });
+
+      div.addEventListener("mouseleave", () => {
+        tooltipEl.style.opacity = "0";
+      });
 
       bar.appendChild(div);
     });
