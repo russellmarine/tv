@@ -145,6 +145,8 @@
     return indicator;
   }
 
+  let hideTooltipTimer = null;
+
   function reattachEventListeners() {
     // Attach listeners to indicators
     const bands = ['hf', 'gps', 'satcom'];
@@ -153,23 +155,26 @@
       const indicator = document.getElementById(`sw-indicator-${bandKey}`);
       if (!indicator) return;
 
-      // Check if already has our listeners
+      // Check if already has our listeners - don't re-attach if already attached
       if (indicator.dataset.listenersAttached === 'true') return;
+      
       indicator.dataset.listenersAttached = 'true';
 
-      // Remove old listeners by cloning (fresh start)
-      const newIndicator = indicator.cloneNode(true);
-      indicator.parentNode.replaceChild(newIndicator, indicator);
-      newIndicator.dataset.listenersAttached = 'true';
-
-      newIndicator.addEventListener('mouseenter', () => {
-        newIndicator.style.background = 'rgba(255, 255, 255, 0.1)';
-        showTooltip(newIndicator, bandKey);
+      indicator.addEventListener('mouseenter', () => {
+        indicator.style.background = 'rgba(255, 255, 255, 0.1)';
+        if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+        showTooltip(indicator, bandKey);
       });
 
-      newIndicator.addEventListener('mouseleave', () => {
-        newIndicator.style.background = 'transparent';
-        hideTooltip();
+      indicator.addEventListener('mouseleave', () => {
+        indicator.style.background = 'transparent';
+        // Delay hiding so user can move to tooltip
+        hideTooltipTimer = setTimeout(() => {
+          const tooltip = document.getElementById('space-weather-tooltip');
+          if (tooltip && !tooltip.matches(':hover')) {
+            hideTooltip();
+          }
+        }, 200);
       });
     });
 
@@ -178,26 +183,21 @@
     if (propBtn && propBtn.dataset.listenersAttached !== 'true') {
       propBtn.dataset.listenersAttached = 'true';
 
-      // Clone to remove old listeners
-      const newBtn = propBtn.cloneNode(true);
-      propBtn.parentNode.replaceChild(newBtn, propBtn);
-      newBtn.dataset.listenersAttached = 'true';
-
-      newBtn.addEventListener('click', (e) => {
+      propBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         togglePropagationPanel();
       });
 
-      newBtn.addEventListener('mouseenter', () => {
-        newBtn.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
-        newBtn.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
-        newBtn.style.transform = 'translateY(-1px)';
+      propBtn.addEventListener('mouseenter', () => {
+        propBtn.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
+        propBtn.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
+        propBtn.style.transform = 'translateY(-1px)';
       });
 
-      newBtn.addEventListener('mouseleave', () => {
-        newBtn.style.background = 'rgba(0, 0, 0, 0.7)';
-        newBtn.style.boxShadow = 'none';
-        newBtn.style.transform = 'translateY(0)';
+      propBtn.addEventListener('mouseleave', () => {
+        propBtn.style.background = 'rgba(0, 0, 0, 0.7)';
+        propBtn.style.boxShadow = 'none';
+        propBtn.style.transform = 'translateY(0)';
       });
     }
   }
@@ -320,17 +320,24 @@
     tooltip.innerHTML = html;
     document.body.appendChild(tooltip);
 
+    // Cancel any pending hide
+    if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+
     // Keep tooltip open when hovering over it
     tooltip.addEventListener('mouseenter', () => {
-      tooltip.style.pointerEvents = 'auto';
+      if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
     });
 
     tooltip.addEventListener('mouseleave', () => {
-      hideTooltip();
+      // Delay hiding slightly
+      hideTooltipTimer = setTimeout(() => {
+        hideTooltip();
+      }, 200);
     });
   }
 
   function hideTooltip() {
+    if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
     const tooltip = document.getElementById('space-weather-tooltip');
     if (tooltip) {
       tooltip.remove();
