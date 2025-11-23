@@ -31,13 +31,17 @@
     }
 
     .info-block {
-      padding: 2px 8px;
+      padding: 2px 10px;
       border-radius: 999px;
       white-space: nowrap;
       border: 1px solid rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.04);
       cursor: default;
       position: relative;
+      display: inline-flex;           /* center contents */
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;                   /* space between icon and text */
     }
 
     .info-block strong {
@@ -153,24 +157,24 @@
       opacity: 1;
     }
 
-    /* ======== WEATHER ICONS (SVG + REAL ANIMATION) ======== */
+    /* ======== WEATHER ICONS (SVG + STRONGER ANIMATION) ======== */
 
     .wx-icon-wrap {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin-right: 3px;
+      margin-right: 2px;
     }
 
     .wx-icon {
-      width: 18px;
-      height: 18px;
+      width: 20px;
+      height: 20px;
       display: inline-block;
       vertical-align: middle;
-      transform-origin: center center;  /* IMPORTANT for visible animation */
+      transform-origin: center center;
     }
 
-    /* ---- Stronger, visible animations ---- */
+    /* Desktop animations – mobile ticker disables these via #info-bar-mobile overrides */
 
     .wx-sunny {
       animation: wx-sun-pulse 3s ease-in-out infinite;
@@ -181,11 +185,11 @@
     }
 
     .wx-rain {
-      animation: wx-rain-bob 1.4s ease-in-out infinite;
+      animation: wx-rain-bob 1.6s ease-in-out infinite;
     }
 
     .wx-storm {
-      animation: wx-storm-flash 2.2s ease-in-out infinite;
+      animation: wx-storm-flash 2.3s ease-in-out infinite;
     }
 
     .wx-snow {
@@ -200,43 +204,43 @@
       animation: wx-fog-breathe 4.5s ease-in-out infinite;
     }
 
-    /* ---- Keyframes ---- */
+    /* ---- Keyframes with light/brightness variation ---- */
 
     @keyframes wx-sun-pulse {
-      0%, 100% { transform: scale(1);   filter: brightness(1); }
-      50%      { transform: scale(1.12); filter: brightness(1.25); }
+      0%, 100% { transform: scale(1);    filter: brightness(1) saturate(1); }
+      50%      { transform: scale(1.12); filter: brightness(1.3) saturate(1.1); }
     }
 
     @keyframes wx-cloud-drift {
-      0%, 100% { transform: translateX(0); }
-      50%      { transform: translateX(4px); }
+      0%, 100% { transform: translateX(0);   filter: brightness(1); }
+      50%      { transform: translateX(4px); filter: brightness(1.1); }
     }
 
     @keyframes wx-rain-bob {
-      0%, 100% { transform: translateY(0); }
-      50%      { transform: translateY(3px); }
+      0%, 100% { transform: translateY(0);   filter: brightness(1); }
+      50%      { transform: translateY(3px); filter: brightness(1.15); }
     }
 
     @keyframes wx-storm-flash {
-      0%, 100% { filter: brightness(1); transform: translateY(0); }
-      40%      { filter: brightness(1); transform: translateY(0); }
-      50%      { filter: brightness(1.6); transform: translateY(1px); }
-      60%      { filter: brightness(1); transform: translateY(0); }
+      0%, 100% { filter: brightness(1);   transform: translateY(0); }
+      40%      { filter: brightness(1);   transform: translateY(0); }
+      50%      { filter: brightness(1.7); transform: translateY(1px); }
+      60%      { filter: brightness(1);   transform: translateY(0); }
     }
 
     @keyframes wx-snow-float {
-      0%, 100% { transform: translateY(0); }
-      50%      { transform: translateY(-3px); }
+      0%, 100% { transform: translateY(0);    filter: brightness(1); }
+      50%      { transform: translateY(-3px); filter: brightness(1.1); }
     }
 
     @keyframes wx-wind-sway {
-      0%, 100% { transform: translateX(0); }
-      50%      { transform: translateX(-4px); }
+      0%, 100% { transform: translateX(0);    filter: brightness(1); }
+      50%      { transform: translateX(-4px); filter: brightness(1.1); }
     }
 
     @keyframes wx-fog-breathe {
-      0%, 100% { opacity: 1; }
-      50%      { opacity: 0.6; }
+      0%, 100% { opacity: 1;   filter: brightness(1); }
+      50%      { opacity: 0.6; filter: brightness(0.9); }
     }
   `;
   document.head.appendChild(style);
@@ -353,7 +357,7 @@
           </span>
         `.trim();
 
-        content += ` • ${iconHtml} ${w.hi}°/${w.lo}°`;
+        content += ` ${iconHtml} ${w.hi}°/${w.lo}°`;
 
         tooltip =
           `${loc.label}\n` +
