@@ -232,7 +232,9 @@
 
         // Main button enters grid mode
         mainBtn.onclick = () => {
-            if (window.enterGridMode) {
+            if (window.RussellTV && window.RussellTV.ViewManager) {
+                window.RussellTV.ViewManager.showGrid();
+            } else if (window.enterGridMode) {
                 window.enterGridMode();
             }
         };
