@@ -285,86 +285,114 @@
         console.log(`>>> selectChannel called <<<`);
         console.log('    cellNum:', cellNum);
         console.log('    channelKey:', channelKey);
-        console.log('    channelLabel:', channelLabel);
         
         const cell = document.querySelector(`[data-cell="${cellNum}"]`);
         if (!cell) {
             console.error(`    ERROR: Cell ${cellNum} not found in DOM`);
             return;
         }
-        console.log('    Cell element found:', cell);
 
         const btn = cell.querySelector('.channel-selector-btn');
         if (btn) {
             btn.textContent = channelLabel;
-            console.log('    Button text updated to:', channelLabel);
-        } else {
-            console.warn('    Button not found in cell');
         }
 
         // Save selection
         saveGridChannelSelection(cellNum, channelKey);
-        console.log('    Saved to localStorage');
 
-        // Check if playGridCell exists
-        console.log('    window.playGridCell type:', typeof window.playGridCell);
-        
+        // Call playGridCell
         if (typeof window.playGridCell === 'function') {
             console.log('    Calling window.playGridCell...');
-            try {
-                window.playGridCell(cellNum, channelKey);
-                console.log('    playGridCell called successfully');
-                
-                // Wait longer for the video/player to be created by playGridCell
-                setTimeout(() => {
-                    console.log(`    Checking and updating audio for cell ${cellNum}...`);
-                    const video = document.getElementById(`grid-video-${cellNum}`);
-                    
-                    if (video) {
-                        console.log(`    Video element exists for cell ${cellNum}`);
-                        console.log(`    Video paused: ${video.paused}, muted: ${video.muted}`);
-                        
-                        // Set mute state based on our logic
-                        const shouldBeMuted = allMuted || (cellNum !== audioCell);
-                        video.muted = shouldBeMuted;
-                        console.log(`    Set video muted to: ${shouldBeMuted}`);
-                        
-                        // Try to play if paused
-                        if (video.paused) {
-                            video.play().then(() => {
-                                console.log(`    Video playing for cell ${cellNum}`);
-                            }).catch(e => {
-                                console.warn(`    Autoplay failed for cell ${cellNum}:`, e.message);
-                            });
-                        }
-                    }
-                    
-                    // Also check YouTube player
-                    const ytPlayerKey = `grid-${cellNum}`;
-                    if (window.YT_PLAYERS && window.YT_PLAYERS[ytPlayerKey]) {
-                        console.log(`    YouTube player exists for cell ${cellNum}`);
-                        try {
-                            if (!allMuted && cellNum === audioCell) {
-                                window.YT_PLAYERS[ytPlayerKey].unMute();
-                                window.YT_PLAYERS[ytPlayerKey].setVolume(100);
-                                console.log(`    YouTube unmuted for cell ${cellNum}`);
-                            } else {
-                                window.YT_PLAYERS[ytPlayerKey].mute();
-                                console.log(`    YouTube muted for cell ${cellNum}`);
-                            }
-                        } catch (e) {
-                            console.warn(`    YouTube control error for cell ${cellNum}:`, e);
-                        }
-                    }
-                }, 1000); // Wait 1 second for playGridCell to finish
-                
-            } catch (e) {
-                console.error('    ERROR calling playGridCell:', e);
+            window.playGridCell(cellNum, channelKey);
+            
+            // playGridCell destroys and recreates videos, so we need to wait
+            // then attach event listeners to control audio
+            const ch = window.CHANNELS[channelKey];
+            
+            if (ch && ch.type === 'yt') {
+                // YouTube - wait for player to be created
+                console.log(`    Waiting for YouTube player for cell ${cellNum}...`);
+                waitForYouTubePlayer(cellNum, 0);
+            } else {
+                // HLS - wait for video element to be ready
+                console.log(`    Waiting for HLS video for cell ${cellNum}...`);
+                waitForHLSVideo(cellNum, 0);
             }
         } else {
-            console.error('    ERROR: window.playGridCell is not a function!');
-            console.log('    Available functions:', Object.keys(window).filter(k => typeof window[k] === 'function').slice(0, 20));
+            console.error('    window.playGridCell not found!');
         }
+    }
+
+    // Wait for HLS video to be ready and set audio state
+    function waitForHLSVideo(cellNum, attempts) {
+        if (attempts > 20) {
+            console.warn(`    Gave up waiting for HLS video ${cellNum}`);
+            return;
+        }
+        
+        setTimeout(() => {
+            const video = document.getElementById(`grid-video-${cellNum}`);
+            
+            if (video && video.readyState >= 2) { // HAVE_CURRENT_DATA or better
+                console.log(`    HLS video ready for cell ${cellNum}`);
+                const shouldBeMuted = allMuted || (cellNum !== audioCell);
+                video.muted = shouldBeMuted;
+                console.log(`    Set HLS video ${cellNum} muted: ${shouldBeMuted}`);
+                
+                // Ensure it's playing
+                if (video.paused) {
+                    video.play().catch(e => console.log(`    Play failed: ${e.message}`));
+                }
+            } else {
+                // Not ready yet, try again
+                waitForHLSVideo(cellNum, attempts + 1);
+            }
+        }, 100);
+    }
+
+    // Wait for YouTube player to be ready and set audio state
+    function waitForYouTubePlayer(cellNum, attempts) {
+        if (attempts > 30) {
+            console.warn(`    Gave up waiting for YouTube player ${cellNum}`);
+            return;
+        }
+        
+        setTimeout(() => {
+            const ytPlayerKey = `grid-${cellNum}`;
+            
+            if (window.YT_PLAYERS && window.YT_PLAYERS[ytPlayerKey]) {
+                console.log(`    YouTube player ready for cell ${cellNum}`);
+                
+                try {
+                    const player = window.YT_PLAYERS[ytPlayerKey];
+                    
+                    // Wait for player state to be ready
+                    const state = player.getPlayerState();
+                    
+                    if (state === -1 || state === 3) {
+                        // Still loading, wait more
+                        waitForYouTubePlayer(cellNum, attempts + 1);
+                        return;
+                    }
+                    
+                    // Player is ready, set audio state
+                    if (!allMuted && cellNum === audioCell) {
+                        player.unMute();
+                        player.setVolume(100);
+                        console.log(`    YouTube ${cellNum} unmuted and volume 100`);
+                    } else {
+                        player.mute();
+                        console.log(`    YouTube ${cellNum} muted`);
+                    }
+                } catch (e) {
+                    console.warn(`    YouTube ${cellNum} control error:`, e);
+                    waitForYouTubePlayer(cellNum, attempts + 1);
+                }
+            } else {
+                // Player doesn't exist yet, wait
+                waitForYouTubePlayer(cellNum, attempts + 1);
+            }
+        }, 200);
     }
 
     // Save grid channel selections
@@ -546,24 +574,13 @@
                 setTimeout(() => {
                     console.log(`>>> Attempting to load cell ${i} with ${channelKey}`);
                     const cell = document.querySelector(`[data-cell="${i}"]`);
-                    console.log(`    Cell ${i} element found:`, !!cell);
                     
                     if (cell && window.CHANNELS[channelKey]) {
                         selectChannel(i, channelKey, window.CHANNELS[channelKey].label);
-                    } else {
-                        console.error(`    Failed to load cell ${i}`);
                     }
-                }, i * 150);
-            } else {
-                console.warn(`Cell ${i}: No valid channel (key: ${channelKey})`);
+                }, i * 200); // Slightly slower stagger to give each cell time
             }
         }
-        
-        // After all channels load, unmute the active cell
-        setTimeout(() => {
-            console.log('=== All channels loaded, updating final audio state ===');
-            updateAudioStates();
-        }, (numCells * 150) + 1000);
         
         console.log('========================');
     }
