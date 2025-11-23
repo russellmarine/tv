@@ -1,32 +1,149 @@
 // ========================================
-// COMPATIBILITY SHIM FOR MODULAR REFACTORING
+// GRID-PRO DROPDOWN COMPATIBILITY PATCH
+// This hooks grid-pro's custom dropdowns to the modular GridPlayer
 // ========================================
 
-// Override the modular grid building - let grid-pro.js handle it
-if (window.RussellTV && window.RussellTV.UIControls) {
-  console.log('🔧 Patching UIControls to work with grid-pro.js');
+(function() {
+  'use strict';
   
-  // Replace buildGrid with no-op - grid-pro.js will build the grid
-  window.RussellTV.UIControls.buildGrid = function() {
-    console.log('✅ Grid building delegated to grid-pro.js');
-    // Don't build anything - grid-pro.js handles this
-  };
-}
-
-// Ensure grid-pro.js can use the modular GridPlayer
-if (!window.playGridCell && window.RussellTV && window.RussellTV.GridPlayer) {
-  console.log('🔧 Creating playGridCell compatibility wrapper');
-  window.playGridCell = function(cell, channelKey) {
-    console.log('📺 grid-pro.js → GridPlayer.playCell:', cell, channelKey);
-    window.RussellTV.GridPlayer.playCell(cell, channelKey);
-  };
-}
+  console.log('🔧 Grid-Pro Compatibility Patch Loading...');
+  
+  // Wait for DOM and modules to be ready
+  function initCompatibility() {
+    // Make sure the modular GridPlayer is available
+    if (!window.RussellTV || !window.RussellTV.GridPlayer) {
+      console.log('⏳ Waiting for GridPlayer module...');
+      setTimeout(initCompatibility, 100);
+      return;
+    }
+    
+    console.log('✅ GridPlayer module found');
+    
+    // Create the global playGridCell wrapper if needed
+    if (!window.playGridCell) {
+      window.playGridCell = function(cell, channelKey) {
+        console.log('📺 playGridCell called:', cell, channelKey);
+        if (window.RussellTV && window.RussellTV.GridPlayer) {
+          window.RussellTV.GridPlayer.playCell(cell, channelKey);
+        } else {
+          console.error('❌ GridPlayer not available');
+        }
+      };
+      console.log('✅ playGridCell wrapper created');
+    }
+    
+    // Patch UIControls.buildGrid to do nothing (grid-pro builds the grid)
+    if (window.RussellTV && window.RussellTV.UIControls) {
+      window.RussellTV.UIControls.buildGrid = function() {
+        console.log('✅ Grid building delegated to grid-pro.js');
+        // Don't build - grid-pro handles this
+      };
+      console.log('✅ UIControls.buildGrid patched');
+    }
+    
+    // Hook into grid-pro's channel selection
+    // Wait a bit for grid-pro to build its UI, then attach listeners
+    setTimeout(function() {
+      attachDropdownListeners();
+    }, 500);
+  }
+  
+  function attachDropdownListeners() {
+    const channelOptions = document.querySelectorAll('.channel-option');
+    
+    if (channelOptions.length === 0) {
+      console.log('⏳ No channel options found yet, retrying...');
+      setTimeout(attachDropdownListeners, 500);
+      return;
+    }
+    
+    console.log(`🎯 Found ${channelOptions.length} channel options, attaching listeners...`);
+    
+    channelOptions.forEach(option => {
+      // Remove any existing listeners (if this runs multiple times)
+      const newOption = option.cloneNode(true);
+      option.parentNode.replaceChild(newOption, option);
+      
+      // Add new listener
+      newOption.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const channelKey = this.getAttribute('data-channel');
+        
+        // Find which cell this belongs to
+        const cellElement = this.closest('[data-cell]');
+        const cellNum = cellElement ? parseInt(cellElement.getAttribute('data-cell'), 10) : null;
+        
+        if (cellNum && channelKey) {
+          console.log(`🎬 Channel option clicked: Cell ${cellNum} → ${channelKey}`);
+          
+          // Call the modular player
+          if (window.RussellTV && window.RussellTV.GridPlayer) {
+            window.RussellTV.GridPlayer.playCell(cellNum, channelKey);
+            
+            // Update the button label
+            const btn = cellElement.querySelector('.channel-selector-btn');
+            if (btn && window.CHANNELS && window.CHANNELS[channelKey]) {
+              btn.textContent = window.CHANNELS[channelKey].label;
+            }
+            
+            // Close the dropdown
+            const dropdown = this.closest('.channel-dropdown');
+            if (dropdown) {
+              dropdown.style.display = 'none';
+            }
+          } else {
+            console.error('❌ GridPlayer not available when option clicked');
+          }
+        } else {
+          console.warn('⚠️ Could not determine cell or channel:', cellNum, channelKey);
+        }
+      });
+    });
+    
+    console.log('✅ All channel dropdown listeners attached!');
+  }
+  
+  // Start initialization
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCompatibility);
+  } else {
+    initCompatibility();
+  }
+  
+  // Also re-attach listeners when grid is rebuilt (layout changes)
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.addedNodes.length > 0) {
+        // Check if grid cells were added
+        const hasGridCells = Array.from(mutation.addedNodes).some(node => 
+          node.classList && node.classList.contains('grid-cell-pro')
+        );
+        if (hasGridCells) {
+          console.log('🔄 Grid rebuilt detected, re-attaching listeners...');
+          setTimeout(attachDropdownListeners, 200);
+        }
+      }
+    });
+  });
+  
+  // Start observing
+  if (document.body) {
+    observer.observe(document.body, { childList: true, subtree: true });
+  } else {
+    window.addEventListener('load', function() {
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
+  }
+  
+  console.log('✅ Grid-Pro Compatibility Patch loaded');
+})();
 
 // ========================================
-// END COMPATIBILITY SHIM
+// END COMPATIBILITY PATCH
 // Your original grid-pro.js code continues below...
-// ========================================// Professional Grid System for RussellTV
-// Includes: Smart layouts, focus mode, solo audio, professional UI
+// ========================================
 
 (function() {
     'use strict';
