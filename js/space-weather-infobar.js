@@ -78,17 +78,29 @@
     span.style.cssText = `
       display: inline-flex;
       align-items: center;
-      gap: 0.25rem;
-      cursor: help;
-      padding: 0.15rem 0.4rem;
-      border-radius: 4px;
-      transition: background 0.2s ease;
+      gap: 0.35rem;
+      cursor: pointer;
+      padding: 0.3rem 0.6rem;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 120, 0, 0.3);
     `;
 
-    // Icon
+    // Icon - use "GPS" text for GPS band, icons for others
     const icon = document.createElement('span');
-    icon.textContent = band.icon;
-    icon.style.fontSize = '0.9rem';
+    if (bandKey === 'gps') {
+      icon.textContent = 'GPS';
+      icon.style.cssText = `
+        font-size: 0.75rem;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        color: rgba(255, 200, 100, 0.9);
+      `;
+    } else {
+      icon.textContent = band.icon;
+      icon.style.fontSize = '0.9rem';
+    }
 
     // Status dot
     const dot = document.createElement('span');
@@ -126,29 +138,60 @@
     return btn;
   }
 
+  let currentTooltipBand = null; // Track which tooltip is showing
+
   function attachListeners() {
-    // Attach to each indicator
+    // Attach to each indicator - CLICK to toggle tooltip
     ['hf', 'gps', 'satcom'].forEach(bandKey => {
       const indicator = document.getElementById(`sw-indicator-${bandKey}`);
       if (!indicator || indicator._hasListeners) return;
       
       indicator._hasListeners = true;
 
+      // Click to toggle tooltip
+      indicator.onclick = function(e) {
+        e.stopPropagation();
+        
+        if (currentTooltipBand === bandKey) {
+          // Clicking same indicator - hide tooltip
+          hideTooltip();
+          this.style.background = 'rgba(0, 0, 0, 0.5)';
+          this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+          currentTooltipBand = null;
+        } else {
+          // Clicking different indicator - show its tooltip
+          // First reset all indicators
+          ['hf', 'gps', 'satcom'].forEach(key => {
+            const ind = document.getElementById(`sw-indicator-${key}`);
+            if (ind) {
+              ind.style.background = 'rgba(0, 0, 0, 0.5)';
+              ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+            }
+          });
+          
+          // Highlight this indicator
+          this.style.background = 'linear-gradient(135deg, rgba(255, 80, 0, 0.3), rgba(255, 150, 0, 0.2))';
+          this.style.borderColor = 'rgba(255, 150, 0, 0.8)';
+          this.style.boxShadow = '0 0 10px rgba(255, 120, 0, 0.4)';
+          
+          showTooltip(this, bandKey);
+          currentTooltipBand = bandKey;
+        }
+      };
+
+      // Hover effect (visual only, no tooltip)
       indicator.onmouseenter = function() {
-        this.style.background = 'rgba(255, 255, 255, 0.1)';
-        if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-        showTooltip(this, bandKey);
+        if (currentTooltipBand !== bandKey) {
+          this.style.background = 'rgba(255, 120, 0, 0.15)';
+          this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
+        }
       };
 
       indicator.onmouseleave = function() {
-        this.style.background = 'transparent';
-        // Longer delay - gives user time to move to tooltip
-        hideTooltipTimer = setTimeout(() => {
-          const tooltip = document.getElementById('space-weather-tooltip');
-          if (tooltip && !tooltip.matches(':hover')) {
-            hideTooltip();
-          }
-        }, 500); // Increased from 200ms to 500ms
+        if (currentTooltipBand !== bandKey) {
+          this.style.background = 'rgba(0, 0, 0, 0.5)';
+          this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+        }
       };
     });
 
@@ -171,7 +214,6 @@
       };
 
       btn.onmouseenter = function() {
-        hideTooltip(); // Hide tooltips when hovering button
         this.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
         this.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
         this.style.transform = 'translateY(-1px)';
@@ -225,7 +267,7 @@
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
     if (!data) return;
 
-    hideTooltip();
+    hideTooltip(); // Remove any existing tooltip
 
     const detailed = window.RussellTV.SpaceWeather.getDetailedStatus(bandKey);
     if (!detailed) return;
@@ -317,31 +359,33 @@
         Kp Index: ${data.kpIndex.toFixed(1)}<br>
         Updated: ${formatTime(data.timestamp)}
       </div>
+      <div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.7rem; opacity: 0.6;">
+        Click indicator again to close
+      </div>
     `;
 
     document.body.appendChild(tooltip);
 
+    // Clear any timers
     if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-
-    tooltip.onmouseenter = () => {
-      if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-    };
-
-    tooltip.onmouseleave = () => {
-      // Much longer delay before hiding
-      hideTooltipTimer = setTimeout(hideTooltip, 600);
-    };
-
-    // Keep tooltip open when hovering over the indicator
-    indicator.onmouseenter = () => {
-      if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-    };
   }
 
   function hideTooltip() {
     if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
     const tooltip = document.getElementById('space-weather-tooltip');
     if (tooltip) tooltip.remove();
+    
+    // Reset all indicator styles
+    ['hf', 'gps', 'satcom'].forEach(key => {
+      const ind = document.getElementById(`sw-indicator-${key}`);
+      if (ind) {
+        ind.style.background = 'rgba(0, 0, 0, 0.5)';
+        ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+        ind.style.boxShadow = 'none';
+      }
+    });
+    
+    currentTooltipBand = null;
   }
 
   function formatTime(date) {
@@ -360,6 +404,14 @@
   } else {
     init();
   }
+
+  // Close tooltip when clicking outside
+  document.addEventListener('click', (e) => {
+    const tooltip = document.getElementById('space-weather-tooltip');
+    if (tooltip && !e.target.closest('.sw-indicator') && !e.target.closest('#space-weather-tooltip')) {
+      hideTooltip();
+    }
+  });
 
   console.log('✅ Space weather info bar loaded');
 })();
