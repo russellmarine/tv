@@ -397,7 +397,7 @@
     });
 
     // Re-add space weather indicators if they existed
-    if (spaceWeather && spaceWeather.parentNode !== bar) {
+    if (spaceWeather) {
       bar.appendChild(spaceWeather);
     }
   }
