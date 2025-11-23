@@ -14,6 +14,7 @@ window.RussellTV.PropagationPanel = (function() {
   let solarData = null;
   let isDragging = false;
   let dragOffset = { x: 0, y: 0 };
+  let selectedLocation = null; // Track selected location
 
   async function fetchSolarData() {
     try {
@@ -100,14 +101,16 @@ window.RussellTV.PropagationPanel = (function() {
     return bands;
   }
 
-  // Get current location from selected time zone
+  // Get current location from selected dropdown or auto-detect
   function getCurrentLocation() {
-    // Get the selected location from info bar (look for non-Zulu with weather)
+    // If user selected a location, use that
+    if (selectedLocation) return selectedLocation;
+    
+    // Otherwise auto-detect from info bar (look for first non-Zulu with weather)
     const infoBlocks = document.querySelectorAll('.info-block');
     for (const block of infoBlocks) {
       const text = block.textContent;
       if (!text.includes('Zulu') && text.includes('°')) {
-        // Extract location name
         const match = text.match(/^([^0-9]+)/);
         if (match) {
           return match[1].trim();
@@ -115,6 +118,27 @@ window.RussellTV.PropagationPanel = (function() {
       }
     }
     return null;
+  }
+
+  // Get all available locations
+  function getAvailableLocations() {
+    const locations = [];
+    const infoBlocks = document.querySelectorAll('.info-block');
+    
+    for (const block of infoBlocks) {
+      const text = block.textContent;
+      if (!text.includes('Zulu') && text.includes('°')) {
+        const match = text.match(/^([^0-9]+)/);
+        if (match) {
+          const location = match[1].trim();
+          if (!locations.includes(location)) {
+            locations.push(location);
+          }
+        }
+      }
+    }
+    
+    return locations;
   }
 
   // Get weather for location to assess SATCOM
@@ -207,24 +231,35 @@ window.RussellTV.PropagationPanel = (function() {
         background: rgba(255, 255, 255, 0.05);
         border-bottom: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 12px 12px 0 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
         cursor: move;
         user-select: none;
       ">
-        <h3 style="margin: 0; font-size: 1.1rem;">📡 HF/SATCOM Propagation</h3>
-        <button id="close-prop-panel" style="
-          background: none;
-          border: none;
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h3 style="margin: 0; font-size: 1.1rem;">📡 HF/SATCOM Propagation</h3>
+          <button id="close-prop-panel" style="
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            line-height: 1;
+          ">&times;</button>
+        </div>
+        <select id="location-selector" style="
+          width: 100%;
+          padding: 0.4rem;
+          background: rgba(0, 0, 0, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 4px;
           color: white;
-          font-size: 1.5rem;
+          font-size: 0.85rem;
           cursor: pointer;
-          padding: 0;
-          width: 30px;
-          height: 30px;
-          line-height: 1;
-        ">&times;</button>
+        ">
+          <option value="">📍 Auto-detect location</option>
+        </select>
       </div>
       
       <div id="prop-content" style="padding: 1rem;">
@@ -236,11 +271,32 @@ window.RussellTV.PropagationPanel = (function() {
 
     document.body.appendChild(panel);
 
-    // Make draggable
+    // Populate location selector
+    const locationSelector = document.getElementById('location-selector');
+    const locations = getAvailableLocations();
+    locations.forEach(loc => {
+      const option = document.createElement('option');
+      option.value = loc;
+      option.textContent = loc;
+      locationSelector.appendChild(option);
+    });
+
+    // Handle location selection
+    locationSelector.addEventListener('change', (e) => {
+      selectedLocation = e.target.value || null;
+      updatePanelContent();
+    });
+
+    // Make header draggable (but not the dropdown)
     const header = document.getElementById('prop-panel-header');
     
     header.addEventListener('mousedown', (e) => {
-      if (e.target.id === 'close-prop-panel') return;
+      // Don't drag if clicking close button or dropdown
+      if (e.target.id === 'close-prop-panel' || 
+          e.target.id === 'location-selector' ||
+          e.target.closest('#location-selector')) {
+        return;
+      }
       isDragging = true;
       const rect = panel.getBoundingClientRect();
       dragOffset.x = e.clientX - rect.left;
