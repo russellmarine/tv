@@ -10,16 +10,16 @@ window.STREAMS = {
 };
 
 window.YT_CHANNELS = {
-  bloomberg: "https://www.youtube.com/embed/iEpJwprxDdk?autoplay=1&mute=1",
-  foxnation: "https://www.youtube.com/embed/4nMfRpesYfw?autoplay=1&mute=1",
-  skynews:   "https://www.youtube.com/embed/YDvsBbKfLPA?autoplay=1&mute=1",
-  france24:  "https://www.youtube.com/embed/Ap-UM1O9RBU?autoplay=1&mute=1",
-  dw:        "https://www.youtube.com/embed/LuKwFajn37U?autoplay=1&mute=1",
-  gijoe:     "https://www.youtube.com/embed/TZ3mxF4U__k?autoplay=1&mute=1",
-  euronews:  "https://www.youtube.com/embed/pykpO5kQJ98?autoplay=1&mute=1",
-  aljazeera: "https://www.youtube.com/embed/gCNeDWCI0vo?autoplay=1&mute=1",
-  abc:       "https://www.youtube.com/embed/iipR5yUp36o?autoplay=1&mute=1",
-  trt:       "https://www.youtube.com/embed/nuunj2Gpcrg?autoplay=1&mute=1"
+  bloomberg: "https://www.youtube.com/embed/iEpJwprxDdk?autoplay=1",
+  foxnation: "https://www.youtube.com/embed/4nMfRpesYfw?autoplay=1",
+  skynews:   "https://www.youtube.com/embed/YDvsBbKfLPA?autoplay=1",
+  france24:  "https://www.youtube.com/embed/Ap-UM1O9RBU?autoplay=1",
+  dw:        "https://www.youtube.com/embed/LuKwFajn37U?autoplay=1",
+  gijoe:     "https://www.youtube.com/embed/TZ3mxF4U__k?autoplay=1",
+  euronews:  "https://www.youtube.com/embed/pykpO5kQJ98?autoplay=1",
+  aljazeera: "https://www.youtube.com/embed/gCNeDWCI0vo?autoplay=1",
+  abc:       "https://www.youtube.com/embed/iipR5yUp36o?autoplay=1",
+  trt:       "https://www.youtube.com/embed/nuunj2Gpcrg?autoplay=1"
 };
 
 window.CHANNELS = {
