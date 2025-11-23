@@ -188,13 +188,8 @@
       indicator.onclick = function(e) {
         e.stopPropagation();
         
-        // Close propagation panel if open
-        if (window.RussellTV?.PropagationPanel) {
-          const panel = document.getElementById('propagation-panel');
-          if (panel && panel.style.display === 'block') {
-            window.RussellTV.PropagationPanel.hide();
-          }
-        }
+        // Allow propagation panel to stay open - don't auto-close it
+        // User can manually close if needed
         
         if (tooltipLocked && currentTooltipBand === bandKey) {
           // Clicking same locked indicator - unlock and hide
@@ -479,10 +474,18 @@
   // Close tooltip when clicking outside
   document.addEventListener('click', (e) => {
     const tooltip = document.getElementById('space-weather-tooltip');
+    const propPanel = document.getElementById('propagation-panel');
+    
+    // Don't hide tooltip if clicking on propagation panel or its button
+    if (propPanel && propPanel.style.display === 'block' && e.target.closest('#propagation-panel')) {
+      return;
+    }
+    
     if (tooltip && 
         !e.target.closest('.sw-indicator') && 
         !e.target.closest('#space-weather-tooltip') &&
-        !e.target.closest('#propagation-panel-btn')) {
+        !e.target.closest('#propagation-panel-btn') &&
+        !e.target.closest('#propagation-panel')) {
       hideTooltip();
     }
   });
