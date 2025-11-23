@@ -62,14 +62,17 @@
 
 /* Professional grid wrapper */
 #grid-view .grid-wrapper {
-    display: grid;
-    gap: 0.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0.5rem;
     height: calc(100vh - 180px);
-    padding: 0;
+    padding: 1rem;
     transition: all 0.3s ease;
 }
 
-/* Individual grid cell */
+/* Individual grid cell - sized by content */
 .grid-cell-pro {
     display: flex;
     flex-direction: column;
@@ -78,6 +81,35 @@
     border: 1px solid transparent;
     overflow: visible;
     transition: all 0.3s ease, border-color 0.3s ease;
+    width: auto;
+    max-width: 90vw;
+    flex-shrink: 0;
+}
+
+/* Layout-specific sizing */
+.grid-wrapper[data-layout="1x2"] .grid-cell-pro {
+    width: calc(50% - 0.5rem);
+    max-width: 800px;
+}
+
+.grid-wrapper[data-layout="2x2"] .grid-cell-pro {
+    width: calc(50% - 0.5rem);
+    max-width: 700px;
+}
+
+.grid-wrapper[data-layout="1x3"] .grid-cell-pro {
+    width: calc(33.333% - 0.5rem);
+    max-width: 600px;
+}
+
+.grid-wrapper[data-layout="2x3"] .grid-cell-pro {
+    width: calc(33.333% - 0.5rem);
+    max-width: 500px;
+}
+
+.grid-wrapper[data-layout="1x4"] .grid-cell-pro {
+    width: calc(25% - 0.5rem);
+    max-width: 450px;
 }
 
 .grid-cell-pro:hover {
@@ -273,15 +305,16 @@
 
 /* Cell body */
 .grid-cell-body {
-    flex: 1;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
     background: transparent;
     padding: 0;
-    min-height: 200px;
     overflow: hidden;
     position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
 }
 
 .grid-cell-frame {
@@ -324,14 +357,17 @@
     #grid-view .grid-wrapper {
         height: auto;
         min-height: calc(100vh - 200px);
+        flex-direction: column;
+        padding: 0.5rem;
     }
     
     .grid-cell-pro {
-        min-height: 200px;
+        width: 100% !important;
+        max-width: 100% !important;
     }
     
     .grid-cell-body {
-        min-height: 150px;
+        min-height: 200px;
     }
     
     .grid-layout-selector {
@@ -360,6 +396,10 @@
 @media (min-width: 2000px) {
     #grid-view .grid-wrapper {
         height: calc(100vh - 150px);
+    }
+    
+    .grid-wrapper[data-layout="1x4"] .grid-cell-pro {
+        max-width: 600px;
     }
 }
 
