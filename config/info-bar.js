@@ -1,4 +1,4 @@
-// RussellTV Combined Time + Weather Footer (with readable tooltips & temp color)
+// RussellTV Combined Time + Weather Footer (with readable temp-colored tooltips)
 // Uses: window.TIME_ZONES, optional window.WEATHER_QUERIES + window.fetchWeather
 
 (function() {
@@ -22,7 +22,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
-      z-index: 2147483647;
+      z-index: 9999;
       box-sizing: border-box;
       justify-content: center;
       backdrop-filter: blur(4px);
@@ -66,24 +66,24 @@
       border-color: rgba(220,20,60,0.9);
     }
 
-    /* ---------- Readable tooltips tied to temp bands ---------- */
+    /* ---------- Readable custom tooltips (use title text) ---------- */
     .info-block.has-tooltip::after {
-      content: attr(data-tooltip);
+      content: attr(title);
       position: absolute;
       left: 50%;
-      bottom: 135%;                 /* a bit above the pill row */
+      bottom: 135%;                 /* little above the pill row */
       transform: translateX(-50%);
       padding: 6px 10px;
       font-size: 0.70rem;
-      white-space: pre-line;        /* respect \n in tooltip text */
+      white-space: pre-line;        /* respect \\n in title */
       max-width: 260px;
       border-radius: 4px;
-      background: rgba(0,0,0,0.94); /* solid dark background */
+      background: rgba(0,0,0,0.94); /* solid dark background for readability */
       border: 1px solid rgba(255,255,255,0.45);
       color: #fff;
       opacity: 0;
       pointer-events: none;
-      z-index: 2147483647;
+      z-index: 10000;
       box-shadow: 0 0 10px rgba(0,0,0,0.9);
       transition: opacity 0.12s ease-out, transform 0.12s ease-out;
     }
@@ -96,14 +96,50 @@
       transform: translateX(-50%);
       border-width: 6px;
       border-style: solid;
-      /* arrow uses pill's border color (temp band) */
-      border-color: currentColor transparent transparent transparent;
+      border-color: rgba(255,255,255,0.45) transparent transparent transparent;
       opacity: 0;
       pointer-events: none;
-      z-index: 2147483646;
+      z-index: 9999;
       transition: opacity 0.12s ease-out;
     }
 
+    /* Accent arrow + border by temp band */
+    .temp-freezing.has-tooltip::after {
+      border-color: rgba(135,206,250,0.9);
+    }
+    .temp-freezing.has-tooltip::before {
+      border-color: rgba(135,206,250,0.9) transparent transparent transparent;
+    }
+
+    .temp-cold.has-tooltip::after {
+      border-color: rgba(100,149,237,0.9);
+    }
+    .temp-cold.has-tooltip::before {
+      border-color: rgba(100,149,237,0.9) transparent transparent transparent;
+    }
+
+    .temp-mild.has-tooltip::after {
+      border-color: rgba(144,238,144,0.9);
+    }
+    .temp-mild.has-tooltip::before {
+      border-color: rgba(144,238,144,0.9) transparent transparent transparent;
+    }
+
+    .temp-warm.has-tooltip::after {
+      border-color: rgba(255,165,0,0.9);
+    }
+    .temp-warm.has-tooltip::before {
+      border-color: rgba(255,165,0,0.9) transparent transparent transparent;
+    }
+
+    .temp-hot.has-tooltip::after {
+      border-color: rgba(220,20,60,0.9);
+    }
+    .temp-hot.has-tooltip::before {
+      border-color: rgba(220,20,60,0.9) transparent transparent transparent;
+    }
+
+    /* Show on hover */
     .info-block.has-tooltip:hover::after,
     .info-block.has-tooltip:hover::before {
       opacity: 1;
@@ -144,6 +180,7 @@
 
   // ---------- Fetch weather for all mapped locations ----------
   async function updateWeather() {
+    // If we don't have queries or fetchWeather, just clear weather & render time-only
     if (!window.WEATHER_QUERIES || typeof window.fetchWeather !== "function") {
       weatherMap = {};
       render();
@@ -154,6 +191,7 @@
     const newMap = {};
 
     for (const [label, query] of entries) {
+      // Skip Zulu / pure time locations if they somehow end up configured
       const isZulu = /zulu/i.test(label);
       if (isZulu) {
         newMap[label] = null;
@@ -213,7 +251,7 @@
 
       let cls = "info-block temp-neutral has-tooltip";
       let content = `<strong>${loc.label}</strong> ${time}`;
-      let tooltip = `${loc.label}\n${time}`;
+      let tooltip = `${loc.label} — ${time}`;
 
       const isZulu = /zulu/i.test(loc.label);
       const w = weatherMap[loc.label];
@@ -237,8 +275,8 @@
       div.className = cls;
       div.innerHTML = content;
 
-      // Use data-tooltip for our custom tooltip bubble
-      div.setAttribute("data-tooltip", tooltip);
+      // Keep native title tooltip as a fallback AND use it for CSS content
+      div.title = tooltip;
 
       bar.appendChild(div);
     });
