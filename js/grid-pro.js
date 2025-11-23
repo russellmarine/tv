@@ -56,6 +56,15 @@
             }
             
             option.onclick = () => {
+                // First, switch to grid view if not already there
+                const gridView = document.getElementById('grid-view');
+                if (gridView && gridView.style.display === 'none') {
+                    if (window.enterGridMode) {
+                        window.enterGridMode();
+                    }
+                }
+                
+                // Then change the layout
                 changeLayout(key);
                 dropdown.classList.remove('show');
                 mainBtn.textContent = `Grid (${config.cells})`;
