@@ -1,5 +1,5 @@
-// RussellTV Combined Time + Weather Footer (with tooltips & temp color)
-// Uses: window.TIME_ZONES, optional window.WEATHER_QUERIES + window.fetchWeather
+// RussellTV Combined Time + Weather Footer (with SVG icons, tooltips & temp color)
+// Uses: window.TIME_ZONES, window.WEATHER_QUERIES, window.fetchWeather, optional window.WU_LINKS
 
 (function() {
   if (!window.TIME_ZONES) {
@@ -81,9 +81,9 @@
       white-space: pre-line;
       max-width: 260px;
       border-radius: 4px;
-      background: rgba(0,0,0,0.85); /* neutral fallback */
+      background: rgba(0,0,0,0.85); /* fallback for neutral/no-weather */
       border: 1px solid rgba(255,255,255,0.45);
-      color: #000;                  /* force readable dark text */
+      color: #000;                  /* readable dark text on bright backgrounds */
       opacity: 0;
       pointer-events: none;
       z-index: 10000;
@@ -152,6 +152,88 @@
     .info-block.has-tooltip:hover::before {
       opacity: 1;
     }
+
+    /* ======== WEATHER ICONS (SVG) ======== */
+
+    .wx-icon-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 3px;
+    }
+
+    .wx-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    /* Subtle animations per condition */
+    .wx-sunny {
+      animation: wx-sun-pulse 6s ease-in-out infinite;
+    }
+
+    .wx-cloudy {
+      animation: wx-cloud-drift 10s ease-in-out infinite;
+    }
+
+    .wx-rain {
+      animation: wx-rain-bob 2.4s ease-in-out infinite;
+    }
+
+    .wx-storm {
+      animation: wx-storm-flash 4s ease-in-out infinite;
+    }
+
+    .wx-snow {
+      animation: wx-snow-float 5s ease-in-out infinite;
+    }
+
+    .wx-wind {
+      animation: wx-wind-sway 4s ease-in-out infinite;
+    }
+
+    .wx-fog {
+      animation: wx-fog-breathe 7s ease-in-out infinite;
+    }
+
+    @keyframes wx-sun-pulse {
+      0%, 100% { transform: scale(1);   filter: brightness(1); }
+      50%      { transform: scale(1.06); filter: brightness(1.15); }
+    }
+
+    @keyframes wx-cloud-drift {
+      0%, 100% { transform: translateX(0); }
+      50%      { transform: translateX(2px); }
+    }
+
+    @keyframes wx-rain-bob {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(1px); }
+    }
+
+    @keyframes wx-storm-flash {
+      0%, 100% { filter: brightness(1); }
+      45%      { filter: brightness(1); }
+      50%      { filter: brightness(1.4); }
+      55%      { filter: brightness(1); }
+    }
+
+    @keyframes wx-snow-float {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-1px); }
+    }
+
+    @keyframes wx-wind-sway {
+      0%, 100% { transform: translateX(0); }
+      50%      { transform: translateX(-2px); }
+    }
+
+    @keyframes wx-fog-breathe {
+      0%, 100% { opacity: 0.95; }
+      50%      { opacity: 0.75; }
+    }
   `;
   document.head.appendChild(style);
 
@@ -173,16 +255,17 @@
     return "temp-hot";
   }
 
-  // ---------- Weather icon ----------
-  function iconFor(main, desc) {
+  // ---------- Weather icon key ----------
+  function iconKeyFor(main, desc) {
     const w = `${main} ${desc}`.toLowerCase();
-    if (w.includes("thunder")) return "⛈";
-    if (w.includes("storm"))   return "⛈";
-    if (w.includes("rain") || w.includes("drizzle")) return "🌧";
-    if (w.includes("snow") || w.includes("sleet"))   return "❄️";
-    if (w.includes("wind"))    return "💨";
-    if (w.includes("cloud"))   return "☁️";
-    return "☀️";
+    if (w.includes("thunder")) return "storm";
+    if (w.includes("storm"))   return "storm";
+    if (w.includes("rain") || w.includes("drizzle")) return "rain";
+    if (w.includes("snow") || w.includes("sleet"))   return "snow";
+    if (w.includes("wind"))    return "wind";
+    if (w.includes("cloud"))   return "cloudy";
+    if (w.includes("fog") || w.includes("mist") || w.includes("haze") || w.includes("smoke")) return "fog";
+    return "sunny";
   }
 
   // ---------- Fetch weather ----------
@@ -208,15 +291,22 @@
           continue;
         }
 
+        const main = d.weather?.[0]?.main || "";
+        const desc = d.weather?.[0]?.description || "";
+        const temp = Math.round(d.main.temp);
+        const hi   = Math.round(d.main.temp_max);
+        const lo   = Math.round(d.main.temp_min);
+        const humidity = Math.round(d.main.humidity);
+        const wind = d.wind?.speed ? Math.round(d.wind.speed) : null;
+
         newMap[label] = {
-          icon: iconFor(d.weather?.[0]?.main || "", d.weather?.[0]?.description || ""),
-          temp: Math.round(d.main.temp),
-          hi:   Math.round(d.main.temp_max),
-          lo:   Math.round(d.main.temp_min),
-          main: d.weather?.[0]?.main || "",
-          desc: d.weather?.[0]?.description || "",
-          humidity: Math.round(d.main.humidity),
-          wind: d.wind?.speed ? Math.round(d.wind.speed) : null
+          main,
+          desc,
+          temp,
+          hi,
+          lo,
+          humidity,
+          wind
         };
       } catch {
         newMap[label] = null;
@@ -227,65 +317,74 @@
     render();
   }
 
-function render() {
-  bar.innerHTML = "";
+  // ---------- Render ----------
+  function render() {
+    bar.innerHTML = "";
 
-  window.TIME_ZONES.forEach(loc => {
-    const time = new Date().toLocaleString("en-US", {
-      timeZone: loc.tz,
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-
-    const isZulu = /zulu/i.test(loc.label);
-    const w = weatherMap[loc.label];
-
-    // Base classname (no tooltip by default)
-    let cls = "info-block temp-neutral";
-    let content = `<strong>${loc.label}</strong> ${time}`;
-    let tooltip = null;
-
-    if (!isZulu && w) {
-      // Add temp class + tooltip
-      cls = "info-block " + tempClass(w.temp) + " has-tooltip";
-      content += ` • ${w.icon} ${w.hi}°/${w.lo}°`;
-
-      tooltip =
-        `${loc.label}\n` +
-        `Time: ${time}\n` +
-        `Conditions: ${w.main} (${w.desc})\n` +
-        `Current: ${w.temp}°F\n` +
-        `High/Low: ${w.hi}°F / ${w.lo}°F` +
-        (w.humidity != null ? `\nHumidity: ${w.humidity}%` : "") +
-        (w.wind != null ? `\nWind: ${w.wind} mph` : "");
-    }
-
-    // Zulu gets no tooltip and no temp class
-    if (isZulu) {
-      cls = "info-block temp-neutral";
-    }
-
-    const div = document.createElement("div");
-    div.className = cls;
-    div.innerHTML = content;
-
-    if (tooltip) {
-      div.setAttribute("data-tooltip", tooltip);
-    }
-
-    // ---- Weather Underground link hookup ----
-    const wuUrl = window.WU_LINKS && window.WU_LINKS[loc.label];
-    if (wuUrl && !isZulu) {
-      div.style.cursor = "pointer";
-      div.addEventListener("click", () => {
-        window.open(wuUrl, "_blank", "noopener");
+    window.TIME_ZONES.forEach(loc => {
+      const time = new Date().toLocaleString("en-US", {
+        timeZone: loc.tz,
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit"
       });
-    }
 
-    bar.appendChild(div);
-  });
-}
+      const isZulu = /zulu/i.test(loc.label);
+      const w = weatherMap[loc.label];
+
+      let cls = "info-block temp-neutral";
+      let content = `<strong>${loc.label}</strong> ${time}`;
+      let tooltip = null;
+
+      if (!isZulu && w) {
+        cls = "info-block " + tempClass(w.temp) + " has-tooltip";
+
+        const key = iconKeyFor(w.main, w.desc);
+        const iconUrl = `/icons/weather/${key}.svg`;
+        const iconClass = `wx-icon wx-${key}`;
+
+        const iconHtml = `
+          <span class="wx-icon-wrap">
+            <img class="${iconClass}" src="${iconUrl}" alt="${w.main || "Weather"} icon">
+          </span>
+        `.trim();
+
+        content += ` • ${iconHtml} ${w.hi}°/${w.lo}°`;
+
+        tooltip =
+          `${loc.label}\n` +
+          `Time: ${time}\n` +
+          `Conditions: ${w.main} (${w.desc})\n` +
+          `Current: ${w.temp}°F\n` +
+          `High/Low: ${w.hi}°F / ${w.lo}°F` +
+          (w.humidity != null ? `\nHumidity: ${w.humidity}%` : "") +
+          (w.wind != null ? `\nWind: ${w.wind} mph` : "");
+      }
+
+      if (isZulu) {
+        cls = "info-block temp-neutral";
+      }
+
+      const div = document.createElement("div");
+      div.className = cls;
+      div.innerHTML = content;
+
+      if (tooltip) {
+        div.setAttribute("data-tooltip", tooltip);
+      }
+
+      // Weather Underground link hookup (if configured)
+      const wuUrl = window.WU_LINKS && window.WU_LINKS[loc.label];
+      if (wuUrl && !isZulu) {
+        div.style.cursor = "pointer";
+        div.addEventListener("click", () => {
+          window.open(wuUrl, "_blank", "noopener");
+        });
+      }
+
+      bar.appendChild(div);
+    });
+  }
 
   // ---------- Start ----------
   render();
