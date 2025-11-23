@@ -1,4 +1,3 @@
-cat > config/info-bar.js << 'EOF'
 // RussellTV Combined Time + Weather Footer (with colored tooltips)
 // Uses: window.TIME_ZONES, optional window.WEATHER_QUERIES + window.fetchWeather
 
@@ -73,7 +72,7 @@ cat > config/info-bar.js << 'EOF'
       white-space: pre-line;      /* honor newlines */
       max-width: 280px;
       border-radius: 4px;
-      background: rgba(0,0,0,0.95);  /* fallback for zulu / neutral */
+      background: rgba(0,0,0,0.9);
       color: #fff;
       opacity: 0;
       pointer-events: none;
@@ -224,21 +223,14 @@ cat > config/info-bar.js << 'EOF'
         const rect = div.getBoundingClientRect();
         const pillStyle = window.getComputedStyle(div);
 
-        // Use the pill's borderColor (opaque) as the tooltip background
-        const borderColor = pillStyle.borderColor || "rgba(255,255,255,0.95)";
-        const bg = borderColor || "rgba(0,0,0,0.95)";
+        const bg = pillStyle.backgroundColor || "rgba(0,0,0,0.9)";
+        const borderColor = pillStyle.borderColor || "rgba(255,255,255,0.5)";
 
         tooltipEl.textContent = tooltipText;
-
-        // Center horizontally over the pill
         tooltipEl.style.left = (rect.left + rect.width / 2) + "px";
-
-        // Slightly above the pill row
-        tooltipEl.style.top = (rect.top - 6) + "px";
-
+        tooltipEl.style.top = rect.top + "px";
         tooltipEl.style.backgroundColor = bg;
-        tooltipEl.style.border = "1px solid " + borderColor;
-        tooltipEl.style.color = "#fff";
+        tooltipEl.style.border = `1px solid ${borderColor}`;
         tooltipEl.style.opacity = "1";
       });
 
@@ -256,4 +248,3 @@ cat > config/info-bar.js << 'EOF'
   setInterval(render, 10 * 1000);             // update times every 10s
   setInterval(updateWeather, 10 * 60 * 1000); // refresh weather every 10m
 })();
-EOF
