@@ -233,7 +233,8 @@
                 option.textContent = channel.label;
                 option.dataset.channel = key;
                 
-                option.onclick = () => {
+                option.onclick = (e) => {
+                    e.stopPropagation();
                     selectChannel(cellNum, key, channel.label);
                     dropdown.classList.remove('show');
                 };
