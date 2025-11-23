@@ -506,16 +506,24 @@
             // Update YouTube players
             if (window.YT_PLAYERS && window.YT_PLAYERS[`grid-${i}`]) {
                 try {
-                    if (!allMuted && i === audioCell) {
-                        window.YT_PLAYERS[`grid-${i}`].unMute();
-                        window.YT_PLAYERS[`grid-${i}`].setVolume(100);
-                        console.log(`    Cell ${i} YouTube - unmuted and volume set to 100`);
+                    const player = window.YT_PLAYERS[`grid-${i}`];
+                    
+                    // Check if player still exists in DOM
+                    if (player && typeof player.getPlayerState === 'function') {
+                        if (!allMuted && i === audioCell) {
+                            player.unMute();
+                            player.setVolume(100);
+                            console.log(`    Cell ${i} YouTube - unmuted and volume set to 100`);
+                        } else {
+                            player.mute();
+                            console.log(`    Cell ${i} YouTube - muted`);
+                        }
                     } else {
-                        window.YT_PLAYERS[`grid-${i}`].mute();
-                        console.log(`    Cell ${i} YouTube - muted`);
+                        console.log(`    Cell ${i} YouTube - player no longer valid`);
                     }
                 } catch (e) {
-                    console.error(`    Cell ${i} YouTube - error:`, e);
+                    // Player was destroyed or iframe removed - just skip it
+                    console.log(`    Cell ${i} YouTube - skipped (player not ready):`, e.message);
                 }
             } else {
                 console.log(`    Cell ${i} YouTube - player not found`);
