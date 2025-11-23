@@ -175,7 +175,7 @@
         // Create the main button
         const mainBtn = document.createElement('button');
         mainBtn.id = 'btn-grid-main';
-        mainBtn.className = 'btn';
+        mainBtn.className = 'btn grid-btn-main';
         const config = GRID_LAYOUTS[currentLayout];
         mainBtn.textContent = `Grid: ${config.label}`;
         
@@ -230,12 +230,15 @@
             dropdown.classList.toggle('show');
         };
 
-        // Main button enters grid mode
+        // Main button enters grid mode - FIXED to build grid first
         mainBtn.onclick = () => {
+            // First build/initialize the grid
+            if (window.enterGridMode) {
+                window.enterGridMode();
+            }
+            // Then show it (if ViewManager exists)
             if (window.RussellTV && window.RussellTV.ViewManager) {
                 window.RussellTV.ViewManager.showGrid();
-            } else if (window.enterGridMode) {
-                window.enterGridMode();
             }
         };
 
