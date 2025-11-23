@@ -75,10 +75,13 @@
     flex-direction: column;
     background: transparent;
     border-radius: 4px;
-    border: 1px solid rgba(255,120,0,0.4);
-    overflow: hidden;
+    border: 1px solid transparent;
+    overflow: visible;
     transition: all 0.3s ease, border-color 0.3s ease;
-    box-shadow: 0 0 8px rgba(0,0,0,0.8);
+}
+
+.grid-cell-pro:hover {
+    border-color: rgba(255,120,0,0.4);
 }
 
 .grid-cell-pro:hover {
@@ -88,8 +91,8 @@
 
 /* Audio active cell highlight */
 .grid-cell-pro.audio-active {
-    border-color: rgba(255,120,0,0.6);
-    box-shadow: 0 0 20px rgba(255,120,0,0.4), 0 4px 12px rgba(0,0,0,0.3);
+    border-color: rgba(255,120,0,0.8);
+    box-shadow: 0 0 20px rgba(255,120,0,0.5);
 }
 
 /* Focus mode styles */
@@ -366,4 +369,19 @@
     position: absolute;
     color: rgba(255,255,255,0.5);
     font-size: 0.9rem;
+}
+
+/* Force YouTube iframes to have transparent backgrounds */
+.yt-container iframe {
+    background: transparent !important;
+}
+
+/* Apply transparency to YouTube player wrapper divs */
+.yt-container > div {
+    background: transparent !important;
+}
+
+/* Hide YouTube's black letterbox bars */
+.yt-container iframe[src*="youtube"] {
+    background: transparent !important;
 }
