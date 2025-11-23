@@ -368,7 +368,7 @@
             if (defaultKey && window.CHANNELS && window.CHANNELS[defaultKey]) {
                 setTimeout(() => {
                     selectChannel(i, defaultKey, window.CHANNELS[defaultKey].label);
-                }, i * 100); // Stagger loading
+                }, 200 + (i * 150)); // Slightly longer initial delay, stagger loading
             }
         }
     }
@@ -449,6 +449,10 @@
         if (!document.querySelector('.grid-cell-pro')) {
             const config = GRID_LAYOUTS[currentLayout];
             rebuildGrid(config);
+        } else {
+            // Grid already exists, just make sure defaults are loaded
+            const config = GRID_LAYOUTS[currentLayout];
+            loadDefaultChannelsForLayout(config.cells);
         }
     };
 
@@ -463,6 +467,18 @@
                 currentLayout = savedLayout;
             }
         } catch (e) {}
+        
+        // Check if we should auto-load grid on startup
+        setTimeout(() => {
+            const gridView = document.getElementById('grid-view');
+            if (gridView && gridView.style.display !== 'none') {
+                // Grid is visible on load, initialize it
+                const config = GRID_LAYOUTS[currentLayout];
+                if (!document.querySelector('.grid-cell-pro')) {
+                    rebuildGrid(config);
+                }
+            }
+        }, 500);
     });
 
 })();
