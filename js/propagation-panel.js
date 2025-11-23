@@ -46,6 +46,65 @@ window.RussellTV.PropagationPanel = (function() {
     }
   }
 
+  // Calculate solar elevation angle for twilight determination
+  function calculateSolarElevation(date, latitude, longitude) {
+    // Convert to radians
+    const lat = latitude * Math.PI / 180;
+    const lon = longitude * Math.PI / 180;
+    
+    // Days since J2000.0
+    const JD = date.getTime() / 86400000 + 2440587.5;
+    const n = JD - 2451545.0;
+    
+    // Mean solar longitude
+    const L = (280.460 + 0.9856474 * n) % 360;
+    
+    // Mean anomaly
+    const g = (357.528 + 0.9856003 * n) % 360;
+    const gRad = g * Math.PI / 180;
+    
+    // Ecliptic longitude
+    const lambda = (L + 1.915 * Math.sin(gRad) + 0.020 * Math.sin(2 * gRad)) % 360;
+    const lambdaRad = lambda * Math.PI / 180;
+    
+    // Obliquity of ecliptic
+    const epsilon = (23.439 - 0.0000004 * n) * Math.PI / 180;
+    
+    // Declination
+    const delta = Math.asin(Math.sin(epsilon) * Math.sin(lambdaRad));
+    
+    // Right ascension
+    const RA = Math.atan2(Math.cos(epsilon) * Math.sin(lambdaRad), Math.cos(lambdaRad));
+    
+    // Greenwich Mean Sidereal Time
+    const GMST = (280.460 + 360.9856474 * n) % 360;
+    const GMSTRad = GMST * Math.PI / 180;
+    
+    // Local Hour Angle
+    const LHA = GMSTRad + lon - RA;
+    
+    // Solar elevation angle
+    const sinAlt = Math.sin(lat) * Math.sin(delta) + Math.cos(lat) * Math.cos(delta) * Math.cos(LHA);
+    const elevation = Math.asin(sinAlt) * 180 / Math.PI;
+    
+    return elevation;
+  }
+
+  // Get twilight phase based on solar elevation
+  function getTwilightPhase(elevation) {
+    if (elevation > 0) {
+      return { phase: 'Day', icon: '☀️', isDay: true };
+    } else if (elevation > -6) {
+      return { phase: 'Civil Twilight', icon: '🌆', isDay: true };
+    } else if (elevation > -12) {
+      return { phase: 'Nautical Twilight', icon: '⛵', isDay: false };
+    } else if (elevation > -18) {
+      return { phase: 'Astronomical Twilight', icon: '🌌', isDay: false };
+    } else {
+      return { phase: 'Night', icon: '🌙', isDay: false };
+    }
+  }
+
   function calculateMUF(solarFlux, isDay, latitude, kpIndex) {
     const solarZenithFactor = isDay ? 1.0 : 0.5;
     const absLat = Math.abs(latitude);
@@ -406,6 +465,9 @@ window.RussellTV.PropagationPanel = (function() {
 
     let isDay = false;
     let localTime = 'Unknown';
+    let twilightPhase = { phase: 'Unknown', icon: '❓', isDay: false };
+    let latitude = 35.0;
+    let longitude = 0.0;
     
     if (locationName && window.TIME_ZONES) {
       const tzInfo = window.TIME_ZONES.find(tz => tz.label === locationName);
@@ -419,28 +481,22 @@ window.RussellTV.PropagationPanel = (function() {
         });
         localTime = localTimeStr;
         
-        const localHour = parseInt(now.toLocaleString("en-US", {
-          timeZone: tzInfo.tz,
-          hour12: false,
-          hour: "2-digit"
-        }));
+        // Get coordinates
+        if (tzInfo.lat) latitude = tzInfo.lat;
+        if (tzInfo.lon) longitude = tzInfo.lon;
         
-        isDay = localHour >= 6 && localHour < 18;
+        // Calculate solar elevation for precise twilight
+        const solarElevation = calculateSolarElevation(now, latitude, longitude);
+        twilightPhase = getTwilightPhase(solarElevation);
+        isDay = twilightPhase.isDay;
       }
     } else {
+      // Fallback to UTC
       const now = new Date();
       const hour = now.getUTCHours();
       isDay = hour >= 6 && hour < 18;
+      twilightPhase = { phase: isDay ? 'Day' : 'Night', icon: isDay ? '☀️' : '🌙', isDay };
       localTime = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) + ' UTC';
-    }
-
-    let latitude = 35.0;
-    
-    if (locationName && window.TIME_ZONES) {
-      const tzInfo = window.TIME_ZONES.find(tz => tz.label === locationName);
-      if (tzInfo && tzInfo.lat) {
-        latitude = tzInfo.lat;
-      }
     }
 
     const swData = window.RussellTV?.SpaceWeather?.getCurrentData();
@@ -465,7 +521,7 @@ window.RussellTV.PropagationPanel = (function() {
       ${locationName ? `
       <div style="background: rgba(100, 150, 255, 0.15); border-left: 3px solid rgba(100, 150, 255, 0.6); padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px;">
         <div style="font-weight: bold; margin-bottom: 0.25rem;">📍 ${locationName} (${latitude.toFixed(1)}°${latitude >= 0 ? 'N' : 'S'})</div>
-        <div style="font-size: 0.85rem; opacity: 0.9;">Local Time: ${localTime} ${isDay ? '☀️' : '🌙'}</div>
+        <div style="font-size: 0.85rem; opacity: 0.9;">Local Time: ${localTime} ${twilightPhase.icon} ${twilightPhase.phase}</div>
         ${weather ? `<div style="font-size: 0.85rem; opacity: 0.9;">Weather: ${weather.main} (${weather.desc})</div>` : ''}
       </div>
       ` : ''}
