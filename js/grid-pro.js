@@ -273,32 +273,51 @@
 
     // Select a channel for a cell
     function selectChannel(cellNum, channelKey, channelLabel) {
-        console.log(`selectChannel: cell=${cellNum}, channel=${channelKey}`);
+        console.log(`>>> selectChannel called <<<`);
+        console.log('    cellNum:', cellNum);
+        console.log('    channelKey:', channelKey);
+        console.log('    channelLabel:', channelLabel);
         
         const cell = document.querySelector(`[data-cell="${cellNum}"]`);
         if (!cell) {
-            console.error(`Cell ${cellNum} not found`);
+            console.error(`    ERROR: Cell ${cellNum} not found in DOM`);
             return;
         }
+        console.log('    Cell element found:', cell);
 
         const btn = cell.querySelector('.channel-selector-btn');
         if (btn) {
             btn.textContent = channelLabel;
+            console.log('    Button text updated to:', channelLabel);
+        } else {
+            console.warn('    Button not found in cell');
         }
 
         // Save selection
         saveGridChannelSelection(cellNum, channelKey);
+        console.log('    Saved to localStorage');
 
-        // Use the original index.html playGridCell function
+        // Check if playGridCell exists
+        console.log('    window.playGridCell type:', typeof window.playGridCell);
+        
         if (typeof window.playGridCell === 'function') {
-            console.log(`Using window.playGridCell for cell ${cellNum}`);
-            window.playGridCell(cellNum, channelKey);
+            console.log('    Calling window.playGridCell...');
+            try {
+                window.playGridCell(cellNum, channelKey);
+                console.log('    playGridCell called successfully');
+            } catch (e) {
+                console.error('    ERROR calling playGridCell:', e);
+            }
         } else {
-            console.error('window.playGridCell not found!');
+            console.error('    ERROR: window.playGridCell is not a function!');
+            console.log('    Available functions:', Object.keys(window).filter(k => typeof window[k] === 'function').slice(0, 20));
         }
 
         // Update audio after playback starts
-        setTimeout(() => updateAudioStates(), 200);
+        setTimeout(() => {
+            console.log('    Updating audio states...');
+            updateAudioStates();
+        }, 200);
     }
 
     // Save grid channel selections
@@ -326,13 +345,18 @@
 
     // Set which cell has audio
     function setAudioCell(cellNum) {
-        console.log(`Setting audio cell to ${cellNum}`);
+        console.log(`>>> setAudioCell called with cell ${cellNum} <<<`);
+        console.log('    Previous audio cell:', audioCell);
+        
         audioCell = cellNum;
         
         // Save audio cell preference
         try {
             localStorage.setItem('russelltv.audioCell', cellNum);
-        } catch (e) {}
+            console.log('    Saved audio cell to localStorage');
+        } catch (e) {
+            console.error('    Error saving audio cell:', e);
+        }
         
         // Update all audio buttons and mute states
         document.querySelectorAll('.grid-cell-pro').forEach(cell => {
@@ -342,24 +366,32 @@
             if (num === audioCell) {
                 cell.classList.add('audio-active');
                 if (audioBtn) audioBtn.innerHTML = '🔊';
+                console.log(`    Cell ${num}: Set as ACTIVE (unmuted)`);
             } else {
                 cell.classList.remove('audio-active');
                 if (audioBtn) audioBtn.innerHTML = '🔇';
+                console.log(`    Cell ${num}: Set as inactive (muted)`);
             }
         });
 
         // Force update audio states
+        console.log('    Calling updateAudioStates...');
         updateAudioStates();
     }
 
     // Update mute state on all video elements
     function updateAudioStates() {
-        console.log(`Updating audio, active cell: ${audioCell}`);
+        console.log(`>>> updateAudioStates called <<<`);
+        console.log('    Active audio cell:', audioCell);
         
         for (let i = 1; i <= 9; i++) {
             const video = document.getElementById(`grid-video-${i}`);
             if (video) {
-                video.muted = (i !== audioCell);
+                const shouldMute = (i !== audioCell);
+                video.muted = shouldMute;
+                console.log(`    Cell ${i} HLS video - muted: ${shouldMute}, actually muted: ${video.muted}`);
+            } else {
+                console.log(`    Cell ${i} HLS video - not found`);
             }
 
             // Update YouTube players
@@ -368,12 +400,19 @@
                     if (i === audioCell) {
                         window.YT_PLAYERS[`grid-${i}`].unMute();
                         window.YT_PLAYERS[`grid-${i}`].setVolume(100);
+                        console.log(`    Cell ${i} YouTube - unmuted and volume set to 100`);
                     } else {
                         window.YT_PLAYERS[`grid-${i}`].mute();
+                        console.log(`    Cell ${i} YouTube - muted`);
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.error(`    Cell ${i} YouTube - error:`, e);
+                }
+            } else {
+                console.log(`    Cell ${i} YouTube - player not found`);
             }
         }
+        console.log('>>> updateAudioStates complete <<<');
     }
 
     // Toggle focus mode
@@ -411,22 +450,35 @@
         const defaults = window.GRID_DEFAULTS || {};
         const savedSelections = loadSavedGridSelections(numCells);
         
-        console.log('Loading channels for', numCells, 'cells');
+        console.log('=== LOADING CHANNELS ===');
+        console.log('Number of cells:', numCells);
+        console.log('Defaults:', defaults);
+        console.log('Saved selections:', savedSelections);
         
         // Shorter delays for faster loading
         for (let i = 1; i <= numCells; i++) {
             const channelKey = savedSelections[i] || defaults[i];
             
+            console.log(`Cell ${i}: Will load "${channelKey}"`);
+            
             if (channelKey && window.CHANNELS && window.CHANNELS[channelKey]) {
                 // Much faster - just stagger by 150ms each
                 setTimeout(() => {
+                    console.log(`>>> Attempting to load cell ${i} with ${channelKey}`);
                     const cell = document.querySelector(`[data-cell="${i}"]`);
+                    console.log(`    Cell ${i} element found:`, !!cell);
+                    
                     if (cell && window.CHANNELS[channelKey]) {
                         selectChannel(i, channelKey, window.CHANNELS[channelKey].label);
+                    } else {
+                        console.error(`    Failed to load cell ${i}`);
                     }
                 }, i * 150);
+            } else {
+                console.warn(`Cell ${i}: No valid channel (key: ${channelKey})`);
             }
         }
+        console.log('========================');
     }
 
     // Stop all grid cells
@@ -516,26 +568,55 @@
     window.addEventListener('load', () => {
         replaceGridButton();
         
+        // DIAGNOSTIC: Check what functions are available
+        console.log('=== DIAGNOSTIC INFO ===');
+        console.log('window.playGridCell exists?', typeof window.playGridCell);
+        console.log('window.createOrReplaceYTPlayer exists?', typeof window.createOrReplaceYTPlayer);
+        console.log('window.hlsGrid exists?', typeof window.hlsGrid);
+        console.log('window.Hls exists?', typeof window.Hls);
+        console.log('window.YT_PLAYERS exists?', typeof window.YT_PLAYERS);
+        console.log('window.CHANNELS:', window.CHANNELS);
+        console.log('window.GRID_DEFAULTS:', window.GRID_DEFAULTS);
+        console.log('=======================');
+        
         // Load saved preferences
         try {
             const savedLayout = localStorage.getItem('russelltv.gridLayout');
             if (savedLayout && GRID_LAYOUTS[savedLayout]) {
                 currentLayout = savedLayout;
+                console.log('Loaded saved layout:', currentLayout);
             }
             
             const savedAudioCell = localStorage.getItem('russelltv.audioCell');
             if (savedAudioCell) {
                 audioCell = parseInt(savedAudioCell);
+                console.log('Loaded saved audio cell:', audioCell);
             }
-        } catch (e) {}
+            
+            // Check saved channel selections
+            console.log('Saved channel selections:');
+            for (let i = 1; i <= 9; i++) {
+                const saved = localStorage.getItem(`russelltv.gridCell${i}`);
+                if (saved) {
+                    console.log(`  Cell ${i}: ${saved}`);
+                }
+            }
+        } catch (e) {
+            console.error('Error loading preferences:', e);
+        }
         
         // Check if grid visible on startup
         setTimeout(() => {
             const gridView = document.getElementById('grid-view');
+            console.log('Grid view display:', gridView ? gridView.style.display : 'not found');
+            
             if (gridView && gridView.style.display !== 'none') {
                 const config = GRID_LAYOUTS[currentLayout];
+                console.log('Initializing grid with config:', config);
                 if (!document.querySelector('.grid-cell-pro')) {
                     rebuildGrid(config);
+                } else {
+                    console.log('Grid cells already exist');
                 }
             }
         }, 300);
