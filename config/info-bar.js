@@ -147,6 +147,36 @@
       border-color: rgba(220,20,60,1.0) transparent transparent transparent;
     }
 
+    /* ======== TEMP-COLORED TOOLTIP TEXT COLOR (adaptive) ======== */
+
+    /* Freezing + Cold → lighter backgrounds → use dark text */
+    .temp-freezing.has-tooltip::after,
+    .temp-freezing.has-tooltip::after * {
+      color: #000;
+    }
+
+    .temp-cold.has-tooltip::after,
+    .temp-cold.has-tooltip::after * {
+      color: #000;
+    }
+
+    /* Mild → green background → dark text still works */
+    .temp-mild.has-tooltip::after,
+    .temp-mild.has-tooltip::after * {
+      color: #000;
+    }
+
+    /* Warm → orange → white text is better */
+    .temp-warm.has-tooltip::after,
+    .temp-warm.has-tooltip::after * {
+      color: #fff;
+    }
+
+    /* Hot → red → white text is required for readability */
+    .temp-hot.has-tooltip::after,
+    .temp-hot.has-tooltip::after * {
+      color: #fff;
+    }
 
     /* Hover to show */
     .info-block.has-tooltip:hover::after,
