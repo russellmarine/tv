@@ -1,4 +1,4 @@
-// RussellTV Combined Time + Weather Footer (with readable dark tooltips)
+// RussellTV Combined Time + Weather Footer (with readable tooltips & temp color)
 // Uses: window.TIME_ZONES, optional window.WEATHER_QUERIES + window.fetchWeather
 
 (function() {
@@ -35,46 +35,59 @@
       border: 1px solid rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.04);
       cursor: default;
-      position: relative;
+      position: relative; /* needed for tooltip positioning */
     }
     .info-block strong {
       font-weight: 600;
     }
 
-    /* Temperature color bands */
-    .temp-neutral { background: rgba(255,255,255,0.05); }
-    .temp-freezing { background: rgba(135,206,250,0.30); border-color: rgba(135,206,250,0.9); }
-    .temp-cold     { background: rgba(100,149,237,0.30); border-color: rgba(100,149,237,0.9); }
-    .temp-mild     { background: rgba(144,238,144,0.30); border-color: rgba(144,238,144,0.9); }
-    .temp-warm     { background: rgba(255,165,0,0.28);  border-color: rgba(255,165,0,0.9); }
-    .temp-hot      { background: rgba(220,20,60,0.30);  border-color: rgba(220,20,60,0.9); }
+    /* Temperature color bands (based on current temp, °F) */
+    .temp-neutral {
+      background: rgba(255,255,255,0.05);
+    }
+    .temp-freezing {
+      background: rgba(135,206,250,0.30);
+      border-color: rgba(135,206,250,0.9);
+    }
+    .temp-cold {
+      background: rgba(100,149,237,0.30);
+      border-color: rgba(100,149,237,0.9);
+    }
+    .temp-mild {
+      background: rgba(144,238,144,0.30);
+      border-color: rgba(144,238,144,0.9);
+    }
+    .temp-warm {
+      background: rgba(255,165,0,0.28);
+      border-color: rgba(255,165,0,0.9);
+    }
+    .temp-hot {
+      background: rgba(220,20,60,0.30);
+      border-color: rgba(220,20,60,0.9);
+    }
 
-    /* ------------------------------------------
-       Readable Tooltip (dark, solid background)
-       ------------------------------------------ */
-
+    /* ---------- Readable tooltips tied to temp bands ---------- */
     .info-block.has-tooltip::after {
       content: attr(data-tooltip);
       position: absolute;
       left: 50%;
-      bottom: 135%;                 /* place above the pill */
+      bottom: 135%;                 /* a bit above the pill row */
       transform: translateX(-50%);
       padding: 6px 10px;
       font-size: 0.70rem;
-      white-space: pre-line;
+      white-space: pre-line;        /* respect \n in tooltip text */
       max-width: 260px;
       border-radius: 4px;
-      background: rgba(0,0,0,0.92);  /* solid for readability */
-      border: 1px solid rgba(255,255,255,0.40);
+      background: rgba(0,0,0,0.94); /* solid dark background */
+      border: 1px solid rgba(255,255,255,0.45);
       color: #fff;
       opacity: 0;
       pointer-events: none;
       z-index: 2147483647;
-      box-shadow: 0 0 10px rgba(0,0,0,0.8);
+      box-shadow: 0 0 10px rgba(0,0,0,0.9);
       transition: opacity 0.12s ease-out, transform 0.12s ease-out;
     }
 
-    /* colored arrow that matches the temp band color */
     .info-block.has-tooltip::before {
       content: "";
       position: absolute;
@@ -83,14 +96,14 @@
       transform: translateX(-50%);
       border-width: 6px;
       border-style: solid;
-      border-color: inherit transparent transparent transparent;
+      /* arrow uses pill's border color (temp band) */
+      border-color: currentColor transparent transparent transparent;
       opacity: 0;
       pointer-events: none;
       z-index: 2147483646;
       transition: opacity 0.12s ease-out;
     }
 
-    /* show tooltip on hover */
     .info-block.has-tooltip:hover::after,
     .info-block.has-tooltip:hover::before {
       opacity: 1;
@@ -103,7 +116,8 @@
   bar.id = "info-bar";
   document.body.appendChild(bar);
 
-  // Weather cache
+  // Weather details cache keyed by TIME_ZONES label
+  // { icon, temp, hi, lo, main, desc, humidity, wind }
   let weatherMap = {};
 
   // ---------- Temp -> class ----------
@@ -116,7 +130,7 @@
     return "temp-hot";
   }
 
-  // ---------- Weather icons ----------
+  // ---------- Icon logic ----------
   function iconFor(main, desc) {
     const w = `${main} ${desc}`.toLowerCase();
     if (w.includes("thunder")) return "⛈";
@@ -128,7 +142,7 @@
     return "☀️";
   }
 
-  // ---------- Fetch weather ----------
+  // ---------- Fetch weather for all mapped locations ----------
   async function updateWeather() {
     if (!window.WEATHER_QUERIES || typeof window.fetchWeather !== "function") {
       weatherMap = {};
@@ -136,36 +150,56 @@
       return;
     }
 
+    const entries = Object.entries(window.WEATHER_QUERIES);
     const newMap = {};
-    for (const [label, query] of Object.entries(window.WEATHER_QUERIES)) {
+
+    for (const [label, query] of entries) {
       const isZulu = /zulu/i.test(label);
-      if (isZulu) { newMap[label] = null; continue; }
+      if (isZulu) {
+        newMap[label] = null;
+        continue;
+      }
 
       try {
         const d = await window.fetchWeather(query);
         if (!d || (d.cod && d.cod !== 200)) {
+          console.warn("Weather data error for", label, d && d.cod);
           newMap[label] = null;
           continue;
         }
+
+        const main = d.weather?.[0]?.main || "";
+        const desc = d.weather?.[0]?.description || "";
+        const temp = Math.round(d.main.temp);
+        const hi = Math.round(d.main.temp_max);
+        const lo = Math.round(d.main.temp_min);
+        const humidity = Math.round(d.main.humidity);
+        const wind = d.wind && typeof d.wind.speed === "number"
+          ? Math.round(d.wind.speed)
+          : null;
+        const icon = iconFor(main, desc);
+
         newMap[label] = {
-          icon: iconFor(d.weather?.[0]?.main || "", d.weather?.[0]?.description || ""),
-          temp: Math.round(d.main.temp),
-          hi: Math.round(d.main.temp_max),
-          lo: Math.round(d.main.temp_min),
-          main: d.weather?.[0]?.main || "",
-          desc: d.weather?.[0]?.description || "",
-          humidity: Math.round(d.main.humidity),
-          wind: d.wind?.speed ? Math.round(d.wind.speed) : null
+          icon,
+          temp,
+          hi,
+          lo,
+          main,
+          desc,
+          humidity,
+          wind
         };
-      } catch {
+      } catch (e) {
+        console.warn("Weather fetch failed for", label, e);
         newMap[label] = null;
       }
     }
+
     weatherMap = newMap;
     render();
   }
 
-  // ---------- Render loop ----------
+  // ---------- Render combined time + (optional) weather ----------
   function render() {
     bar.innerHTML = "";
 
@@ -177,24 +211,24 @@
         minute: "2-digit"
       });
 
-      const isZulu = /zulu/i.test(loc.label);
-      const w = weatherMap[loc.label];
-
       let cls = "info-block temp-neutral has-tooltip";
       let content = `<strong>${loc.label}</strong> ${time}`;
-      let tooltip = `${loc.label}\nTime: ${time}`;
+      let tooltip = `${loc.label}\n${time}`;
+
+      const isZulu = /zulu/i.test(loc.label);
+      const w = weatherMap[loc.label];
 
       if (!isZulu && w) {
         cls = "info-block " + tempClass(w.temp) + " has-tooltip";
         content += ` • ${w.icon} ${w.hi}°/${w.lo}°`;
-        tooltip =
-          `${loc.label}\n` +
-          `Time: ${time}\n` +
-          `Conditions: ${w.main} (${w.desc})\n` +
-          `Current: ${w.temp}°F\n` +
-          `High/Low: ${w.hi}°F / ${w.lo}°F` +
-          (w.humidity != null ? `\nHumidity: ${w.humidity}%` : "") +
-          (w.wind != null ? `\nWind: ${w.wind} mph` : "");
+        let tip = `${loc.label}\n`;
+        tip += `Time: ${time}\n`;
+        tip += `Conditions: ${w.main} (${w.desc})\n`;
+        tip += `Current: ${w.temp}°F\n`;
+        tip += `High/Low: ${w.hi}°F / ${w.lo}°F`;
+        if (w.humidity != null) tip += `\nHumidity: ${w.humidity}%`;
+        if (w.wind != null) tip += `\nWind: ${w.wind} mph`;
+        tooltip = tip;
       } else if (isZulu) {
         tooltip = `${loc.label}\nTime (UTC): ${time}`;
       }
@@ -202,15 +236,17 @@
       const div = document.createElement("div");
       div.className = cls;
       div.innerHTML = content;
+
+      // Use data-tooltip for our custom tooltip bubble
       div.setAttribute("data-tooltip", tooltip);
 
       bar.appendChild(div);
     });
   }
 
-  // ---------- Start loops ----------
-  render();
-  updateWeather();
-  setInterval(render, 10000);
-  setInterval(updateWeather, 10 * 60 * 1000);
+  // ---------- Loops ----------
+  render();                                   // times only at first
+  updateWeather();                            // attempt weather now (or no-op)
+  setInterval(render, 10 * 1000);             // update times every 10s
+  setInterval(updateWeather, 10 * 60 * 1000); // refresh weather every 10m
 })();
