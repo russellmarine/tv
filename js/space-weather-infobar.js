@@ -231,10 +231,11 @@
       btn.style.position = 'relative';
       btn.style.zIndex = '10002';
       
-      // ALWAYS re-attach onclick (button gets recreated by addIndicators)
-      console.log('⚡ Attaching/re-attaching propagation button listener');
+      // Only re-attach if onclick is missing (button was recreated)
+      if (!btn.onclick) {
+        console.log('⚡ Attaching propagation button listener');
 
-      btn.onclick = function(e) {
+        btn.onclick = function(e) {
           e.stopPropagation();
           e.preventDefault();
           
@@ -265,21 +266,22 @@
           }, 10);
         };
 
-      btn.onmouseenter = function() {
-        this.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
-        this.style.borderColor = 'rgba(255,120,0,0.8)';
-        this.style.boxShadow = '0 0 12px rgba(255,100,0,0.8), 0 0 20px rgba(255,140,0,0.4)';
-        this.style.transform = 'translateY(-2px) scale(1.05)';
-        this.style.filter = 'hue-rotate(0deg) saturate(2) brightness(1.2)';
-      };
+        btn.onmouseenter = function() {
+          this.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
+          this.style.borderColor = 'rgba(255,120,0,0.8)';
+          this.style.boxShadow = '0 0 12px rgba(255,100,0,0.8), 0 0 20px rgba(255,140,0,0.4)';
+          this.style.transform = 'translateY(-2px) scale(1.05)';
+          this.style.filter = 'hue-rotate(0deg) saturate(2) brightness(1.2)';
+        };
 
-      btn.onmouseleave = function() {
-        this.style.background = 'rgba(0, 0, 0, 0.7)';
-        this.style.borderColor = 'rgba(255, 120, 0, 0.4)';
-        this.style.boxShadow = 'none';
-        this.style.transform = 'translateY(0) scale(1)';
-        this.style.filter = 'hue-rotate(20deg) saturate(1.5)';
-      };
+        btn.onmouseleave = function() {
+          this.style.background = 'rgba(0, 0, 0, 0.7)';
+          this.style.borderColor = 'rgba(255, 120, 0, 0.4)';
+          this.style.boxShadow = 'none';
+          this.style.transform = 'translateY(0) scale(1)';
+          this.style.filter = 'hue-rotate(20deg) saturate(1.5)';
+        };
+      }
     }
   }
 
