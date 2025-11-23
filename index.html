@@ -6,9 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="stylesheet" href="/css/grid-pro.css">
-  <link rel="preconnect" href="https://www.youtube.com">
-  <link rel="preconnect" href="https://i.ytimg.com">
-  <link rel="dns-prefetch" href="https://www.youtube.com">
 
   <style>
     /* ---------- Base Layout ---------- */
@@ -99,13 +96,11 @@
       gap: 0.5rem;
     }
 
-    #single-player-hls,
-    #single-player-yt {
+    #single-player-hls {
       width: 100%;
       max-width: 100%;
       aspect-ratio: 16 / 9;
       height: auto;
-      display: none;
       border-radius: 12px;
       background: #000;
       border: none;
@@ -272,9 +267,7 @@
       align-items: center;
     }
 
-    .grid-frame > video,
-    .grid-frame > .yt-container,
-    .grid-frame > iframe {
+    .grid-frame > video {
       width: 100%;
       max-width: 100%;
       aspect-ratio: 16 / 9;
@@ -282,22 +275,6 @@
       object-fit: contain;
       background: #000;
       border-radius: 8px;
-    }
-
-    .yt-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      height: 100%;
-    }
-
-    .yt-container iframe {
-      width: 100%;
-      height: 100%;
-      border-radius: 8px;
-      border: none;
-      background: #000;
     }
 
     /* ---------- Info Bar (desktop) ---------- */
@@ -317,10 +294,6 @@
 
     /* Mobile cloned ticker bar */
     #info-bar-mobile {
-      /* Mobile ticker flatten */
-      #info-bar-mobile-inner > * { flex-direction: row; align-items: center; gap: 0.25rem; }
-      #info-bar-mobile .wx-icon { width: 14px; height: 14px; animation: none !important; }
-      #info-bar-mobile .wx-icon-wrap { margin-right: 2px; }
       display: none;
     }
 
@@ -402,8 +375,7 @@
         height: auto;
       }
 
-      #single-player-hls,
-      #single-player-yt {
+      #single-player-hls {
         max-height: 60vh;
       }
 
@@ -463,10 +435,7 @@
       }
 
       #info-bar-mobile {
-      /* Mobile ticker flatten */
-      #info-bar-mobile-inner > * { flex-direction: row; align-items: center; gap: 0.25rem; }
-      #info-bar-mobile .wx-icon { width: 14px; height: 14px; animation: none !important; }
-      #info-bar-mobile .wx-icon-wrap { margin-right: 2px; }
+        /* Mobile ticker flatten */
         position: fixed;
         left: 0;
         right: 0;
@@ -480,6 +449,22 @@
         z-index: 1000;
         overflow: hidden;
         display: block;
+      }
+
+      #info-bar-mobile-inner > * { 
+        flex-direction: row; 
+        align-items: center; 
+        gap: 0.25rem; 
+      }
+      
+      #info-bar-mobile .wx-icon { 
+        width: 14px; 
+        height: 14px; 
+        animation: none !important; 
+      }
+      
+      #info-bar-mobile .wx-icon-wrap { 
+        margin-right: 2px; 
       }
     }
   </style>
@@ -512,7 +497,6 @@
       <div class="single-layout">
         <div class="single-video-card">
           <video id="single-player-hls" controls autoplay muted playsinline></video>
-          <div id="single-player-yt" style="display:none;"></div>
         </div>
 
         <aside class="single-side-panel" id="single-side-panel">
@@ -554,15 +538,11 @@
   <!-- HLS.js -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-  <!-- YouTube IFrame API -->
-  <script async src="https://www.youtube.com/iframe_api"></script>
-
   <script>
     // Core DOM refs
     const singleView = document.getElementById("single-view");
     const gridView   = document.getElementById("grid-view");
     const singleHLS  = document.getElementById("single-player-hls");
-    const singleYTContainer = document.getElementById("single-player-yt");
 
     const btnSingle = document.getElementById("btn-single");
     const btnGrid   = document.getElementById("btn-grid");
@@ -571,7 +551,6 @@
 
     let hlsSingle = null;
     const hlsGrid = {};         // cell -> Hls instance
-    window.YT_PLAYERS = {};      // key -> YT.Player
 
     // ---------- Remember last channel + view ----------
     const STORAGE_KEYS = {
@@ -613,79 +592,6 @@
 
     function channelExists(key) {
       return !!(window.CHANNELS && window.CHANNELS[key]);
-    }
-
-    function onYouTubeIframeAPIReady() {
-      // Defined for API; players created lazily
-    }
-
-    function getYouTubeVideoId(url) {
-      if (!url) return null;
-      const idx = url.indexOf("/embed/");
-      if (idx === -1) return null;
-      let idPart = url.substring(idx + 7);
-      const qIdx = idPart.indexOf("?");
-      if (qIdx !== -1) idPart = idPart.substring(0, qIdx);
-      return idPart;
-    }
-
-    function destroyYTPlayer(playerKey) {
-      if (YT_PLAYERS[playerKey]) {
-        try {
-          YT_PLAYERS[playerKey].destroy();
-        } catch (e) {
-          console.warn("Error destroying YT player", playerKey, e);
-        }
-        delete YT_PLAYERS[playerKey];
-      }
-    }
-
-    function createOrReplaceYTPlayer(container, playerKey, videoUrl) {
-      const videoId = getYouTubeVideoId(videoUrl);
-      if (!videoId) {
-        console.warn("Could not parse YouTube video ID from URL:", videoUrl);
-        return;
-      }
-
-      destroyYTPlayer(playerKey);
-
-      container.innerHTML = "";
-      const innerId = playerKey + "-inner";
-      const inner = document.createElement("div");
-      inner.id = innerId;
-      inner.style.width = "100%";
-      inner.style.height = "100%";
-      container.appendChild(inner);
-
-      function build() {
-        if (window.YT && typeof YT.Player === "function") {
-          const player = new YT.Player(innerId, {
-            videoId: videoId,
-            playerVars: {
-              autoplay: 1,
-              mute: 1,
-              controls: 1,
-              rel: 0,
-              playsinline: 1
-            },
-            events: {
-              onReady: (e) => {
-                e.target.setPlaybackQuality("large");
-              },
-              onStateChange: (e) => {
-                if (e.data === YT.PlayerState.PLAYING) {
-                  e.target.setPlaybackQuality("large");
-                }
-              }
-            }
-          });
-          YT_PLAYERS[playerKey] = player;
-        } else {
-          setTimeout(build, 100);
-        }
-      }
-
-      build();
     }
 
     // ---------- Channel Buttons (desktop) ----------
@@ -733,11 +639,6 @@
       singleHLS.pause();
       singleHLS.removeAttribute("src");
       singleHLS.load();
-
-      destroyYTPlayer("single");
-      singleYTContainer.innerHTML = "";
-      singleYTContainer.style.display = "none";
-      singleHLS.style.display = "block";
     }
 
     function setSingleChannel(key) {
@@ -769,21 +670,13 @@
         console.warn("loadChannelHeadlines threw:", e);
       }
 
-      if (ch.type === "yt") {
-        singleHLS.style.display = "none";
-        singleYTContainer.style.display = "block";
-        createOrReplaceYTPlayer(singleYTContainer, "single", ch.url);
+      // All channels are now HLS
+      if (window.Hls && Hls.isSupported()) {
+        hlsSingle = new Hls({ lowLatencyMode: true });
+        hlsSingle.loadSource(ch.url);
+        hlsSingle.attachMedia(singleHLS);
       } else {
-        singleYTContainer.style.display = "none";
-        singleHLS.style.display = "block";
-
-        if (window.Hls && Hls.isSupported()) {
-          hlsSingle = new Hls({ lowLatencyMode: true });
-          hlsSingle.loadSource(ch.url);
-          hlsSingle.attachMedia(singleHLS);
-        } else {
-          singleHLS.src = ch.url;
-        }
+        singleHLS.src = ch.url;
       }
     }
 
@@ -850,13 +743,7 @@
         vid.playsInline = true;
         vid.setAttribute("playsinline", "");
 
-        const ytDiv = document.createElement("div");
-        ytDiv.id = "grid-yt-" + cell;
-        ytDiv.className = "yt-container";
-        ytDiv.style.display = "none";
-
         frame.appendChild(vid);
-        frame.appendChild(ytDiv);
         body.appendChild(frame);
         div.appendChild(body);
 
@@ -872,24 +759,12 @@
         }
       }
 
-      Object.keys(YT_PLAYERS).forEach((key) => {
-        if (key.startsWith("grid-")) {
-          destroyYTPlayer(key);
-        }
-      });
-
       for (let cell = 1; cell <= 4; cell++) {
         const v = document.getElementById("grid-video-" + cell);
-        const y = document.getElementById("grid-yt-" + cell);
         if (v) {
           v.pause();
           v.removeAttribute("src");
           v.load();
-          v.style.display = "block";
-        }
-        if (y) {
-          y.innerHTML = "";
-          y.style.display = "none";
         }
       }
     }
@@ -900,7 +775,6 @@
 
       const label = document.getElementById("label-cell-" + cell);
       const video = document.getElementById("grid-video-" + cell);
-      const ytDiv = document.getElementById("grid-yt-" + cell);
 
       if (label) label.textContent = ch.label;
 
@@ -913,25 +787,14 @@
       video.removeAttribute("src");
       video.load();
 
-      destroyYTPlayer("grid-" + cell);
-      ytDiv.innerHTML = "";
-
-      if (ch.type === "yt") {
-        video.style.display = "none";
-        ytDiv.style.display = "flex";
-        createOrReplaceYTPlayer(ytDiv, "grid-" + cell, ch.url);
+      // All channels are now HLS
+      if (window.Hls && Hls.isSupported()) {
+        const h = new Hls({ lowLatencyMode: true });
+        h.loadSource(ch.url);
+        h.attachMedia(video);
+        hlsGrid[cell] = h;
       } else {
-        ytDiv.style.display = "none";
-        video.style.display = "block";
-
-        if (window.Hls && Hls.isSupported()) {
-          const h = new Hls({ lowLatencyMode: true });
-          h.loadSource(ch.url);
-          h.attachMedia(video);
-          hlsGrid[cell] = h;
-        } else {
-          video.src = ch.url;
-        }
+        video.src = ch.url;
       }
     }
 
@@ -961,6 +824,9 @@
         playGridCell(cell, defaultKey);
       }
     }
+
+    // Make playGridCell available globally for grid-state.js
+    window.playGridCell = playGridCell;
 
     // ---------- Mode Buttons ----------
     btnSingle.addEventListener("click", enterSingleMode);
@@ -1049,129 +915,7 @@
   <script src="/config/news-config.js"></script>
   <script src="/js/news.js"></script>
   <script src="/js/grid-state.js"></script>
-<script>
-  // --- RussellTV: Remember last channel + view using localStorage ---
-
-  const RT_STORAGE = {
-    channel: "russelltv.lastChannel",
-    view: "russelltv.lastView",
-  };
-
-  function rtSaveLastChannel(id) {
-    try {
-      localStorage.setItem(RT_STORAGE.channel, id);
-    } catch (e) {
-      // ignore if storage not available
-    }
-  }
-
-  function rtSaveLastView(view) {
-    try {
-      localStorage.setItem(RT_STORAGE.view, view);
-    } catch (e) {
-      // ignore if storage not available
-    }
-  }
-
-  function rtLoadLastChannel() {
-    try {
-      return localStorage.getItem(RT_STORAGE.channel);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function rtLoadLastView() {
-    try {
-      return localStorage.getItem(RT_STORAGE.view);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const channelButtons = document.querySelectorAll("[data-channel-id]");
-    const singleBtn = document.querySelector('[data-view="single"]');
-    const gridBtn = document.querySelector('[data-view="grid"]');
-
-    // 1. Whenever user clicks a channel, remember that channel
-    channelButtons.forEach((btn) => {
-      const id = btn.dataset.channelId;
-      if (!id) return;
-
-      btn.addEventListener("click", () => {
-        rtSaveLastChannel(id);
-        // clicking a channel implies single view is active
-        rtSaveLastView("single");
-      });
-    });
-
-    // 2. Whenever user switches view, remember "single" or "grid"
-    if (singleBtn) {
-      singleBtn.addEventListener("click", () => {
-        rtSaveLastView("single");
-      });
-    }
-
-    if (gridBtn) {
-      gridBtn.addEventListener("click", () => {
-        rtSaveLastView("grid");
-      });
-    }
-
-    // 3. Restore last view + channel on load
-    const savedView = rtLoadLastView();
-    const savedChannel = rtLoadLastChannel();
-
-    const viewToUse =
-      savedView === "grid" || savedView === "single" ? savedView : "single";
-
-    // Helper: click a button only if it exists
-    function safeClick(btn) {
-      if (btn && typeof btn.click === "function") {
-        btn.click();
-        return true;
-      }
-      return false;
-    }
-
-    // If last view was grid, go straight to grid
-    if (viewToUse === "grid") {
-      safeClick(gridBtn);
-
-      // Still remember last single-channel selection for when they switch back
-      if (savedChannel) {
-        rtSaveLastChannel(savedChannel);
-      }
-    } else {
-      // Default / saved single view
-      safeClick(singleBtn);
-
-      // If we have a saved channel, click its button
-      if (savedChannel) {
-        const chanBtn = document.querySelector(
-          `[data-channel-id="${savedChannel}"]`
-        );
-        if (!safeClick(chanBtn)) {
-          // fallback to first channel button if saved one doesn't exist
-          if (channelButtons.length > 0) {
-            safeClick(channelButtons[0]);
-          }
-        }
-      } else {
-        // No saved channel -> just click first one as default (e.g. CBS)
-        if (channelButtons.length > 0) {
-          safeClick(channelButtons[0]);
-          const firstId = channelButtons[0].dataset.channelId;
-          if (firstId) {
-            rtSaveLastChannel(firstId);
-          }
-        }
-      }
-    }
-  });
-</script>
-<script src="js/keyboard-controls.js"></script>
-<script src="/js/grid-pro.js"></script>
+  <script src="js/keyboard-controls.js"></script>
+  <script src="/js/grid-pro.js"></script>
 </body>
 </html>
