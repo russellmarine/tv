@@ -385,3 +385,17 @@
 .yt-container iframe[src*="youtube"] {
     background: transparent !important;
 }
+
+/* More aggressive YouTube transparency overrides */
+#grid-view .yt-container,
+#grid-view .yt-container *,
+#grid-view .yt-container iframe {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
+/* Target YouTube's HTML5 player specifically */
+.html5-video-container,
+.html5-video-player {
+    background: transparent !important;
+}
