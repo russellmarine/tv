@@ -1,4 +1,31 @@
-// Professional Grid System for RussellTV
+// ========================================
+// COMPATIBILITY SHIM FOR MODULAR REFACTORING
+// ========================================
+
+// Override the modular grid building - let grid-pro.js handle it
+if (window.RussellTV && window.RussellTV.UIControls) {
+  console.log('🔧 Patching UIControls to work with grid-pro.js');
+  
+  // Replace buildGrid with no-op - grid-pro.js will build the grid
+  window.RussellTV.UIControls.buildGrid = function() {
+    console.log('✅ Grid building delegated to grid-pro.js');
+    // Don't build anything - grid-pro.js handles this
+  };
+}
+
+// Ensure grid-pro.js can use the modular GridPlayer
+if (!window.playGridCell && window.RussellTV && window.RussellTV.GridPlayer) {
+  console.log('🔧 Creating playGridCell compatibility wrapper');
+  window.playGridCell = function(cell, channelKey) {
+    console.log('📺 grid-pro.js → GridPlayer.playCell:', cell, channelKey);
+    window.RussellTV.GridPlayer.playCell(cell, channelKey);
+  };
+}
+
+// ========================================
+// END COMPATIBILITY SHIM
+// Your original grid-pro.js code continues below...
+// ========================================// Professional Grid System for RussellTV
 // Includes: Smart layouts, focus mode, solo audio, professional UI
 
 (function() {
