@@ -1,6 +1,8 @@
 /**
- * propagation-panel.js - HF Propagation prediction panel
- * Shows MUF, best bands, and conditions for selected location
+ * propagation-panel.js - Enhanced HF/SATCOM Propagation Panel
+ * - Draggable
+ * - Location-aware (uses selected time zone)
+ * - Weather-aware SATCOM predictions
  */
 
 window.RussellTV = window.RussellTV || {};
@@ -10,31 +12,29 @@ window.RussellTV.PropagationPanel = (function() {
 
   let panelVisible = false;
   let solarData = null;
+  let isDragging = false;
+  let dragOffset = { x: 0, y: 0 };
 
-  // Solar flux and sunspot data (we'll fetch from NOAA)
   async function fetchSolarData() {
     try {
-      // NOAA Solar Flux data
       const solarResponse = await fetch('/api/spaceweather/text/daily-solar-indices.txt');
       const solarText = await solarResponse.text();
       
-      // Parse the data (format: date, SSN, radio flux, etc.)
       const lines = solarText.trim().split('\n');
-      const dataLine = lines[lines.length - 1]; // Most recent
+      const dataLine = lines[lines.length - 1];
       const parts = dataLine.split(/\s+/);
       
       solarData = {
-        solarFlux: parseFloat(parts[3]) || 150, // SFI (10.7cm flux)
-        sunspotNumber: parseInt(parts[1]) || 50, // SSN
-        aIndex: parseFloat(parts[4]) || 10, // A-index
-        kIndex: parseFloat(parts[5]) || 2 // K-index
+        solarFlux: parseFloat(parts[3]) || 150,
+        sunspotNumber: parseInt(parts[1]) || 50,
+        aIndex: parseFloat(parts[4]) || 10,
+        kIndex: parseFloat(parts[5]) || 2
       };
       
       console.log('☀️ Solar data fetched:', solarData);
       return solarData;
     } catch (error) {
       console.warn('Could not fetch solar data, using defaults:', error);
-      // Default moderate conditions
       solarData = {
         solarFlux: 150,
         sunspotNumber: 50,
@@ -45,28 +45,19 @@ window.RussellTV.PropagationPanel = (function() {
     }
   }
 
-  // Calculate MUF based on solar flux and time of day
   function calculateMUF(solarFlux, isDay) {
-    // Simplified MUF calculation
-    // MUF ≈ foF2 × 3.0 (skip distance factor)
-    // foF2 varies with solar flux and local time
-    
-    const baseMUF = Math.sqrt(solarFlux / 100) * 10; // Rough approximation
-    const timeFactor = isDay ? 1.2 : 0.7; // Day vs night
-    
+    const baseMUF = Math.sqrt(solarFlux / 100) * 10;
+    const timeFactor = isDay ? 1.2 : 0.7;
     return baseMUF * timeFactor;
   }
 
-  // Determine best bands based on conditions
   function getBestBands(muf, conditions) {
     const bands = [];
     
-    // 80m (3.5-4.0 MHz) - Night, low solar activity
     if (!conditions.isDay && muf > 5) {
       bands.push({ band: '80m', freq: '3.5-4.0 MHz', quality: 'good', note: 'Night DX' });
     }
     
-    // 40m (7.0-7.3 MHz) - All times, reliable
     if (muf > 8) {
       bands.push({ 
         band: '40m', 
@@ -76,34 +67,28 @@ window.RussellTV.PropagationPanel = (function() {
       });
     }
     
-    // 30m (10.1-10.15 MHz) - Good for DX
     if (muf > 12) {
       bands.push({ band: '30m', freq: '10.1-10.15 MHz', quality: 'good', note: 'Digital modes' });
     }
     
-    // 20m (14.0-14.35 MHz) - Best DX band
     if (muf > 18 && conditions.isDay) {
       bands.push({ band: '20m', freq: '14.0-14.35 MHz', quality: 'excellent', note: 'Best DX' });
     } else if (muf > 18) {
       bands.push({ band: '20m', freq: '14.0-14.35 MHz', quality: 'good', note: 'DX possible' });
     }
     
-    // 17m (18.068-18.168 MHz) - Day DX
     if (muf > 22 && conditions.isDay) {
       bands.push({ band: '17m', freq: '18.068-18.168 MHz', quality: 'good', note: 'Day DX' });
     }
     
-    // 15m (21.0-21.45 MHz) - High solar activity
     if (muf > 25 && conditions.isDay && conditions.solarFlux > 120) {
       bands.push({ band: '15m', freq: '21.0-21.45 MHz', quality: 'excellent', note: 'High activity' });
     }
     
-    // 12m (24.89-24.99 MHz) - Peak conditions
     if (muf > 28 && conditions.isDay && conditions.solarFlux > 140) {
       bands.push({ band: '12m', freq: '24.89-24.99 MHz', quality: 'good', note: 'Peak times' });
     }
     
-    // 10m (28.0-29.7 MHz) - Solar max
     if (muf > 32 && conditions.solarFlux > 150) {
       bands.push({ band: '10m', freq: '28.0-29.7 MHz', quality: 'fair', note: 'Solar max' });
     }
@@ -115,6 +100,83 @@ window.RussellTV.PropagationPanel = (function() {
     return bands;
   }
 
+  // Get current location from selected time zone
+  function getCurrentLocation() {
+    // Get the selected location from info bar (look for non-Zulu with weather)
+    const infoBlocks = document.querySelectorAll('.info-block');
+    for (const block of infoBlocks) {
+      const text = block.textContent;
+      if (!text.includes('Zulu') && text.includes('°')) {
+        // Extract location name
+        const match = text.match(/^([^0-9]+)/);
+        if (match) {
+          return match[1].trim();
+        }
+      }
+    }
+    return null;
+  }
+
+  // Get weather for location to assess SATCOM
+  function getLocationWeather(locationName) {
+    const blocks = document.querySelectorAll('.info-block.has-tooltip');
+    for (const block of blocks) {
+      if (block.textContent.includes(locationName)) {
+        const tooltip = block.getAttribute('data-tooltip');
+        if (tooltip) {
+          // Parse weather from tooltip
+          const conditionsMatch = tooltip.match(/Conditions: ([^(]+) \(([^)]+)\)/);
+          if (conditionsMatch) {
+            return {
+              main: conditionsMatch[1].trim(),
+              desc: conditionsMatch[2].trim()
+            };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  // Assess SATCOM quality based on weather and space weather
+  function assessSATCOM(weather, spaceWeatherStatus) {
+    const issues = [];
+    let quality = 'excellent';
+
+    // Weather impacts
+    if (weather) {
+      const w = weather.main.toLowerCase() + ' ' + weather.desc.toLowerCase();
+      
+      if (w.includes('rain') || w.includes('storm') || w.includes('thunder')) {
+        issues.push('☔ Rain fade affects Ka-band (20+ GHz)');
+        quality = 'degraded';
+      }
+      
+      if (w.includes('snow') || w.includes('sleet')) {
+        issues.push('❄️ Snow/ice affects Ku/Ka-band');
+        quality = 'degraded';
+      }
+      
+      if (w.includes('fog') || w.includes('mist')) {
+        issues.push('🌫️ Fog can affect Ka-band');
+        if (quality === 'excellent') quality = 'fair';
+      }
+      
+      if (w.includes('cloud') && w.includes('overcast')) {
+        issues.push('☁️ Heavy clouds may attenuate Ka-band');
+        if (quality === 'excellent') quality = 'good';
+      }
+    }
+
+    // Space weather impacts
+    if (spaceWeatherStatus === 'red' || spaceWeatherStatus === 'orange') {
+      issues.push('⚠️ Solar activity may affect satellite links');
+      if (quality === 'excellent') quality = 'good';
+    }
+
+    return { quality, issues };
+  }
+
   function createPanel() {
     if (document.getElementById('propagation-panel')) return;
 
@@ -124,27 +186,48 @@ window.RussellTV.PropagationPanel = (function() {
       position: fixed;
       top: 80px;
       right: 20px;
-      width: 380px;
+      width: 400px;
       max-height: 80vh;
       overflow-y: auto;
       background: rgba(0, 0, 0, 0.95);
       border: 1px solid rgba(255, 255, 255, 0.3);
       border-radius: 12px;
-      padding: 1rem;
+      padding: 0;
       z-index: 9999;
       display: none;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
       color: white;
       font-size: 0.9rem;
+      cursor: default;
     `;
 
     panel.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0; font-size: 1.1rem;">📡 HF Propagation</h3>
-        <button id="close-prop-panel" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px;">&times;</button>
+      <div id="prop-panel-header" style="
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: move;
+        user-select: none;
+      ">
+        <h3 style="margin: 0; font-size: 1.1rem;">📡 HF/SATCOM Propagation</h3>
+        <button id="close-prop-panel" style="
+          background: none;
+          border: none;
+          color: white;
+          font-size: 1.5rem;
+          cursor: pointer;
+          padding: 0;
+          width: 30px;
+          height: 30px;
+          line-height: 1;
+        ">&times;</button>
       </div>
       
-      <div id="prop-content">
+      <div id="prop-content" style="padding: 1rem;">
         <div style="text-align: center; padding: 2rem; opacity: 0.7;">
           Loading conditions...
         </div>
@@ -152,6 +235,40 @@ window.RussellTV.PropagationPanel = (function() {
     `;
 
     document.body.appendChild(panel);
+
+    // Make draggable
+    const header = document.getElementById('prop-panel-header');
+    
+    header.addEventListener('mousedown', (e) => {
+      if (e.target.id === 'close-prop-panel') return;
+      isDragging = true;
+      const rect = panel.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
+      header.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const newLeft = e.clientX - dragOffset.x;
+      const newTop = e.clientY - dragOffset.y;
+      
+      // Keep within viewport
+      const maxX = window.innerWidth - panel.offsetWidth;
+      const maxY = window.innerHeight - panel.offsetHeight;
+      
+      panel.style.left = Math.max(0, Math.min(newLeft, maxX)) + 'px';
+      panel.style.top = Math.max(0, Math.min(newTop, maxY)) + 'px';
+      panel.style.right = 'auto';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        header.style.cursor = 'move';
+      }
+    });
 
     // Close button
     document.getElementById('close-prop-panel').addEventListener('click', hide);
@@ -174,10 +291,14 @@ window.RussellTV.PropagationPanel = (function() {
     const content = document.getElementById('prop-content');
     if (!content) return;
 
-    // Get current time and location
+    // Get current location
+    const locationName = getCurrentLocation();
+    const weather = locationName ? getLocationWeather(locationName) : null;
+
+    // Get current time for location (use UTC as fallback)
     const now = new Date();
     const hour = now.getUTCHours();
-    const isDay = hour >= 6 && hour < 18; // Rough day/night
+    const isDay = hour >= 6 && hour < 18;
 
     // Calculate MUF
     const muf = calculateMUF(solarData.solarFlux, isDay);
@@ -194,11 +315,22 @@ window.RussellTV.PropagationPanel = (function() {
       rScale: swData?.scales.R || 0
     };
 
-    // Get best bands
+    // Get best HF bands
     const bestBands = getBestBands(muf, conditions);
+
+    // Assess SATCOM
+    const satcomStatus = swData?.status.satcom || 'green';
+    const satcom = assessSATCOM(weather, satcomStatus);
 
     // Build HTML
     let html = `
+      ${locationName ? `
+      <div style="background: rgba(255, 150, 0, 0.1); border-left: 3px solid #ff9900; padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px;">
+        <div style="font-weight: bold; margin-bottom: 0.25rem;">📍 ${locationName}</div>
+        ${weather ? `<div style="font-size: 0.85rem; opacity: 0.9;">Weather: ${weather.main} (${weather.desc})</div>` : ''}
+      </div>
+      ` : ''}
+
       <div style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.85rem;">
           <div>
@@ -221,24 +353,28 @@ window.RussellTV.PropagationPanel = (function() {
       </div>
 
       <div style="margin-bottom: 1rem;">
-        <div style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.95rem;">Current Conditions:</div>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; font-size: 0.8rem;">
-          <span style="background: ${isDay ? 'rgba(255,200,0,0.2)' : 'rgba(0,100,255,0.2)'}; padding: 0.25rem 0.5rem; border-radius: 4px;">
-            ${isDay ? '☀️ Daytime' : '🌙 Nighttime'}
-          </span>
-          <span style="background: rgba(255,255,255,0.1); padding: 0.25rem 0.5rem; border-radius: 4px;">
-            ${solarData.solarFlux > 150 ? '📈 High' : solarData.solarFlux > 100 ? '📊 Moderate' : '📉 Low'} Activity
-          </span>
-          ${conditions.rScale > 0 ? `
-            <span style="background: rgba(255,0,0,0.3); padding: 0.25rem 0.5rem; border-radius: 4px;">
-              ⚠️ R${conditions.rScale} Blackout
-            </span>
-          ` : ''}
+        <div style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.95rem;">📡 SATCOM Status (${locationName || 'Global'}):</div>
+        <div style="background: rgba(255,255,255,0.05); border-left: 3px solid ${satcom.quality === 'excellent' ? '#00ff00' : satcom.quality === 'good' ? '#ffff00' : satcom.quality === 'fair' ? '#ff9900' : '#ff0000'}; padding: 0.5rem; border-radius: 4px;">
+          <div style="font-weight: bold; text-transform: capitalize; margin-bottom: 0.25rem;">
+            ${satcom.quality === 'excellent' ? '✅' : satcom.quality === 'degraded' ? '⚠️' : '🟡'} ${satcom.quality}
+          </div>
+          ${satcom.issues.length > 0 ? `
+            <div style="font-size: 0.8rem; opacity: 0.9;">
+              ${satcom.issues.map(issue => `<div style="margin-top: 0.25rem;">${issue}</div>`).join('')}
+            </div>
+          ` : '<div style="font-size: 0.8rem; opacity: 0.9;">✅ No weather impacts detected</div>'}
+          <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+            <strong>Band Sensitivity:</strong><br>
+            C-band (4-8 GHz): Rain resistant<br>
+            Ku-band (12-18 GHz): Moderate rain fade<br>
+            Ka-band (26-40 GHz): High rain fade<br>
+            X-band (8-12 GHz): Military, rain resistant
+          </div>
         </div>
       </div>
 
       <div style="margin-bottom: 1rem;">
-        <div style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.95rem;">Best Bands Now:</div>
+        <div style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.95rem;">📻 Best HF Bands Now:</div>
         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
     `;
 
@@ -285,7 +421,8 @@ window.RussellTV.PropagationPanel = (function() {
       </div>
 
       <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2); font-size: 0.75rem; opacity: 0.6; text-align: center;">
-        Updated: ${new Date().toLocaleTimeString()}
+        Updated: ${new Date().toLocaleTimeString()}<br>
+        <span style="font-size: 0.7rem; opacity: 0.7;">💡 Drag header to move panel</span>
       </div>
     `;
 
@@ -332,7 +469,7 @@ window.RussellTV.PropagationPanel = (function() {
   // Initialize
   window.addEventListener('load', () => {
     createPanel();
-    fetchSolarData(); // Pre-fetch data
+    fetchSolarData();
   });
 
   // Public API
