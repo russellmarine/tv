@@ -145,8 +145,13 @@
             wrapper.appendChild(cellDiv);
         }
 
-        // Load default channels for new layout
-        loadDefaultChannelsForLayout(config.cells);
+        // Force a reflow to ensure DOM is updated
+        wrapper.offsetHeight;
+
+        // Load default channels for new layout with delay
+        requestAnimationFrame(() => {
+            loadDefaultChannelsForLayout(config.cells);
+        });
     }
 
     // Create a professional grid cell
@@ -404,18 +409,39 @@
         
         console.log('Loading default channels for', numCells, 'cells');
         
-        for (let i = 1; i <= numCells; i++) {
-            const defaultKey = defaults[i];
-            if (defaultKey && window.CHANNELS && window.CHANNELS[defaultKey]) {
-                console.log(`Scheduling load for cell ${i}: ${defaultKey}`);
-                setTimeout(() => {
-                    console.log(`Loading cell ${i}: ${defaultKey}`);
-                    selectChannel(i, defaultKey, window.CHANNELS[defaultKey].label);
-                }, 200 + (i * 150)); // Slightly longer initial delay, stagger loading
-            } else {
-                console.log(`No default channel for cell ${i}`);
+        // Wait for cells to be fully rendered in DOM
+        setTimeout(() => {
+            for (let i = 1; i <= numCells; i++) {
+                const defaultKey = defaults[i];
+                if (defaultKey && window.CHANNELS && window.CHANNELS[defaultKey]) {
+                    console.log(`Scheduling load for cell ${i}: ${defaultKey}`);
+                    // Give cell 1 extra time - it's often rendered last
+                    const delay = i === 1 ? 400 : (i * 200);
+                    setTimeout(() => {
+                        console.log(`Loading cell ${i}: ${defaultKey}`);
+                        
+                        // Verify cell exists before trying to load
+                        const cell = document.querySelector(`[data-cell="${i}"]`);
+                        if (cell) {
+                            selectChannel(i, defaultKey, window.CHANNELS[defaultKey].label);
+                        } else {
+                            console.warn(`Cell ${i} not found in DOM yet, retrying...`);
+                            // Retry once after a longer delay
+                            setTimeout(() => {
+                                const retryCell = document.querySelector(`[data-cell="${i}"]`);
+                                if (retryCell) {
+                                    selectChannel(i, defaultKey, window.CHANNELS[defaultKey].label);
+                                } else {
+                                    console.error(`Cell ${i} still not found after retry`);
+                                }
+                            }, 500);
+                        }
+                    }, delay);
+                } else {
+                    console.log(`No default channel for cell ${i}`);
+                }
             }
-        }
+        }, 300); // Initial delay to ensure DOM is ready
     }
 
     // Stop all grid cells
