@@ -156,14 +156,21 @@
     if (btn && !btn._hasListeners) {
       btn._hasListeners = true;
 
+      // Ensure button is above tooltips
+      btn.style.position = 'relative';
+      btn.style.zIndex = '10002';
+
       btn.onclick = function(e) {
         e.stopPropagation();
+        e.preventDefault();
+        hideTooltip(); // Hide any tooltips first
         if (window.RussellTV?.PropagationPanel) {
           window.RussellTV.PropagationPanel.toggle();
         }
       };
 
       btn.onmouseenter = function() {
+        hideTooltip(); // Hide tooltips when hovering button
         this.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
         this.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
         this.style.transform = 'translateY(-1px)';
