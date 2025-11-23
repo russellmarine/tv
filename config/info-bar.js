@@ -327,7 +327,8 @@
 
   // ---------- Render ----------
   function render() {
-    const spaceWeather = document.getElementByID('space-weather-indicators');
+    // Save space weather indicators before clearing
+    const spaceWeather = document.getElementById('space-weather-indicators');
     
     bar.innerHTML = "";
 
@@ -394,6 +395,11 @@
 
       bar.appendChild(div);
     });
+
+    // Re-add space weather indicators if they existed
+    if (spaceWeather && spaceWeather.parentNode !== bar) {
+      bar.appendChild(spaceWeather);
+    }
   }
 
   // ---------- Start ----------
