@@ -117,7 +117,7 @@
         
         rebuildGrid(config);
         
-        // Save preference
+        // Save layout preference
         try {
             localStorage.setItem('russelltv.gridLayout', layoutKey);
         } catch (e) {}
@@ -294,6 +294,9 @@
             console.warn(`Button not found in cell ${cellNum}`);
         }
 
+        // Save this selection to localStorage
+        saveGridChannelSelection(cellNum, channelKey);
+
         // Use the original playGridCell function if it exists
         console.log(`Checking for playGridCell function...`);
         if (typeof window.playGridCell === 'function') {
@@ -306,6 +309,31 @@
 
         // Update mute state
         updateAudioStates();
+    }
+
+    // Save grid channel selections
+    function saveGridChannelSelection(cellNum, channelKey) {
+        try {
+            const key = `russelltv.gridCell${cellNum}`;
+            localStorage.setItem(key, channelKey);
+        } catch (e) {
+            console.warn('Could not save grid selection', e);
+        }
+    }
+
+    // Load saved grid channel selections
+    function loadSavedGridSelections(numCells) {
+        const savedSelections = {};
+        for (let i = 1; i <= numCells; i++) {
+            try {
+                const key = `russelltv.gridCell${i}`;
+                const saved = localStorage.getItem(key);
+                if (saved) {
+                    savedSelections[i] = saved;
+                }
+            } catch (e) {}
+        }
+        return savedSelections;
     }
 
     // Fallback function to play channel if playGridCell doesn't exist
@@ -435,42 +463,46 @@
     // Load default channels for layout
     function loadDefaultChannelsForLayout(numCells) {
         const defaults = window.GRID_DEFAULTS || {};
+        const savedSelections = loadSavedGridSelections(numCells);
         
-        console.log('Loading default channels for', numCells, 'cells');
+        console.log('Loading channels for', numCells, 'cells');
+        console.log('Saved selections:', savedSelections);
         
         // Wait for cells to be fully rendered in DOM
         setTimeout(() => {
             for (let i = 1; i <= numCells; i++) {
-                const defaultKey = defaults[i];
-                if (defaultKey && window.CHANNELS && window.CHANNELS[defaultKey]) {
-                    console.log(`Scheduling load for cell ${i}: ${defaultKey}`);
-                    // Give cell 1 extra time - it's often rendered last
-                    const delay = i === 1 ? 400 : (i * 200);
+                // Use saved selection if available, otherwise use default
+                const channelKey = savedSelections[i] || defaults[i];
+                
+                if (channelKey && window.CHANNELS && window.CHANNELS[channelKey]) {
+                    console.log(`Scheduling load for cell ${i}: ${channelKey}`);
+                    // Increase delay significantly for all cells
+                    const delay = 600 + (i * 300);
                     setTimeout(() => {
-                        console.log(`Loading cell ${i}: ${defaultKey}`);
+                        console.log(`Loading cell ${i}: ${channelKey}`);
                         
                         // Verify cell exists before trying to load
                         const cell = document.querySelector(`[data-cell="${i}"]`);
                         if (cell) {
-                            selectChannel(i, defaultKey, window.CHANNELS[defaultKey].label);
+                            selectChannel(i, channelKey, window.CHANNELS[channelKey].label);
                         } else {
                             console.warn(`Cell ${i} not found in DOM yet, retrying...`);
                             // Retry once after a longer delay
                             setTimeout(() => {
                                 const retryCell = document.querySelector(`[data-cell="${i}"]`);
                                 if (retryCell) {
-                                    selectChannel(i, defaultKey, window.CHANNELS[defaultKey].label);
+                                    selectChannel(i, channelKey, window.CHANNELS[channelKey].label);
                                 } else {
                                     console.error(`Cell ${i} still not found after retry`);
                                 }
-                            }, 500);
+                            }, 800);
                         }
                     }, delay);
                 } else {
-                    console.log(`No default channel for cell ${i}`);
+                    console.log(`No channel for cell ${i}`);
                 }
             }
-        }, 300); // Initial delay to ensure DOM is ready
+        }, 500); // Initial delay to ensure DOM is ready
     }
 
     // Stop all grid cells
