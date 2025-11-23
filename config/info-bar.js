@@ -63,6 +63,56 @@
       background: rgba(220,20,60,0.30);
       border-color: rgba(220,20,60,0.9);
     }
+
+    /* ---------- Colored tooltips tied to the pill's temp color ---------- */
+    .info-block.has-tooltip {
+      position: relative;
+    }
+
+    .info-block.has-tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 50%;
+      bottom: 120%;
+      transform: translateX(-50%);
+      padding: 4px 8px;
+      font-size: 0.70rem;
+      white-space: pre-line;          /* honor newlines in tooltip text */
+      max-width: 280px;
+      border-radius: 4px;
+      background: inherit;            /* same bg color as the pill (temp band) */
+      color: #fff;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: 0 0 8px rgba(0,0,0,0.6);
+      z-index: 10000;
+      transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+    }
+
+    .info-block.has-tooltip::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 112%;
+      transform: translateX(-50%);
+      border-width: 5px;
+      border-style: solid;
+      /* arrow uses the same border color (temp band) as the pill */
+      border-color: inherit transparent transparent transparent;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transition: opacity 0.12s ease-out;
+    }
+
+    .info-block.has-tooltip:hover::after,
+    .info-block.has-tooltip:hover::before {
+      opacity: 1;
+    }
+
+    .info-block.has-tooltip:hover::after {
+      transform: translateX(-50%) translateY(-2px);
+    }
   `;
   document.head.appendChild(style);
 
@@ -168,15 +218,15 @@
         minute: "2-digit"
       });
 
-      let cls = "info-block temp-neutral";
+      let cls = "info-block temp-neutral has-tooltip";
       let content = `<strong>${loc.label}</strong> ${time}`;
-      let tooltip = `${loc.label} — ${time}`;
+      let tooltip = `${loc.label}\n${time}`;
 
       const isZulu = /zulu/i.test(loc.label);
       const w = weatherMap[loc.label];
 
       if (!isZulu && w) {
-        cls = "info-block " + tempClass(w.temp);
+        cls = "info-block " + tempClass(w.temp) + " has-tooltip";
         content += ` • ${w.icon} ${w.hi}°/${w.lo}°`;
         let tip = `${loc.label}\n`;
         tip += `Time: ${time}\n`;
@@ -193,7 +243,9 @@
       const div = document.createElement("div");
       div.className = cls;
       div.innerHTML = content;
-      div.title = tooltip;
+
+      // Custom tooltip instead of native title
+      div.setAttribute("data-tooltip", tooltip);
 
       bar.appendChild(div);
     });
