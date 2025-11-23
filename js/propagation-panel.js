@@ -394,7 +394,7 @@ window.RussellTV.PropagationPanel = (function() {
     // Build HTML
     let html = `
       ${locationName ? `
-      <div style="background: rgba(255, 150, 0, 0.1); border-left: 3px solid #ff9900; padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px;">
+      <div style="background: rgba(100, 150, 255, 0.15); border-left: 3px solid rgba(100, 150, 255, 0.6); padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px;">
         <div style="font-weight: bold; margin-bottom: 0.25rem;">📍 ${locationName}</div>
         ${weather ? `<div style="font-size: 0.85rem; opacity: 0.9;">Weather: ${weather.main} (${weather.desc})</div>` : ''}
       </div>
