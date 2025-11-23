@@ -227,47 +227,56 @@
     render();
   }
 
-  // ---------- Render ----------
-  function render() {
-    bar.innerHTML = "";
+function render() {
+  bar.innerHTML = "";
 
-    window.TIME_ZONES.forEach(loc => {
-      const time = new Date().toLocaleString("en-US", {
-        timeZone: loc.tz,
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-
-      const isZulu = /zulu/i.test(loc.label);
-      const w = weatherMap[loc.label];
-
-      let cls = "info-block temp-neutral has-tooltip";
-      let content = `<strong>${loc.label}</strong> ${time}`;
-      let tooltip = `${loc.label}\nTime: ${time}`;
-
-      if (!isZulu && w) {
-        cls = "info-block " + tempClass(w.temp) + " has-tooltip";
-        content += ` • ${w.icon} ${w.hi}°/${w.lo}°`;
-
-        tooltip =
-          `${loc.label}\n` +
-          `Time: ${time}\n` +
-          `Conditions: ${w.main} (${w.desc})\n` +
-          `Current: ${w.temp}°F\n` +
-          `High/Low: ${w.hi}°F / ${w.lo}°F` +
-          (w.humidity != null ? `\nHumidity: ${w.humidity}%` : "") +
-          (w.wind != null ? `\nWind: ${w.wind} mph` : "");
-      }
-
-      const div = document.createElement("div");
-      div.className = cls;
-      div.innerHTML = content;
-      div.setAttribute("data-tooltip", tooltip);
-
-      bar.appendChild(div);
+  window.TIME_ZONES.forEach(loc => {
+    const time = new Date().toLocaleString("en-US", {
+      timeZone: loc.tz,
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit"
     });
-  }
+
+    const isZulu = /zulu/i.test(loc.label);
+    const w = weatherMap[loc.label];
+
+    // Base classname (no tooltip by default)
+    let cls = "info-block temp-neutral";
+    let content = `<strong>${loc.label}</strong> ${time}`;
+    let tooltip = null;
+
+    if (!isZulu && w) {
+      // Add temp class + tooltip
+      cls = "info-block " + tempClass(w.temp) + " has-tooltip";
+      content += ` • ${w.icon} ${w.hi}°/${w.lo}°`;
+
+      tooltip =
+        `${loc.label}\n` +
+        `Time: ${time}\n` +
+        `Conditions: ${w.main} (${w.desc})\n` +
+        `Current: ${w.temp}°F\n` +
+        `High/Low: ${w.hi}°F / ${w.lo}°F` +
+        (w.humidity != null ? `\nHumidity: ${w.humidity}%` : "") +
+        (w.wind != null ? `\nWind: ${w.wind} mph` : "");
+    }
+
+    // Zulu gets *no tooltip* and no temp class
+    if (isZulu) {
+      cls = "info-block temp-neutral";
+    }
+
+    const div = document.createElement("div");
+    div.className = cls;
+    div.innerHTML = content;
+
+    if (tooltip) {
+      div.setAttribute("data-tooltip", tooltip);
+    }
+
+    bar.appendChild(div);
+  });
+}
 
   // ---------- Start ----------
   render();
