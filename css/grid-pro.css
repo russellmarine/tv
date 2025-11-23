@@ -1,0 +1,314 @@
+/* Professional Grid System Styles */
+
+/* Grid layout selector */
+.grid-layout-selector {
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.26);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    outline: none;
+}
+
+.grid-layout-selector:hover {
+    background: linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25));
+    box-shadow: 0 0 8px rgba(255,120,0,0.6), 0 0 12px rgba(255,80,0,0.4);
+    border-color: rgba(255,180,0,0.6);
+}
+
+.grid-layout-selector:focus {
+    border-color: rgba(255,180,0,0.9);
+    box-shadow: 0 0 10px rgba(255,120,0,0.8);
+}
+
+/* Professional grid wrapper */
+#grid-view .grid-wrapper {
+    display: grid;
+    gap: 1rem;
+    height: calc(100vh - 180px);
+    padding: 0;
+    transition: all 0.3s ease;
+}
+
+/* Individual grid cell */
+.grid-cell-pro {
+    display: flex;
+    flex-direction: column;
+    background: rgba(0,0,0,0.7);
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+    transition: all 0.3s ease, border-color 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.grid-cell-pro:hover {
+    border-color: rgba(255,120,0,0.3);
+    box-shadow: 0 6px 20px rgba(255,80,0,0.2);
+}
+
+/* Audio active cell highlight */
+.grid-cell-pro.audio-active {
+    border-color: rgba(255,120,0,0.6);
+    box-shadow: 0 0 20px rgba(255,120,0,0.4), 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Focus mode styles */
+.grid-wrapper.focus-mode {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 3fr repeat(auto-fill, 1fr) !important;
+}
+
+.grid-cell-pro.focused {
+    grid-column: 1 / -1;
+    border-color: rgba(255,150,0,0.8);
+    box-shadow: 0 0 30px rgba(255,120,0,0.6), 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.grid-cell-pro.unfocused {
+    opacity: 0.8;
+    max-height: 120px;
+}
+
+.grid-cell-pro.unfocused .grid-cell-body {
+    min-height: 80px;
+}
+
+/* Cell header */
+.grid-cell-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0,0,0,0.6);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Audio button */
+.grid-audio-btn {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.grid-audio-btn:hover {
+    background: rgba(255,120,0,0.3);
+    border-color: rgba(255,180,0,0.6);
+    box-shadow: 0 0 8px rgba(255,120,0,0.5);
+    transform: scale(1.05);
+}
+
+.audio-active .grid-audio-btn {
+    background: linear-gradient(135deg, rgba(255,80,0,0.4), rgba(255,150,0,0.4));
+    border-color: rgba(255,180,0,0.8);
+    box-shadow: 0 0 12px rgba(255,120,0,0.7);
+}
+
+/* Focus button */
+.grid-focus-btn {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+    color: #fff;
+}
+
+.grid-focus-btn:hover {
+    background: rgba(255,120,0,0.3);
+    border-color: rgba(255,180,0,0.6);
+    box-shadow: 0 0 8px rgba(255,120,0,0.5);
+    transform: scale(1.05);
+}
+
+/* Custom channel selector */
+.channel-selector-pro {
+    position: relative;
+    flex: 1;
+}
+
+.channel-selector-btn {
+    width: 100%;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.26);
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.channel-selector-btn:hover {
+    background: linear-gradient(90deg, rgba(255,80,0,0.2), rgba(255,150,0,0.2));
+    border-color: rgba(255,180,0,0.5);
+    box-shadow: 0 0 8px rgba(255,120,0,0.4);
+}
+
+/* Channel dropdown */
+.channel-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: rgba(10,10,10,0.98);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 20px rgba(255,80,0,0.2);
+}
+
+.channel-dropdown.show {
+    display: block;
+    animation: dropdownSlide 0.2s ease;
+}
+
+@keyframes dropdownSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Channel options */
+.channel-option {
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.9rem;
+}
+
+.channel-option:last-child {
+    border-bottom: none;
+}
+
+.channel-option:hover {
+    background: linear-gradient(90deg, rgba(255,80,0,0.3), rgba(255,150,0,0.3));
+    box-shadow: inset 0 0 12px rgba(255,120,0,0.4);
+    padding-left: 1.2rem;
+}
+
+/* Scrollbar styling for dropdown */
+.channel-dropdown::-webkit-scrollbar {
+    width: 8px;
+}
+
+.channel-dropdown::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+}
+
+.channel-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255,120,0,0.5);
+    border-radius: 4px;
+}
+
+.channel-dropdown::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,150,0,0.7);
+}
+
+/* Cell body */
+.grid-cell-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.4);
+    padding: 0.5rem;
+    min-height: 200px;
+}
+
+.grid-cell-frame {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.grid-cell-frame video,
+.grid-cell-frame iframe,
+.grid-cell-frame .yt-container {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    #grid-view .grid-wrapper {
+        height: auto;
+        min-height: calc(100vh - 200px);
+    }
+    
+    .grid-cell-pro {
+        min-height: 200px;
+    }
+    
+    .grid-cell-body {
+        min-height: 150px;
+    }
+    
+    .grid-layout-selector {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+    }
+    
+    .channel-selector-btn {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.6rem;
+    }
+    
+    .grid-audio-btn,
+    .grid-focus-btn {
+        font-size: 0.85rem;
+        padding: 0.25rem 0.4rem;
+    }
+    
+    /* Simplify focus mode on mobile */
+    .grid-wrapper.focus-mode .grid-cell-pro.unfocused {
+        display: none;
+    }
+}
+
+/* Ultrawide monitor optimization */
+@media (min-width: 2000px) {
+    #grid-view .grid-wrapper {
+        height: calc(100vh - 150px);
+    }
+}
+
+/* Loading state */
+.grid-cell-pro.loading .grid-cell-body::after {
+    content: 'Loading...';
+    position: absolute;
+    color: rgba(255,255,255,0.5);
+    font-size: 0.9rem;
+}
