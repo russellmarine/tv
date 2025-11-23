@@ -125,17 +125,18 @@
   function createPropButton() {
     const btn = document.createElement('button');
     btn.id = 'propagation-panel-btn';
-    btn.innerHTML = '📊';
-    btn.title = 'View HF Propagation';
+    btn.innerHTML = '⚡';
+    btn.title = 'Click for detailed propagation forecast';
     btn.style.cssText = `
       background: rgba(0, 0, 0, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.26);
-      border-radius: 4px;
-      padding: 0.15rem 0.4rem;
-      font-size: 0.9rem;
+      border: 1px solid rgba(255, 120, 0, 0.4);
+      border-radius: 6px;
+      padding: 0.2rem 0.5rem;
+      font-size: 1rem;
       cursor: pointer;
       transition: all 0.25s ease;
       margin-left: 0.5rem;
+      filter: hue-rotate(20deg) saturate(1.5);
     `;
 
     return btn;
@@ -252,15 +253,19 @@
       };
 
       btn.onmouseenter = function() {
-        this.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
-        this.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
-        this.style.transform = 'translateY(-1px)';
+        this.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
+        this.style.borderColor = 'rgba(255,120,0,0.8)';
+        this.style.boxShadow = '0 0 12px rgba(255,100,0,0.8), 0 0 20px rgba(255,140,0,0.4)';
+        this.style.transform = 'translateY(-2px) scale(1.05)';
+        this.style.filter = 'hue-rotate(0deg) saturate(2) brightness(1.2)';
       };
 
       btn.onmouseleave = function() {
         this.style.background = 'rgba(0, 0, 0, 0.7)';
+        this.style.borderColor = 'rgba(255, 120, 0, 0.4)';
         this.style.boxShadow = 'none';
-        this.style.transform = 'translateY(0)';
+        this.style.transform = 'translateY(0) scale(1)';
+        this.style.filter = 'hue-rotate(20deg) saturate(1.5)';
       };
     }
   }
