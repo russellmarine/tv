@@ -46,7 +46,12 @@
             
             // Handle grid mode
             if (channelId === 'grid-mode') {
-                const gridBtn = document.getElementById('btn-grid');
+                // Try the new grid button first
+                let gridBtn = document.getElementById('btn-grid-main');
+                if (!gridBtn) {
+                    // Fall back to old grid button
+                    gridBtn = document.getElementById('btn-grid');
+                }
                 if (gridBtn) {
                     gridBtn.click();
                     console.log('Switched to Grid mode via keyboard');
