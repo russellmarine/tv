@@ -106,46 +106,47 @@
       transition: opacity 0.12s ease-out;
     }
 
-    /* ======== TEMP-COLORED TOOLTIP BACKGROUNDS ======== */
+    /* ======== TEMP-COLORED TOOLTIP BACKGROUNDS (SOLID) ======== */
     .temp-freezing.has-tooltip::after {
-      background: rgba(135,206,250,0.80);
-      border-color: rgba(135,206,250,0.9);
+      background: rgba(135,206,250,1.0);
+      border-color: rgba(135,206,250,1.0);
     }
     .temp-freezing.has-tooltip::before {
-      border-color: rgba(135,206,250,0.9) transparent transparent transparent;
+      border-color: rgba(135,206,250,1.0) transparent transparent transparent;
     }
 
     .temp-cold.has-tooltip::after {
-      background: rgba(100,149,237,0.80);
-      border-color: rgba(100,149,237,0.9);
+      background: rgba(100,149,237,1.0);
+      border-color: rgba(100,149,237,1.0);
     }
     .temp-cold.has-tooltip::before {
-      border-color: rgba(100,149,237,0.9) transparent transparent transparent;
+      border-color: rgba(100,149,237,1.0) transparent transparent transparent;
     }
 
     .temp-mild.has-tooltip::after {
-      background: rgba(144,238,144,0.80);
-      border-color: rgba(144,238,144,0.9);
+      background: rgba(144,238,144,1.0);
+      border-color: rgba(144,238,144,1.0);
     }
     .temp-mild.has-tooltip::before {
-      border-color: rgba(144,238,144,0.9) transparent transparent transparent;
+      border-color: rgba(144,238,144,1.0) transparent transparent transparent;
     }
 
     .temp-warm.has-tooltip::after {
-      background: rgba(255,165,0,0.80);
-      border-color: rgba(255,165,0,0.9);
+      background: rgba(255,165,0,1.0);
+      border-color: rgba(255,165,0,1.0);
     }
     .temp-warm.has-tooltip::before {
-      border-color: rgba(255,165,0,0.9) transparent transparent transparent;
+      border-color: rgba(255,165,0,1.0) transparent transparent transparent;
     }
 
     .temp-hot.has-tooltip::after {
-      background: rgba(220,20,60,0.80);
-      border-color: rgba(220,20,60,0.9);
+      background: rgba(220,20,60,1.0);
+      border-color: rgba(220,20,60,1.0);
     }
     .temp-hot.has-tooltip::before {
-      border-color: rgba(220,20,60,0.9) transparent transparent transparent;
+      border-color: rgba(220,20,60,1.0) transparent transparent transparent;
     }
+
 
     /* Hover to show */
     .info-block.has-tooltip:hover::after,
