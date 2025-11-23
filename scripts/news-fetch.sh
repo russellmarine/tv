@@ -1,9 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-
 OUT_DIR="/var/www/russelltv/news-cache"
 RSS_PY="/usr/local/bin/rss-to-json.py"
-
 mkdir -p "$OUT_DIR"
 
 run() {
@@ -11,7 +9,6 @@ run() {
   local url="$2"
   local source="$3"
   local limit="${4:-10}"
-
   echo "[rss-fetch] ${name} <- ${url}"
   if ! "$RSS_PY" "$url" "$source" "$limit" >"${OUT_DIR}/${name}.json".tmp 2>/dev/null; then
     echo "[rss-fetch] ERROR fetching ${name} from ${url}" >&2
@@ -27,8 +24,8 @@ echo "[rss-fetch] Starting RSS fetch run..."
 # CBS New York
 run "cbs-ny"  "https://www.cbsnews.com/latest/rss/main"             "CBS News"           10
 
-# NBC U.S. news (more US-focused than generic top stories)
-run "nbc-ny"  "https://news.google.com/rss/search?q=site:nbcnews.com&hl=en-US&gl=US&ceid=US:en"    "NBC News (US)"      10
+# NBC via Google News (UPDATED - FRESH!)
+run "nbc-ny"  "https://news.google.com/rss/search?q=site:nbcnews.com&hl=en-US&gl=US&ceid=US:en"  "NBC News"  10
 
 # Fox US (for local-ish 5.1)
 run "fox-ny"  "https://moxie.foxnews.com/google-publisher/us.xml"   "Fox News (US)"      10
@@ -42,7 +39,7 @@ run "bloomberg" "https://news.google.com/rss/search?q=Bloomberg+market+news+fina
 
 run "skynews"   "https://feeds.skynews.com/feeds/rss/home.xml"      "Sky News"           10
 
-# France 24 (Europe feed you tested)
+# France 24 (Europe feed)
 run "france24"  "https://www.france24.com/en/europe/rss"            "France 24 English"  10
 
 # DW: Atom feed
