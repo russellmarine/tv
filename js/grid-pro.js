@@ -1,5 +1,148 @@
-// Professional Grid System for RussellTV
-// Includes: Smart layouts, focus mode, solo audio, professional UI
+// ========================================
+// GRID-PRO DROPDOWN COMPATIBILITY PATCH v3
+// This hooks grid-pro's custom dropdowns to the modular GridPlayer
+// Waits for dropdowns to actually be opened before attaching listeners
+// ========================================
+
+(function() {
+  'use strict';
+  
+  console.log('🔧 Grid-Pro Compatibility Patch v3 Loading...');
+  
+  let listenersAttached = false;
+  
+  // Wait for DOM and modules to be ready
+  function initCompatibility() {
+    // Make sure the modular GridPlayer is available
+    if (!window.RussellTV || !window.RussellTV.GridPlayer) {
+      console.log('⏳ Waiting for GridPlayer module...');
+      setTimeout(initCompatibility, 100);
+      return;
+    }
+    
+    console.log('✅ GridPlayer module found');
+    
+    // Create the global playGridCell wrapper if needed
+    if (!window.playGridCell) {
+      window.playGridCell = function(cell, channelKey) {
+        console.log('📺 playGridCell called:', cell, channelKey);
+        if (window.RussellTV && window.RussellTV.GridPlayer) {
+          window.RussellTV.GridPlayer.playCell(cell, channelKey);
+        } else {
+          console.error('❌ GridPlayer not available');
+        }
+      };
+      console.log('✅ playGridCell wrapper created');
+    }
+    
+    // Patch UIControls.buildGrid to do nothing (grid-pro builds the grid)
+    if (window.RussellTV && window.RussellTV.UIControls) {
+      window.RussellTV.UIControls.buildGrid = function() {
+        console.log('✅ Grid building delegated to grid-pro.js');
+        // Don't build - grid-pro handles this
+      };
+      console.log('✅ UIControls.buildGrid patched');
+    }
+    
+    // Set up mutation observer to watch for dropdown options appearing
+    startDropdownWatcher();
+  }
+  
+  function startDropdownWatcher() {
+    console.log('👀 Starting dropdown watcher...');
+    
+    // Watch for .channel-option elements being added to the DOM
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.addedNodes.length > 0) {
+          // Check if channel options were added
+          const hasChannelOptions = Array.from(mutation.addedNodes).some(node => {
+            return (node.classList && node.classList.contains('channel-option')) ||
+                   (node.querySelector && node.querySelector('.channel-option'));
+          });
+          
+          if (hasChannelOptions) {
+            console.log('🎯 Dropdown appeared! Attaching listeners...');
+            setTimeout(attachDropdownListeners, 50);
+          }
+        }
+      });
+    });
+    
+    // Start observing the entire document for changes
+    observer.observe(document.body, { 
+      childList: true, 
+      subtree: true 
+    });
+    
+    console.log('✅ Dropdown watcher started');
+  }
+  
+  function attachDropdownListeners() {
+    const channelOptions = document.querySelectorAll('.channel-option');
+    
+    if (channelOptions.length === 0) {
+      console.log('⚠️ No channel options found');
+      return;
+    }
+    
+    console.log(`🎯 Found ${channelOptions.length} channel options`);
+    
+    channelOptions.forEach(option => {
+      // Check if already has our listener
+      if (option.dataset.modularListenerAttached === 'true') {
+        return;
+      }
+      
+      // Mark as having listener
+      option.dataset.modularListenerAttached = 'true';
+      
+      // Add click listener
+      option.addEventListener('click', function(e) {
+        const channelKey = this.getAttribute('data-channel');
+        
+        // Find which cell this belongs to
+        const cellElement = this.closest('[data-cell]');
+        const cellNum = cellElement ? parseInt(cellElement.getAttribute('data-cell'), 10) : null;
+        
+        if (cellNum && channelKey) {
+          console.log(`🎬 Dropdown clicked: Cell ${cellNum} → ${channelKey}`);
+          
+          // Call the modular player
+          if (window.RussellTV && window.RussellTV.GridPlayer) {
+            window.RussellTV.GridPlayer.playCell(cellNum, channelKey);
+            
+            // Update the button label
+            const btn = cellElement.querySelector('.channel-selector-btn');
+            if (btn && window.CHANNELS && window.CHANNELS[channelKey]) {
+              btn.textContent = window.CHANNELS[channelKey].label;
+            }
+            
+            console.log('✅ Channel changed via modular player');
+          } else {
+            console.error('❌ GridPlayer not available');
+          }
+        }
+      }, true); // Use capture phase
+    });
+    
+    console.log('✅ Listeners attached to', channelOptions.length, 'options');
+  }
+  
+  // Start initialization
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCompatibility);
+  } else {
+    initCompatibility();
+  }
+  
+  console.log('✅ Grid-Pro Compatibility Patch v3 loaded');
+})();
+
+// ========================================
+// END COMPATIBILITY PATCH
+// Your original grid-pro.js code continues below...
+// ========================================
 
 (function() {
     'use strict';
@@ -89,7 +232,9 @@
 
         // Main button enters grid mode
         mainBtn.onclick = () => {
-            if (window.enterGridMode) {
+            if (window.RussellTV && window.RussellTV.ViewManager) {
+                window.RussellTV.ViewManager.showGrid();
+            } else if (window.enterGridMode) {
                 window.enterGridMode();
             }
         };

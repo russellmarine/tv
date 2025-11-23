@@ -1,200 +1,214 @@
-# 📺 **RussellTV**
-*A lightweight, self-hosted livestream & news dashboard powered by HLS, YouTube Live, and automated RSS aggregation.*
+# Russell TV - Modular Architecture
 
-<img width="1688" height="1264" alt="image" src="https://github.com/user-attachments/assets/d69c0e48-dfca-4ffd-a966-1faf358c15cd" />
+## Overview
+Russell TV has been refactored into a modular, component-based architecture. Each module handles a specific responsibility and can be modified independently without affecting other parts of the system.
 
-
----
-
-## ⭐ Features
-
-### 🎥 **Multi-Source Livestream Viewer**
-- Supports **HLS (.m3u8)** streams (CBS, NBC, FOX OTA rebroadcasts)
-- Supports **YouTube Live** streams (Bloomberg, Sky News, TRT World, etc.)
-- Automatic quality handling via **HLS.js** and YouTube IFrame API
-
-### 📰 **Integrated Headline Feeds**
-- Per-channel top headlines
-- Marine Corps top stories sidebar
-- Fire-style hover highlights
-- Cached locally for fast loading
-
-### 🖥️ **Two Viewing Modes**
-- **Single View:** Large player + headlines
-- **Grid Mode:** Watch four channels simultaneously
-
-### 📱 **Mobile-Friendly**
-- Auto-scroll ticker bar  
-- Mobile-optimized controls  
-- Smooth channel switching
-
-### ⚡ **Fully Local System**
-- No cloud dependencies  
-- All RSS → JSON processed locally  
-- Easy to extend with new channels  
-
----
-
-## 📂 Project Structure
+## File Structure
 
 ```
-tv/
-│
-├── index.html                 # Main application UI
-├── background.png             # Wallpaper
-├── favicon.png                # Browser icon
-│
-├── config/
-│   ├── channels.js            # Stream definitions (HLS, YouTube)
-│   ├── news-config.js         # Headline → JSON mapping
-│   ├── time-config.js         # Footer time zones
-│   ├── weather-config.js      # Weather API config
-│   └── info-bar.js            # Time + weather + ticker logic
-│
+/
+├── index.html                      # Minimal HTML structure
+├── css/
+│   ├── russelltv-styles.css       # All visual styling
+│   └── grid-pro.css               # Grid enhancement styles
 ├── js/
-│   ├── news.js                # Sidebar headline loader
-│   └── (future: player.js)    # Stream player logic (optional split)
-│
-├── scripts/
-│   ├── news-fetch.sh          # Cron-safe RSS fetcher
-│   └── rss-to-json.py         # Converts RSS → JSON
-│
-├── news-cache/                # Local headline cache (ignored by Git)
-│
-└── docs/
-    ├── ADDING_CHANNELS.md     # How to add new channels
-    └── assets/
-        └── russelltv-screenshot.png
+│   ├── app.js                     # Application bootstrap
+│   ├── storage.js                 # LocalStorage management
+│   ├── player-single.js           # Single-view player
+│   ├── player-grid.js             # Grid-view player
+│   ├── ui-controls.js             # Buttons and UI elements
+│   ├── view-manager.js            # View switching logic
+│   ├── mobile-ui.js               # Mobile-specific features
+│   ├── news.js                    # News headlines
+│   ├── grid-state.js              # Grid cell state persistence
+│   ├── keyboard-controls.js       # Keyboard shortcuts
+│   └── grid-pro.js                # Advanced grid features
+└── config/
+    ├── channels.js                # Channel definitions
+    ├── news-config.js             # News feed configuration
+    ├── time-config.js             # Time display config
+    ├── weather-config.js          # Weather config
+    └── info-bar.js                # Info bar setup
 ```
 
----
+## Core Modules
 
-## 🚀 Installation
+### 1. storage.js
+**Purpose:** LocalStorage operations
+**API:**
+- `RussellTV.Storage.saveLastChannel(key)`
+- `RussellTV.Storage.loadLastChannel()`
+- `RussellTV.Storage.saveLastView(view)`
+- `RussellTV.Storage.loadLastView()`
 
-### **Clone the repo locally**
+**Dependencies:** None
+**Used by:** view-manager.js, player-single.js
 
+### 2. player-single.js
+**Purpose:** Single-channel video playback
+**API:**
+- `RussellTV.SinglePlayer.play(channelKey)`
+- `RussellTV.SinglePlayer.stop()`
+- `RussellTV.SinglePlayer.getCurrentChannel()`
+
+**Dependencies:** storage.js, HLS.js, channels.js
+**Used by:** view-manager.js
+
+### 3. player-grid.js
+**Purpose:** Multi-cell grid video playback
+**API:**
+- `RussellTV.GridPlayer.playCell(cell, channelKey)`
+- `RussellTV.GridPlayer.stopAll()`
+- `RussellTV.GridPlayer.stopCell(cell)`
+- `RussellTV.GridPlayer.loadDefaults()`
+
+**Dependencies:** HLS.js, channels.js
+**Used by:** view-manager.js, ui-controls.js, grid-state.js
+
+### 4. ui-controls.js
+**Purpose:** UI component creation and management
+**API:**
+- `RussellTV.UIControls.buildChannelButtons()`
+- `RussellTV.UIControls.buildGrid()`
+- `RussellTV.UIControls.highlightButton(key)`
+- `RussellTV.UIControls.clearButtonHighlights()`
+
+**Dependencies:** channels.js, view-manager.js
+**Used by:** app.js
+
+### 5. view-manager.js
+**Purpose:** View state and switching logic
+**API:**
+- `RussellTV.ViewManager.showSingle(channelKey)`
+- `RussellTV.ViewManager.showGrid()`
+- `RussellTV.ViewManager.getCurrentView()`
+- `RussellTV.ViewManager.initButtons()`
+
+**Dependencies:** storage.js, player-single.js, player-grid.js, ui-controls.js
+**Used by:** app.js, ui-controls.js, mobile-ui.js
+
+### 6. mobile-ui.js
+**Purpose:** Mobile-specific UI features
+**API:**
+- `RussellTV.MobileUI.initChannelDropdown()`
+- `RussellTV.MobileUI.initTicker()`
+
+**Dependencies:** view-manager.js, channels.js
+**Used by:** app.js
+
+### 7. app.js
+**Purpose:** Application initialization and bootstrap
+**No public API** - self-executing initialization
+
+**Dependencies:** All core modules
+**Used by:** None (entry point)
+
+## Module Loading Order
+
+The modules must be loaded in this order (already configured in index.html):
+
+1. **External Dependencies**
+   - HLS.js
+
+2. **Configuration**
+   - channels.js
+   - time-config.js
+   - weather-config.js
+   - news-config.js
+
+3. **Core Modules** (order matters)
+   - storage.js
+   - player-single.js
+   - player-grid.js
+   - ui-controls.js
+   - view-manager.js
+   - mobile-ui.js
+
+4. **Features** (order doesn't matter)
+   - news.js
+   - grid-state.js
+   - keyboard-controls.js
+   - grid-pro.js
+   - info-bar.js
+
+5. **Bootstrap**
+   - app.js
+
+## Adding New Features
+
+To add a new feature:
+
+1. Create a new JS file in `/js/`
+2. Use the module pattern:
+```javascript
+window.RussellTV = window.RussellTV || {};
+
+window.RussellTV.MyFeature = (function() {
+  'use strict';
+  
+  // Private variables and functions
+  
+  // Public API
+  return {
+    publicMethod1: function() {},
+    publicMethod2: function() {}
+  };
+})();
 ```
-git clone https://github.com/russellmarine/tv
-cd tv
+
+3. Add the script tag to index.html in the "Features" section
+4. Access other modules via `window.RussellTV.ModuleName.method()`
+
+## Benefits of This Architecture
+
+### ✅ **Separation of Concerns**
+Each module has a single, clear responsibility
+
+### ✅ **Independent Development**
+Modify one module without touching others
+
+### ✅ **Easy Testing**
+Test each module in isolation
+
+### ✅ **Maintainability**
+Find and fix bugs quickly in the relevant module
+
+### ✅ **Scalability**
+Add new features without bloating existing code
+
+### ✅ **Reusability**
+Modules can be reused in other projects
+
+### ✅ **Clean HTML**
+index.html is now just 85 lines (vs 750+ before)
+
+## Migration from Old Version
+
+If you're using the old monolithic `index.html`:
+
+1. Replace index.html with `index-refactored.html`
+2. Move `/css/russelltv-styles.css` to your css directory
+3. Move all the new JS modules to your `/js/` directory
+4. Keep your existing config files - they still work
+
+Your existing external files (news.js, grid-state.js, keyboard-controls.js, etc.) remain unchanged and will work with the new architecture.
+
+## Debugging
+
+To debug a specific module, add this to your browser console:
+```javascript
+// Check if module loaded
+console.log(window.RussellTV.Storage);
+console.log(window.RussellTV.SinglePlayer);
+
+// Check current state
+console.log(window.RussellTV.ViewManager.getCurrentView());
+console.log(window.RussellTV.SinglePlayer.getCurrentChannel());
 ```
 
-### **Deploy to your web server**
-RussellTV is a static web app:
+## Performance Notes
 
-- Works on Apache
-- Works on Nginx
-- Works on Caddy
-- Works on any simple file server
-
-Just copy the repo into your document root:
-
-```
-/var/www/russelltv
-```
-
-Make sure your web server serves this directory publicly.
-
----
-
-## 📰 Automated RSS Fetching
-
-The news system uses two scripts:
-
-### **1. `scripts/news-fetch.sh`**
-- Downloads each RSS feed  
-- Converts it to JSON via `rss-to-json.py`  
-- Writes into `/news-cache/`  
-
-### **2. `scripts/rss-to-json.py`**
-- Parses RSS / XML / Atom  
-- Normalizes into a consistent JSON structure  
-- Outputs clean titles, URLs, timestamps, and source labels  
-
-### **Cron Example**
-
-Add this:
-
-```
-*/20 * * * * /usr/local/bin/news-fetch.sh
-```
-
-This keeps all headlines fresh every 20 minutes.
-
----
-
-## 🛠️ Adding New Channels
-
-See:
-
-```
-docs/ADDING_CHANNELS.md
-```
-
-This guide walks you through:
-
-- Adding YouTube or HLS streams  
-- Adding a button + mobile dropdown support  
-- Adding headline JSON support  
-- Adding an RSS source  
-- Testing & verification  
-
----
-
-## 🔧 Customization
-
-You can customize:
-
-- Background image  
-- Channel ordering  
-- Grid layout size (4, 6, 9 windows, etc.)  
-- Info bar colors  
-- Mobile behavior  
-- Hover color effects  
-
-If you want a fully customizable “theme system,” I can generate one.
-
----
-
-## 🧩 Roadmap (Optional Features)
-
-Here are features we can easily add if you want them:
-
-- 🔴 **Live channel icons in the menu**
-- 🌐 **EPG (program schedule) integration**
-- 🎨 **Theme switcher (Dark/Fire/Blue)**
-- 📺 **Picture-in-picture support**
-- 📡 **Automatic stream failover**
-- 🔐 **Password-protected channels**
-- 🚀 **GitHub → LXC auto-deploy pipeline**
-
-Just say the word and I’ll generate the code.
-
----
-
-## 🤝 Contributing
-
-If you want others to help, this section works as a starting point:
-
-1. Fork the repo  
-2. Create a feature branch  
-3. Commit changes  
-4. Submit a pull request  
-
-RussellTV is intentionally simple, readable, and modular — easy for anyone to extend.
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License**, meaning:
-
-- You may copy, modify, and distribute  
-- Attribution recommended but not required  
-
-I can add the `LICENSE` file if you want.
-
----
-
-## 📬 Contact
-
-For questions, improvements, or extensions, reach out through GitHub issues — or just ask ChatGPT and we’ll continue building RussellTV into the ultimate command center dashboard.
+- Each module is wrapped in an IIFE (Immediately Invoked Function Expression) to prevent global scope pollution
+- Modules only expose public methods, keeping internals private
+- No circular dependencies - clean dependency tree
+- Lazy initialization where appropriate
