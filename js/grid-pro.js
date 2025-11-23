@@ -297,18 +297,12 @@
         // Save this selection to localStorage
         saveGridChannelSelection(cellNum, channelKey);
 
-        // Use the original playGridCell function if it exists
-        console.log(`Checking for playGridCell function...`);
-        if (typeof window.playGridCell === 'function') {
-            console.log(`Using window.playGridCell for cell ${cellNum}`);
-            window.playGridCell(cellNum, channelKey);
-        } else {
-            console.log(`window.playGridCell not found, using fallback for cell ${cellNum}`);
-            playChannelInCell(cellNum, channelKey);
-        }
+        // ALWAYS use fallback - it's more reliable
+        console.log(`Playing channel in cell ${cellNum} using fallback`);
+        playChannelInCell(cellNum, channelKey);
 
         // Update mute state
-        updateAudioStates();
+        setTimeout(() => updateAudioStates(), 100);
     }
 
     // Save grid channel selections
@@ -356,13 +350,33 @@
             return;
         }
 
+        // Stop any existing playback first
+        if (window.hlsGrid && window.hlsGrid[cellNum]) {
+            try {
+                window.hlsGrid[cellNum].destroy();
+                delete window.hlsGrid[cellNum];
+            } catch (e) {
+                console.warn(`Error destroying HLS ${cellNum}:`, e);
+            }
+        }
+
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+
         if (ch.type === 'yt') {
             console.log(`Playing YouTube in cell ${cellNum}`);
             video.style.display = 'none';
             ytDiv.style.display = 'flex';
             
+            // Use the index.html's createOrReplaceYTPlayer function
             if (typeof window.createOrReplaceYTPlayer === 'function') {
                 window.createOrReplaceYTPlayer(ytDiv, `grid-${cellNum}`, ch.url);
+                
+                // Update audio state after YT player loads
+                setTimeout(() => {
+                    updateAudioStates();
+                }, 1000);
             } else {
                 console.error('createOrReplaceYTPlayer function not found');
             }
@@ -371,26 +385,36 @@
             ytDiv.style.display = 'none';
             video.style.display = 'block';
 
+            // Set mute state BEFORE starting playback
+            video.muted = (cellNum !== audioCell);
+            
             if (window.Hls && Hls.isSupported()) {
-                if (window.hlsGrid && window.hlsGrid[cellNum]) {
-                    window.hlsGrid[cellNum].destroy();
-                }
                 const hls = new Hls({ lowLatencyMode: true });
                 hls.loadSource(ch.url);
                 hls.attachMedia(video);
+                
                 if (!window.hlsGrid) window.hlsGrid = {};
                 window.hlsGrid[cellNum] = hls;
-                console.log(`HLS player created for cell ${cellNum}`);
-            } else {
+                
+                console.log(`HLS player created for cell ${cellNum}, muted: ${video.muted}`);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = ch.url;
-                console.log(`Direct video source set for cell ${cellNum}`);
+                console.log(`Native HLS playback for cell ${cellNum}`);
+            } else {
+                console.error('HLS not supported');
             }
         }
     }
 
     // Set which cell has audio
     function setAudioCell(cellNum) {
+        console.log(`Setting audio cell to ${cellNum}`);
         audioCell = cellNum;
+        
+        // Save audio cell preference
+        try {
+            localStorage.setItem('russelltv.audioCell', cellNum);
+        } catch (e) {}
         
         // Update all audio buttons and mute states
         document.querySelectorAll('.grid-cell-pro').forEach(cell => {
@@ -406,15 +430,20 @@
             }
         });
 
+        // Force update audio states
         updateAudioStates();
     }
 
     // Update mute state on all video elements
     function updateAudioStates() {
+        console.log(`Updating audio states, active cell: ${audioCell}`);
+        
         for (let i = 1; i <= 9; i++) {
             const video = document.getElementById(`grid-video-${i}`);
             if (video) {
-                video.muted = (i !== audioCell);
+                const shouldMute = (i !== audioCell);
+                video.muted = shouldMute;
+                console.log(`Cell ${i} video muted: ${shouldMute}`);
             }
 
             // Also update YouTube players if they exist
@@ -422,10 +451,14 @@
                 try {
                     if (i === audioCell) {
                         window.YT_PLAYERS[`grid-${i}`].unMute();
+                        console.log(`Cell ${i} YouTube unmuted`);
                     } else {
                         window.YT_PLAYERS[`grid-${i}`].mute();
+                        console.log(`Cell ${i} YouTube muted`);
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.warn(`Error updating YT player ${i}:`, e);
+                }
             }
         }
     }
@@ -592,19 +625,29 @@
     window.addEventListener('load', () => {
         replaceGridButton();
         
-        // Load saved layout preference
+        // Load saved preferences
         try {
             const savedLayout = localStorage.getItem('russelltv.gridLayout');
             if (savedLayout && GRID_LAYOUTS[savedLayout]) {
                 currentLayout = savedLayout;
+                console.log('Loaded saved layout:', currentLayout);
             }
-        } catch (e) {}
+            
+            const savedAudioCell = localStorage.getItem('russelltv.audioCell');
+            if (savedAudioCell) {
+                audioCell = parseInt(savedAudioCell);
+                console.log('Loaded saved audio cell:', audioCell);
+            }
+        } catch (e) {
+            console.warn('Error loading preferences:', e);
+        }
         
         // Check if we should auto-load grid on startup
         setTimeout(() => {
             const gridView = document.getElementById('grid-view');
             if (gridView && gridView.style.display !== 'none') {
                 // Grid is visible on load, initialize it
+                console.log('Grid visible on load, initializing...');
                 const config = GRID_LAYOUTS[currentLayout];
                 if (!document.querySelector('.grid-cell-pro')) {
                     rebuildGrid(config);
