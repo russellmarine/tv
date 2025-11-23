@@ -87,19 +87,22 @@
       border: 1px solid rgba(255, 120, 0, 0.3);
     `;
 
-    // Icon - use "GPS" text for GPS band, icons for others
+    // Icon - use grey lettering for all bands
     const icon = document.createElement('span');
-    if (bandKey === 'gps') {
+    icon.style.cssText = `
+      font-size: 0.7rem;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      color: rgba(180, 180, 180, 0.9);
+    `;
+    
+    // Set text based on band
+    if (bandKey === 'hf') {
+      icon.textContent = 'HF';
+    } else if (bandKey === 'gps') {
       icon.textContent = 'GPS';
-      icon.style.cssText = `
-        font-size: 0.75rem;
-        font-weight: bold;
-        letter-spacing: 0.5px;
-        color: rgba(255, 200, 100, 0.9);
-      `;
-    } else {
-      icon.textContent = band.icon;
-      icon.style.fontSize = '0.9rem';
+    } else if (bandKey === 'satcom') {
+      icon.textContent = 'SAT';
     }
 
     // Status dot
@@ -139,58 +142,79 @@
   }
 
   let currentTooltipBand = null; // Track which tooltip is showing
+  let tooltipLocked = false; // Track if tooltip is locked by click
 
   function attachListeners() {
-    // Attach to each indicator - CLICK to toggle tooltip
+    // Attach to each indicator - HOVER to preview, CLICK to lock
     ['hf', 'gps', 'satcom'].forEach(bandKey => {
       const indicator = document.getElementById(`sw-indicator-${bandKey}`);
       if (!indicator || indicator._hasListeners) return;
       
       indicator._hasListeners = true;
 
-      // Click to toggle tooltip
+      // Hover to show preview (unless locked)
+      indicator.onmouseenter = function() {
+        this.style.background = 'rgba(255, 120, 0, 0.15)';
+        this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
+        
+        // Only show tooltip on hover if not locked
+        if (!tooltipLocked) {
+          if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+          showTooltip(this, bandKey, false); // false = not locked
+          currentTooltipBand = bandKey;
+        }
+      };
+
+      indicator.onmouseleave = function() {
+        // Only reset style if not locked on this indicator
+        if (!tooltipLocked || currentTooltipBand !== bandKey) {
+          this.style.background = 'rgba(0, 0, 0, 0.5)';
+          this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+        }
+        
+        // Hide tooltip after delay if not locked
+        if (!tooltipLocked) {
+          hideTooltipTimer = setTimeout(() => {
+            const tooltip = document.getElementById('space-weather-tooltip');
+            if (tooltip && !tooltip.matches(':hover')) {
+              hideTooltip();
+            }
+          }, 400);
+        }
+      };
+
+      // Click to lock/unlock tooltip
       indicator.onclick = function(e) {
         e.stopPropagation();
         
-        if (currentTooltipBand === bandKey) {
-          // Clicking same indicator - hide tooltip
+        if (tooltipLocked && currentTooltipBand === bandKey) {
+          // Clicking same locked indicator - unlock and hide
+          tooltipLocked = false;
           hideTooltip();
           this.style.background = 'rgba(0, 0, 0, 0.5)';
           this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+          this.style.boxShadow = 'none';
           currentTooltipBand = null;
         } else {
-          // Clicking different indicator - show its tooltip
+          // Lock this indicator's tooltip
           // First reset all indicators
           ['hf', 'gps', 'satcom'].forEach(key => {
             const ind = document.getElementById(`sw-indicator-${key}`);
             if (ind) {
               ind.style.background = 'rgba(0, 0, 0, 0.5)';
               ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+              ind.style.boxShadow = 'none';
             }
           });
           
-          // Highlight this indicator
+          // Highlight and lock this indicator
           this.style.background = 'linear-gradient(135deg, rgba(255, 80, 0, 0.3), rgba(255, 150, 0, 0.2))';
           this.style.borderColor = 'rgba(255, 150, 0, 0.8)';
           this.style.boxShadow = '0 0 10px rgba(255, 120, 0, 0.4)';
           
-          showTooltip(this, bandKey);
+          tooltipLocked = true;
+          showTooltip(this, bandKey, true); // true = locked
           currentTooltipBand = bandKey;
-        }
-      };
-
-      // Hover effect (visual only, no tooltip)
-      indicator.onmouseenter = function() {
-        if (currentTooltipBand !== bandKey) {
-          this.style.background = 'rgba(255, 120, 0, 0.15)';
-          this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
-        }
-      };
-
-      indicator.onmouseleave = function() {
-        if (currentTooltipBand !== bandKey) {
-          this.style.background = 'rgba(0, 0, 0, 0.5)';
-          this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
         }
       };
     });
@@ -263,7 +287,7 @@
     });
   }
 
-  function showTooltip(indicator, bandKey) {
+  function showTooltip(indicator, bandKey, locked) {
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
     if (!data) return;
 
@@ -360,7 +384,7 @@
         Updated: ${formatTime(data.timestamp)}
       </div>
       <div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.7rem; opacity: 0.6;">
-        Click indicator again to close
+        ${locked ? '🔒 Locked - Click indicator to unlock' : '💡 Click to lock tooltip'}
       </div>
     `;
 
@@ -368,6 +392,21 @@
 
     // Clear any timers
     if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+
+    // If not locked, allow tooltip hover to keep it open
+    if (!locked) {
+      tooltip.onmouseenter = () => {
+        if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+      };
+
+      tooltip.onmouseleave = () => {
+        hideTooltipTimer = setTimeout(() => {
+          if (!tooltipLocked) {
+            hideTooltip();
+          }
+        }, 400);
+      };
+    }
   }
 
   function hideTooltip() {
@@ -375,17 +414,18 @@
     const tooltip = document.getElementById('space-weather-tooltip');
     if (tooltip) tooltip.remove();
     
-    // Reset all indicator styles
-    ['hf', 'gps', 'satcom'].forEach(key => {
-      const ind = document.getElementById(`sw-indicator-${key}`);
-      if (ind) {
-        ind.style.background = 'rgba(0, 0, 0, 0.5)';
-        ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
-        ind.style.boxShadow = 'none';
-      }
-    });
-    
-    currentTooltipBand = null;
+    // Reset all indicator styles only if not locked
+    if (!tooltipLocked) {
+      ['hf', 'gps', 'satcom'].forEach(key => {
+        const ind = document.getElementById(`sw-indicator-${key}`);
+        if (ind) {
+          ind.style.background = 'rgba(0, 0, 0, 0.5)';
+          ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+          ind.style.boxShadow = 'none';
+        }
+      });
+      currentTooltipBand = null;
+    }
   }
 
   function formatTime(date) {
