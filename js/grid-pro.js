@@ -1,12 +1,15 @@
 // ========================================
-// GRID-PRO DROPDOWN COMPATIBILITY PATCH
+// GRID-PRO DROPDOWN COMPATIBILITY PATCH v3
 // This hooks grid-pro's custom dropdowns to the modular GridPlayer
+// Waits for dropdowns to actually be opened before attaching listeners
 // ========================================
 
 (function() {
   'use strict';
   
-  console.log('🔧 Grid-Pro Compatibility Patch Loading...');
+  console.log('🔧 Grid-Pro Compatibility Patch v3 Loading...');
+  
+  let listenersAttached = false;
   
   // Wait for DOM and modules to be ready
   function initCompatibility() {
@@ -41,34 +44,61 @@
       console.log('✅ UIControls.buildGrid patched');
     }
     
-    // Hook into grid-pro's channel selection
-    // Wait a bit for grid-pro to build its UI, then attach listeners
-    setTimeout(function() {
-      attachDropdownListeners();
-    }, 500);
+    // Set up mutation observer to watch for dropdown options appearing
+    startDropdownWatcher();
+  }
+  
+  function startDropdownWatcher() {
+    console.log('👀 Starting dropdown watcher...');
+    
+    // Watch for .channel-option elements being added to the DOM
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.addedNodes.length > 0) {
+          // Check if channel options were added
+          const hasChannelOptions = Array.from(mutation.addedNodes).some(node => {
+            return (node.classList && node.classList.contains('channel-option')) ||
+                   (node.querySelector && node.querySelector('.channel-option'));
+          });
+          
+          if (hasChannelOptions) {
+            console.log('🎯 Dropdown appeared! Attaching listeners...');
+            setTimeout(attachDropdownListeners, 50);
+          }
+        }
+      });
+    });
+    
+    // Start observing the entire document for changes
+    observer.observe(document.body, { 
+      childList: true, 
+      subtree: true 
+    });
+    
+    console.log('✅ Dropdown watcher started');
   }
   
   function attachDropdownListeners() {
     const channelOptions = document.querySelectorAll('.channel-option');
     
     if (channelOptions.length === 0) {
-      console.log('⏳ No channel options found yet, retrying...');
-      setTimeout(attachDropdownListeners, 500);
+      console.log('⚠️ No channel options found');
       return;
     }
     
-    console.log(`🎯 Found ${channelOptions.length} channel options, attaching listeners...`);
+    console.log(`🎯 Found ${channelOptions.length} channel options`);
     
     channelOptions.forEach(option => {
-      // Remove any existing listeners (if this runs multiple times)
-      const newOption = option.cloneNode(true);
-      option.parentNode.replaceChild(newOption, option);
+      // Check if already has our listener
+      if (option.dataset.modularListenerAttached === 'true') {
+        return;
+      }
       
-      // Add new listener
-      newOption.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
+      // Mark as having listener
+      option.dataset.modularListenerAttached = 'true';
+      
+      // Add click listener
+      option.addEventListener('click', function(e) {
         const channelKey = this.getAttribute('data-channel');
         
         // Find which cell this belongs to
@@ -76,7 +106,7 @@
         const cellNum = cellElement ? parseInt(cellElement.getAttribute('data-cell'), 10) : null;
         
         if (cellNum && channelKey) {
-          console.log(`🎬 Channel option clicked: Cell ${cellNum} → ${channelKey}`);
+          console.log(`🎬 Dropdown clicked: Cell ${cellNum} → ${channelKey}`);
           
           // Call the modular player
           if (window.RussellTV && window.RussellTV.GridPlayer) {
@@ -88,21 +118,15 @@
               btn.textContent = window.CHANNELS[channelKey].label;
             }
             
-            // Close the dropdown
-            const dropdown = this.closest('.channel-dropdown');
-            if (dropdown) {
-              dropdown.style.display = 'none';
-            }
+            console.log('✅ Channel changed via modular player');
           } else {
-            console.error('❌ GridPlayer not available when option clicked');
+            console.error('❌ GridPlayer not available');
           }
-        } else {
-          console.warn('⚠️ Could not determine cell or channel:', cellNum, channelKey);
         }
-      });
+      }, true); // Use capture phase
     });
     
-    console.log('✅ All channel dropdown listeners attached!');
+    console.log('✅ Listeners attached to', channelOptions.length, 'options');
   }
   
   // Start initialization
@@ -112,32 +136,7 @@
     initCompatibility();
   }
   
-  // Also re-attach listeners when grid is rebuilt (layout changes)
-  const observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      if (mutation.addedNodes.length > 0) {
-        // Check if grid cells were added
-        const hasGridCells = Array.from(mutation.addedNodes).some(node => 
-          node.classList && node.classList.contains('grid-cell-pro')
-        );
-        if (hasGridCells) {
-          console.log('🔄 Grid rebuilt detected, re-attaching listeners...');
-          setTimeout(attachDropdownListeners, 200);
-        }
-      }
-    });
-  });
-  
-  // Start observing
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true });
-  } else {
-    window.addEventListener('load', function() {
-      observer.observe(document.body, { childList: true, subtree: true });
-    });
-  }
-  
-  console.log('✅ Grid-Pro Compatibility Patch loaded');
+  console.log('✅ Grid-Pro Compatibility Patch v3 loaded');
 })();
 
 // ========================================
