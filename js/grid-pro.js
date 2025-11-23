@@ -16,6 +16,7 @@
     let currentLayout = '2x2';
     let focusedCell = null;
     let audioCell = 1; // Which cell has audio active
+    let allMuted = false; // Track if all streams are muted
 
     // Replace the grid button with a dropdown version
     function replaceGridButton() {
@@ -168,8 +169,16 @@
         const audioBtn = document.createElement('button');
         audioBtn.className = 'grid-audio-btn';
         audioBtn.innerHTML = cellNum === audioCell ? '🔊' : '🔇';
-        audioBtn.title = 'Click to make this cell the audio source';
-        audioBtn.onclick = () => setAudioCell(cellNum);
+        audioBtn.title = 'Click for audio from this cell';
+        audioBtn.onclick = () => {
+            if (cellNum === audioCell && !allMuted) {
+                // If clicking the active cell, mute all
+                muteAll();
+            } else {
+                // Otherwise, set this cell as audio source
+                setAudioCell(cellNum);
+            }
+        };
         header.appendChild(audioBtn);
 
         // Custom channel selector
@@ -352,17 +361,50 @@
         return savedSelections;
     }
 
+    // Mute all streams
+    function muteAll() {
+        console.log('>>> Muting all streams <<<');
+        allMuted = true;
+        
+        // Save state
+        try {
+            localStorage.setItem('russelltv.allMuted', 'true');
+        } catch (e) {}
+        
+        // Update all buttons to show muted
+        document.querySelectorAll('.grid-cell-pro').forEach(cell => {
+            cell.classList.remove('audio-active');
+            const audioBtn = cell.querySelector('.grid-audio-btn');
+            if (audioBtn) audioBtn.innerHTML = '🔇';
+        });
+        
+        // Mute all videos
+        for (let i = 1; i <= 9; i++) {
+            const video = document.getElementById(`grid-video-${i}`);
+            if (video) video.muted = true;
+            
+            if (window.YT_PLAYERS && window.YT_PLAYERS[`grid-${i}`]) {
+                try {
+                    window.YT_PLAYERS[`grid-${i}`].mute();
+                } catch (e) {}
+            }
+        }
+        
+        console.log('All streams muted');
+    }
+
     // Set which cell has audio
     function setAudioCell(cellNum) {
         console.log(`>>> setAudioCell called with cell ${cellNum} <<<`);
         console.log('    Previous audio cell:', audioCell);
         
         audioCell = cellNum;
+        allMuted = false; // Unmute when selecting a cell
         
-        // Save audio cell preference
+        // Save preferences
         try {
             localStorage.setItem('russelltv.audioCell', cellNum);
-            console.log('    Saved audio cell to localStorage');
+            localStorage.setItem('russelltv.allMuted', 'false');
         } catch (e) {
             console.error('    Error saving audio cell:', e);
         }
@@ -392,11 +434,12 @@
     function updateAudioStates() {
         console.log(`>>> updateAudioStates called <<<`);
         console.log('    Active audio cell:', audioCell);
+        console.log('    All muted:', allMuted);
         
         for (let i = 1; i <= 9; i++) {
             const video = document.getElementById(`grid-video-${i}`);
             if (video) {
-                const shouldMute = (i !== audioCell);
+                const shouldMute = allMuted || (i !== audioCell);
                 video.muted = shouldMute;
                 console.log(`    Cell ${i} HLS video - muted: ${shouldMute}, actually muted: ${video.muted}`);
             } else {
@@ -406,7 +449,7 @@
             // Update YouTube players
             if (window.YT_PLAYERS && window.YT_PLAYERS[`grid-${i}`]) {
                 try {
-                    if (i === audioCell) {
+                    if (!allMuted && i === audioCell) {
                         window.YT_PLAYERS[`grid-${i}`].unMute();
                         window.YT_PLAYERS[`grid-${i}`].setVolume(100);
                         console.log(`    Cell ${i} YouTube - unmuted and volume set to 100`);
@@ -604,12 +647,28 @@
             if (savedLayout && GRID_LAYOUTS[savedLayout]) {
                 currentLayout = savedLayout;
                 console.log('Loaded saved layout:', currentLayout);
+                
+                // Update the grid button label to match saved layout
+                setTimeout(() => {
+                    const mainBtn = document.getElementById('btn-grid-main');
+                    if (mainBtn) {
+                        const config = GRID_LAYOUTS[currentLayout];
+                        mainBtn.textContent = `Grid: ${config.label}`;
+                        console.log('Updated button label to:', config.label);
+                    }
+                }, 100);
             }
             
             const savedAudioCell = localStorage.getItem('russelltv.audioCell');
             if (savedAudioCell) {
                 audioCell = parseInt(savedAudioCell);
                 console.log('Loaded saved audio cell:', audioCell);
+            }
+            
+            const savedMuted = localStorage.getItem('russelltv.allMuted');
+            if (savedMuted === 'true') {
+                allMuted = true;
+                console.log('Loaded muted state: all muted');
             }
             
             // Check saved channel selections
