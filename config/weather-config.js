@@ -29,3 +29,20 @@ window.fetchWeather = async function(query) {
     return null;
   }
 };
+
+// -----------------------------------------------
+// Weather Underground deep links for each location
+// -----------------------------------------------
+window.WU_LINKS = {
+  "6th Comm - Brooklyn, NY":     "https://www.wunderground.com/weather/us/ny/brooklyn",
+  "Camp Lejeune, NC":            "https://www.wunderground.com/weather/us/nc/camp-lejeune",
+  "Camp Pendleton, CA":          "https://www.wunderground.com/weather/us/ca/oceanside",
+  "Camp Smith, HI":              "https://www.wunderground.com/weather/us/hi/honolulu",
+  "Camp Foster, JP":             "https://www.wunderground.com/weather/jp/okinawa",
+  "MARFORRES - New Orleans, LA": "https://www.wunderground.com/weather/us/la/new-orleans",
+  "Manama, BH":                  "https://www.wunderground.com/weather/bh/manama",
+  "Stuttgart, DE":               "https://www.wunderground.com/weather/de/stuttgart",
+  "Naples, IT":                  "https://www.wunderground.com/weather/it/naples",
+  "Darwin, AU":                  "https://www.wunderground.com/weather/au/darwin"
+};
+// Note: Zulu intentionally gets NO link → not clickable
