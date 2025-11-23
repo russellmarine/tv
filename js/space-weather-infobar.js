@@ -144,6 +144,7 @@
 
   let currentTooltipBand = null; // Track which tooltip is showing
   let tooltipLocked = false; // Track if tooltip is locked by click
+  let propagationButtonHasListeners = false; // Track if prop button has listeners (don't rely on DOM)
 
   function attachListeners() {
     // Attach to each indicator - HOVER to preview, CLICK to lock
@@ -226,16 +227,14 @@
     // Attach to propagation button
     const btn = document.getElementById('propagation-panel-btn');
     if (btn) {
-      // Always set position and z-index (in case they got reset)
+      // Always set position and z-index
       btn.style.position = 'relative';
       btn.style.zIndex = '10002';
       
-      // Only attach onclick if not already attached
-      if (!btn._hasListeners) {
-        console.log('⚡ Attaching propagation button listener');
-        btn._hasListeners = true;
+      // ALWAYS re-attach onclick (button gets recreated by addIndicators)
+      console.log('⚡ Attaching/re-attaching propagation button listener');
 
-        btn.onclick = function(e) {
+      btn.onclick = function(e) {
           e.stopPropagation();
           e.preventDefault();
           
@@ -265,23 +264,23 @@
             }
           }, 10);
           };
+      };
 
-        btn.onmouseenter = function() {
-          this.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
-          this.style.borderColor = 'rgba(255,120,0,0.8)';
-          this.style.boxShadow = '0 0 12px rgba(255,100,0,0.8), 0 0 20px rgba(255,140,0,0.4)';
-          this.style.transform = 'translateY(-2px) scale(1.05)';
-          this.style.filter = 'hue-rotate(0deg) saturate(2) brightness(1.2)';
-        };
+      btn.onmouseenter = function() {
+        this.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
+        this.style.borderColor = 'rgba(255,120,0,0.8)';
+        this.style.boxShadow = '0 0 12px rgba(255,100,0,0.8), 0 0 20px rgba(255,140,0,0.4)';
+        this.style.transform = 'translateY(-2px) scale(1.05)';
+        this.style.filter = 'hue-rotate(0deg) saturate(2) brightness(1.2)';
+      };
 
-        btn.onmouseleave = function() {
-          this.style.background = 'rgba(0, 0, 0, 0.7)';
-          this.style.borderColor = 'rgba(255, 120, 0, 0.4)';
-          this.style.boxShadow = 'none';
-          this.style.transform = 'translateY(0) scale(1)';
-          this.style.filter = 'hue-rotate(20deg) saturate(1.5)';
-        };
-      }
+      btn.onmouseleave = function() {
+        this.style.background = 'rgba(0, 0, 0, 0.7)';
+        this.style.borderColor = 'rgba(255, 120, 0, 0.4)';
+        this.style.boxShadow = 'none';
+        this.style.transform = 'translateY(0) scale(1)';
+        this.style.filter = 'hue-rotate(20deg) saturate(1.5)';
+      };
     }
   }
 
