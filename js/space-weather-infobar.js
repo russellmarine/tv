@@ -1,11 +1,12 @@
 /**
- * space-weather-infobar.js - Adds space weather indicators to info bar
+ * space-weather-infobar-enhanced.js - With propagation links
+ * Replaces the basic space-weather-infobar.js
  */
 
 (function() {
   'use strict';
 
-  console.log('🛰️ Space weather info bar integration loading...');
+  console.log('🛰️ Space weather info bar (enhanced) loading...');
 
   function addSpaceWeatherToInfoBar() {
     const infoBar = document.getElementById('info-bar');
@@ -40,7 +41,11 @@
       container.appendChild(indicator);
     });
 
-    // Add to info bar (at the end)
+    // Add propagation panel button
+    const propButton = createPropagationButton();
+    container.appendChild(propButton);
+
+    // Add to info bar
     infoBar.appendChild(container);
 
     console.log('✅ Space weather indicators added to info bar');
@@ -48,6 +53,42 @@
     // Start updating indicators
     updateIndicators();
     setInterval(updateIndicators, 60000); // Update every minute
+  }
+
+  function createPropagationButton() {
+    const button = document.createElement('button');
+    button.id = 'propagation-panel-btn';
+    button.innerHTML = '📊';
+    button.title = 'View HF Propagation';
+    button.style.cssText = `
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      border-radius: 4px;
+      padding: 0.15rem 0.4rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.12s ease;
+      margin-left: 0.5rem;
+    `;
+
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePropagationPanel();
+    });
+
+    button.addEventListener('mouseenter', () => {
+      button.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
+      button.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
+      button.style.transform = 'translateY(-1px)';
+    });
+
+    button.addEventListener('mouseleave', () => {
+      button.style.background = 'rgba(0, 0, 0, 0.7)';
+      button.style.boxShadow = 'none';
+      button.style.transform = 'translateY(0)';
+    });
+
+    return button;
   }
 
   function createIndicator(bandKey) {
@@ -150,10 +191,10 @@
       border-radius: 8px;
       font-size: 0.85rem;
       z-index: 10001;
-      pointer-events: none;
+      pointer-events: auto;
       border: 1px solid rgba(255, 255, 255, 0.2);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      min-width: 250px;
+      min-width: 280px;
       max-width: 350px;
     `;
 
@@ -163,7 +204,7 @@
     tooltip.style.bottom = `${window.innerHeight - rect.top + 10}px`;
     tooltip.style.transform = 'translateX(-50%)';
 
-    // Build tooltip content
+    // Build tooltip content with propagation links
     const html = `
       <div style="font-weight: bold; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-size: 1.2rem;">${detailed.icon}</span>
@@ -179,9 +220,23 @@
       <div style="margin-bottom: 0.25rem; font-size: 0.8rem;">
         <strong>Frequencies:</strong> ${detailed.frequencies}
       </div>
-      <div style="font-size: 0.8rem; opacity: 0.8;">
+      <div style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 0.5rem;">
         <strong>Uses:</strong> ${detailed.uses}
       </div>
+      ${bandKey === 'hf' ? `
+      <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+        <a href="https://weatherspotter.net/propagation.php" target="_blank" 
+           style="color: #ff9900; text-decoration: none; font-size: 0.8rem; display: block; margin-bottom: 0.3rem;"
+           onmouseover="this.style.color='#ffbb00'" onmouseout="this.style.color='#ff9900'">
+          📊 View HF Propagation Maps →
+        </a>
+        <a href="https://www.voacap.com/prediction.html" target="_blank"
+           style="color: #ff9900; text-decoration: none; font-size: 0.8rem; display: block;"
+           onmouseover="this.style.color='#ffbb00'" onmouseout="this.style.color='#ff9900'">
+          📡 VOACAP Path Analysis →
+        </a>
+      </div>
+      ` : ''}
       <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.75rem; opacity: 0.7;">
         <strong>Current Conditions:</strong><br>
         Radio: R${data.scales.R} | Solar: S${data.scales.S} | Geo: G${data.scales.G}<br>
@@ -193,12 +248,29 @@
 
     tooltip.innerHTML = html;
     document.body.appendChild(tooltip);
+
+    // Keep tooltip open when hovering over it
+    tooltip.addEventListener('mouseenter', () => {
+      tooltip.style.pointerEvents = 'auto';
+    });
+
+    tooltip.addEventListener('mouseleave', () => {
+      hideTooltip();
+    });
   }
 
   function hideTooltip() {
     const tooltip = document.getElementById('space-weather-tooltip');
     if (tooltip) {
       tooltip.remove();
+    }
+  }
+
+  function togglePropagationPanel() {
+    if (window.RussellTV && window.RussellTV.PropagationPanel) {
+      window.RussellTV.PropagationPanel.toggle();
+    } else {
+      console.warn('PropagationPanel not loaded yet');
     }
   }
 
@@ -220,5 +292,5 @@
     addSpaceWeatherToInfoBar();
   }
 
-  console.log('✅ Space weather info bar integration loaded');
+  console.log('✅ Space weather info bar (enhanced) loaded');
 })();
