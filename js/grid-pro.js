@@ -317,7 +317,16 @@
         setTimeout(() => {
             console.log('    Updating audio states...');
             updateAudioStates();
-        }, 200);
+            
+            // Force the video to actually play if it's not
+            const video = document.getElementById(`grid-video-${cellNum}`);
+            if (video && !video.paused) {
+                console.log(`    Cell ${cellNum} video is playing`);
+            } else if (video) {
+                console.log(`    Cell ${cellNum} video is paused - attempting to play`);
+                video.play().catch(e => console.log(`    Autoplay prevented:`, e));
+            }
+        }, 500);
     }
 
     // Save grid channel selections
@@ -551,15 +560,25 @@
     // Initialize when grid button is clicked
     const originalEnterGridMode = window.enterGridMode;
     window.enterGridMode = function() {
+        console.log('>>> enterGridMode called <<<');
+        
         if (originalEnterGridMode) originalEnterGridMode();
         
-        // Initialize professional grid on first load
-        if (!document.querySelector('.grid-cell-pro')) {
-            const config = GRID_LAYOUTS[currentLayout];
+        const config = GRID_LAYOUTS[currentLayout];
+        console.log('Current layout config:', config);
+        
+        // Always rebuild if config doesn't match existing cells
+        const existingCells = document.querySelectorAll('.grid-cell-pro').length;
+        console.log('Existing cells:', existingCells, 'Expected cells:', config.cells);
+        
+        if (existingCells !== config.cells) {
+            console.log('Cell count mismatch - rebuilding grid');
+            rebuildGrid(config);
+        } else if (!document.querySelector('.grid-cell-pro')) {
+            console.log('No cells exist - building grid');
             rebuildGrid(config);
         } else {
-            // Grid already exists, just make sure defaults are loaded
-            const config = GRID_LAYOUTS[currentLayout];
+            console.log('Grid exists with correct cell count - reloading channels');
             loadDefaultChannelsForLayout(config.cells);
         }
     };
@@ -611,12 +630,22 @@
             console.log('Grid view display:', gridView ? gridView.style.display : 'not found');
             
             if (gridView && gridView.style.display !== 'none') {
+                // Count existing cells
+                const existingCells = document.querySelectorAll('.grid-cell-pro').length;
                 const config = GRID_LAYOUTS[currentLayout];
-                console.log('Initializing grid with config:', config);
-                if (!document.querySelector('.grid-cell-pro')) {
+                
+                console.log('On startup - existing cells:', existingCells);
+                console.log('On startup - expected cells for layout', currentLayout, ':', config.cells);
+                
+                if (existingCells === 0) {
+                    console.log('No cells - initializing grid');
+                    rebuildGrid(config);
+                } else if (existingCells !== config.cells) {
+                    console.log('Cell count mismatch - rebuilding');
                     rebuildGrid(config);
                 } else {
-                    console.log('Grid cells already exist');
+                    console.log('Cells match - reloading channels');
+                    loadDefaultChannelsForLayout(config.cells);
                 }
             }
         }, 300);
