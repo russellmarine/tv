@@ -108,7 +108,7 @@
 
     /* ======== TEMP-COLORED TOOLTIP BACKGROUNDS ======== */
     .temp-freezing.has-tooltip::after {
-      background: rgba(135,206,250,0.55);
+      background: rgba(135,206,250,0.80);
       border-color: rgba(135,206,250,0.9);
     }
     .temp-freezing.has-tooltip::before {
@@ -116,7 +116,7 @@
     }
 
     .temp-cold.has-tooltip::after {
-      background: rgba(100,149,237,0.55);
+      background: rgba(100,149,237,0.80);
       border-color: rgba(100,149,237,0.9);
     }
     .temp-cold.has-tooltip::before {
@@ -124,7 +124,7 @@
     }
 
     .temp-mild.has-tooltip::after {
-      background: rgba(144,238,144,0.55);
+      background: rgba(144,238,144,0.80);
       border-color: rgba(144,238,144,0.9);
     }
     .temp-mild.has-tooltip::before {
@@ -132,7 +132,7 @@
     }
 
     .temp-warm.has-tooltip::after {
-      background: rgba(255,165,0,0.55);
+      background: rgba(255,165,0,0.80);
       border-color: rgba(255,165,0,0.9);
     }
     .temp-warm.has-tooltip::before {
@@ -140,7 +140,7 @@
     }
 
     .temp-hot.has-tooltip::after {
-      background: rgba(220,20,60,0.55);
+      background: rgba(220,20,60,0.80);
       border-color: rgba(220,20,60,0.9);
     }
     .temp-hot.has-tooltip::before {
