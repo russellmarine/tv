@@ -263,8 +263,7 @@
               console.error('❌ PropagationPanel module not available');
             }
           }, 10);
-          };
-      };
+        };
 
       btn.onmouseenter = function() {
         this.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
