@@ -226,57 +226,84 @@
     tooltip.id = 'space-weather-tooltip';
     tooltip.style.cssText = `
       position: fixed;
-      background: rgba(0, 0, 0, 0.95);
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(20, 10, 0, 0.98) 100%);
       color: white;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      border-radius: 16px;
       font-size: 0.85rem;
       z-index: 10001;
       pointer-events: auto;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      min-width: 280px;
-      max-width: 350px;
+      border: 2px solid rgba(255, 120, 0, 0.6);
+      box-shadow: 
+        0 8px 24px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(255, 120, 0, 0.3),
+        inset 0 1px 0 rgba(255, 150, 0, 0.2);
+      min-width: 300px;
+      max-width: 380px;
+      backdrop-filter: blur(10px);
     `;
 
     const rect = indicator.getBoundingClientRect();
     tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
-    tooltip.style.bottom = `${window.innerHeight - rect.top + 10}px`;
+    tooltip.style.bottom = `${window.innerHeight - rect.top + 15}px`;
     tooltip.style.transform = 'translateX(-50%)';
 
     tooltip.innerHTML = `
-      <div style="font-weight: bold; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-        <span style="font-size: 1.2rem;">${detailed.icon}</span>
-        <span>${detailed.band}</span>
-        <span style="margin-left: auto;">${detailed.statusIcon}</span>
+      <div style="font-weight: bold; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255, 120, 0, 0.3);">
+        <span style="font-size: 1.3rem;">${detailed.icon}</span>
+        <span style="font-size: 1rem;">${detailed.band}</span>
+        <span style="margin-left: auto; font-size: 1.1rem;">${detailed.statusIcon}</span>
       </div>
-      <div style="margin-bottom: 0.5rem;">
-        <strong>Status:</strong> <span style="color: ${detailed.color};">${detailed.status}</span>
+      <div style="margin-bottom: 0.75rem;">
+        <strong>Status:</strong> <span style="color: ${detailed.color}; font-weight: bold;">${detailed.status}</span>
       </div>
-      <div style="margin-bottom: 0.5rem; font-size: 0.8rem; opacity: 0.9;">
+      <div style="margin-bottom: 0.75rem; font-size: 0.85rem; opacity: 0.95; line-height: 1.4;">
         ${detailed.description}
       </div>
-      <div style="margin-bottom: 0.25rem; font-size: 0.8rem;">
-        <strong>Frequencies:</strong> ${detailed.frequencies}
+      <div style="margin-bottom: 0.5rem; font-size: 0.85rem;">
+        <strong style="color: rgba(255, 150, 0, 0.9);">Frequencies:</strong> ${detailed.frequencies}
       </div>
-      <div style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 0.5rem;">
-        <strong>Uses:</strong> ${detailed.uses}
+      <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.75rem; line-height: 1.4;">
+        <strong style="color: rgba(255, 150, 0, 0.9);">Uses:</strong> ${detailed.uses}
       </div>
       ${bandKey === 'hf' ? `
-      <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+      <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3);">
         <a href="https://weatherspotter.net/propagation.php" target="_blank" 
-           style="color: #ff9900; text-decoration: none; font-size: 0.8rem; display: block; margin-bottom: 0.3rem;"
-           onmouseover="this.style.color='#ffbb00'" onmouseout="this.style.color='#ff9900'">
+           style="
+             color: #ffbb00;
+             text-decoration: none;
+             font-size: 0.85rem;
+             display: block;
+             margin-bottom: 0.5rem;
+             padding: 0.4rem 0.75rem;
+             background: rgba(255, 120, 0, 0.15);
+             border-radius: 8px;
+             border: 1px solid rgba(255, 120, 0, 0.3);
+             transition: all 0.2s ease;
+           "
+           onmouseover="this.style.background='rgba(255, 120, 0, 0.3)'; this.style.borderColor='rgba(255, 150, 0, 0.6)'; this.style.color='#fff'"
+           onmouseout="this.style.background='rgba(255, 120, 0, 0.15)'; this.style.borderColor='rgba(255, 120, 0, 0.3)'; this.style.color='#ffbb00'">
           📊 View HF Propagation Maps →
         </a>
         <a href="https://www.voacap.com/prediction.html" target="_blank"
-           style="color: #ff9900; text-decoration: none; font-size: 0.8rem; display: block;"
-           onmouseover="this.style.color='#ffbb00'" onmouseout="this.style.color='#ff9900'">
+           style="
+             color: #ffbb00;
+             text-decoration: none;
+             font-size: 0.85rem;
+             display: block;
+             padding: 0.4rem 0.75rem;
+             background: rgba(255, 120, 0, 0.15);
+             border-radius: 8px;
+             border: 1px solid rgba(255, 120, 0, 0.3);
+             transition: all 0.2s ease;
+           "
+           onmouseover="this.style.background='rgba(255, 120, 0, 0.3)'; this.style.borderColor='rgba(255, 150, 0, 0.6)'; this.style.color='#fff'"
+           onmouseout="this.style.background='rgba(255, 120, 0, 0.15)'; this.style.borderColor='rgba(255, 120, 0, 0.3)'; this.style.color='#ffbb00'">
           📡 VOACAP Path Analysis →
         </a>
       </div>
       ` : ''}
-      <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.75rem; opacity: 0.7;">
+      <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.75rem; opacity: 0.8;">
         <strong>Current Conditions:</strong><br>
         Radio: R${data.scales.R} | Solar: S${data.scales.S} | Geo: G${data.scales.G}<br>
         Kp Index: ${data.kpIndex.toFixed(1)}<br>
@@ -293,7 +320,13 @@
     };
 
     tooltip.onmouseleave = () => {
-      hideTooltipTimer = setTimeout(hideTooltip, 200);
+      // Longer delay before hiding
+      hideTooltipTimer = setTimeout(hideTooltip, 400);
+    };
+
+    // Also keep tooltip open when hovering over the indicator
+    indicator.onmouseenter = () => {
+      if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
     };
   }
 
