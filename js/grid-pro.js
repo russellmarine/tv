@@ -130,9 +130,12 @@
         // Stop all current streams
         stopAllGridCells();
 
-        // Update grid CSS
-        wrapper.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
-        wrapper.style.gridTemplateRows = `repeat(${config.rows}, 1fr)`;
+        // Set data attribute for CSS sizing
+        wrapper.setAttribute('data-layout', currentLayout);
+
+        // Remove old grid styles
+        wrapper.style.gridTemplateColumns = '';
+        wrapper.style.gridTemplateRows = '';
         
         // Clear and rebuild cells
         wrapper.innerHTML = '';
