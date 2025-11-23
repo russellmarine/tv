@@ -69,8 +69,40 @@ window.RussellTV.MobileUI = (function() {
       tickerHTML += spaceWeather.outerHTML;
     }
 
-    // Duplicate for seamless loop
-    mobileInner.innerHTML = tickerHTML + ' <span style="margin: 0 0.5rem;">·</span> ' + tickerHTML;
+    // Triple duplicate for extra seamless loop (reduces visible gaps)
+    const separator = ' <span style="margin: 0 0.5rem;">·</span> ';
+    const fullContent = tickerHTML + separator + tickerHTML + separator + tickerHTML;
+    
+    // Only update if content actually changed
+    const currentContent = mobileInner.getAttribute('data-content');
+    if (currentContent === tickerHTML) return;
+    
+    mobileInner.setAttribute('data-content', tickerHTML);
+    
+    // Smooth update: temporarily pause animation, update, resume
+    const wasRunning = mobileInner.classList.contains('ticker-running');
+    if (wasRunning) {
+      // Save current animation position
+      const computedStyle = window.getComputedStyle(mobileInner);
+      const transform = computedStyle.transform;
+      
+      // Pause animation
+      mobileInner.style.animation = 'none';
+      
+      // Update content
+      mobileInner.innerHTML = fullContent;
+      
+      // Force reflow
+      void mobileInner.offsetWidth;
+      
+      // Resume animation
+      mobileInner.style.animation = '';
+      if (wasRunning) {
+        mobileInner.classList.add('ticker-running');
+      }
+    } else {
+      mobileInner.innerHTML = fullContent;
+    }
     
     // Re-attach space weather event listeners to mobile clones
     if (spaceWeather && window.RussellTV.SpaceWeather) {
