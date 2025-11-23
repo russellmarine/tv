@@ -6,11 +6,11 @@
 
     // Grid configuration
     const GRID_LAYOUTS = {
-        '1x2': { rows: 1, cols: 2, cells: 2, label: '1×2 Split' },
-        '2x2': { rows: 2, cols: 2, cells: 4, label: '2×2 Grid' },
-        '1x3': { rows: 1, cols: 3, cells: 3, label: '1×3 Triple' },
-        '2x3': { rows: 2, cols: 3, cells: 6, label: '2×3 Grid' },
-        '1x4': { rows: 1, cols: 4, cells: 4, label: '1×4 Ultra' }
+        '1x2': { rows: 1, cols: 2, cells: 2, label: '2 Wide' },
+        '2x2': { rows: 2, cols: 2, cells: 4, label: '4 Square' },
+        '1x3': { rows: 1, cols: 3, cells: 3, label: '3 Wide' },
+        '2x3': { rows: 2, cols: 3, cells: 6, label: '6 Grid' },
+        '1x4': { rows: 1, cols: 4, cells: 4, label: '4 Wide' }
     };
 
     let currentLayout = '2x2';
@@ -32,7 +32,8 @@
         const mainBtn = document.createElement('button');
         mainBtn.id = 'btn-grid-main';
         mainBtn.className = 'btn';
-        mainBtn.textContent = 'Grid (4)';
+        const config = GRID_LAYOUTS[currentLayout];
+        mainBtn.textContent = `Grid: ${config.label}`;
         
         // Create dropdown arrow button
         const dropdownBtn = document.createElement('button');
@@ -67,7 +68,7 @@
                 // Then change the layout
                 changeLayout(key);
                 dropdown.classList.remove('show');
-                mainBtn.textContent = `Grid (${config.cells})`;
+                mainBtn.textContent = `Grid: ${config.label}`;
                 
                 // Update active state
                 dropdown.querySelectorAll('.grid-layout-option').forEach(o => {
@@ -277,17 +278,29 @@
 
     // Select a channel for a cell
     function selectChannel(cellNum, channelKey, channelLabel) {
+        console.log(`selectChannel called: cell=${cellNum}, channel=${channelKey}, label=${channelLabel}`);
+        
         const cell = document.querySelector(`[data-cell="${cellNum}"]`);
-        if (!cell) return;
+        if (!cell) {
+            console.error(`Cell ${cellNum} not found in selectChannel`);
+            return;
+        }
 
         const btn = cell.querySelector('.channel-selector-btn');
-        if (btn) btn.textContent = channelLabel;
+        if (btn) {
+            btn.textContent = channelLabel;
+            console.log(`Updated button text for cell ${cellNum} to "${channelLabel}"`);
+        } else {
+            console.warn(`Button not found in cell ${cellNum}`);
+        }
 
         // Use the original playGridCell function if it exists
+        console.log(`Checking for playGridCell function...`);
         if (typeof window.playGridCell === 'function') {
+            console.log(`Using window.playGridCell for cell ${cellNum}`);
             window.playGridCell(cellNum, channelKey);
         } else {
-            // Fallback: manually play the channel
+            console.log(`window.playGridCell not found, using fallback for cell ${cellNum}`);
             playChannelInCell(cellNum, channelKey);
         }
 
@@ -297,22 +310,36 @@
 
     // Fallback function to play channel if playGridCell doesn't exist
     function playChannelInCell(cellNum, channelKey) {
+        console.log(`playChannelInCell: cell=${cellNum}, channel=${channelKey}`);
+        
         const ch = window.CHANNELS && window.CHANNELS[channelKey];
-        if (!ch) return;
+        if (!ch) {
+            console.error(`Channel ${channelKey} not found in window.CHANNELS`);
+            return;
+        }
+
+        console.log(`Channel type: ${ch.type}, URL: ${ch.url}`);
 
         const video = document.getElementById(`grid-video-${cellNum}`);
         const ytDiv = document.getElementById(`grid-yt-${cellNum}`);
 
-        if (!video || !ytDiv) return;
+        if (!video || !ytDiv) {
+            console.error(`Video or YT div not found for cell ${cellNum}`);
+            return;
+        }
 
         if (ch.type === 'yt') {
+            console.log(`Playing YouTube in cell ${cellNum}`);
             video.style.display = 'none';
             ytDiv.style.display = 'flex';
             
             if (typeof window.createOrReplaceYTPlayer === 'function') {
                 window.createOrReplaceYTPlayer(ytDiv, `grid-${cellNum}`, ch.url);
+            } else {
+                console.error('createOrReplaceYTPlayer function not found');
             }
         } else {
+            console.log(`Playing HLS in cell ${cellNum}`);
             ytDiv.style.display = 'none';
             video.style.display = 'block';
 
@@ -325,8 +352,10 @@
                 hls.attachMedia(video);
                 if (!window.hlsGrid) window.hlsGrid = {};
                 window.hlsGrid[cellNum] = hls;
+                console.log(`HLS player created for cell ${cellNum}`);
             } else {
                 video.src = ch.url;
+                console.log(`Direct video source set for cell ${cellNum}`);
             }
         }
     }
@@ -488,11 +517,11 @@
             e.preventDefault();
             changeLayout(layoutMap[e.key]);
             
-            // Update button text
+            // Update selector
             const mainBtn = document.getElementById('btn-grid-main');
             if (mainBtn) {
                 const config = GRID_LAYOUTS[layoutMap[e.key]];
-                mainBtn.textContent = `Grid (${config.cells})`;
+                mainBtn.textContent = `Grid: ${config.label}`;
             }
         }
 
