@@ -1,12 +1,15 @@
 /**
- * space-weather-infobar-enhanced.js - With propagation links
- * Replaces the basic space-weather-infobar.js
+ * space-weather-infobar.js - Space weather indicators for info bar
+ * Survives info-bar re-renders and maintains event listeners
  */
 
 (function() {
   'use strict';
 
-  console.log('🛰️ Space weather info bar (enhanced) loading...');
+  console.log('🛰️ Space weather info bar loading...');
+
+  let updateInterval = null;
+  let checkInterval = null;
 
   function addSpaceWeatherToInfoBar() {
     const infoBar = document.getElementById('info-bar');
@@ -17,12 +20,16 @@
     }
 
     // Check if already added
-    if (document.getElementById('space-weather-indicators')) {
+    let container = document.getElementById('space-weather-indicators');
+    if (container) {
+      // Already exists, just update it
+      updateIndicators();
+      reattachEventListeners();
       return;
     }
 
     // Create space weather container
-    const container = document.createElement('span');
+    container = document.createElement('span');
     container.id = 'space-weather-indicators';
     container.style.cssText = `
       display: inline-flex;
@@ -50,9 +57,29 @@
 
     console.log('✅ Space weather indicators added to info bar');
 
+    // Attach event listeners
+    reattachEventListeners();
+
     // Start updating indicators
     updateIndicators();
-    setInterval(updateIndicators, 60000); // Update every minute
+    
+    // Update indicators every minute
+    if (updateInterval) clearInterval(updateInterval);
+    updateInterval = setInterval(updateIndicators, 60000);
+
+    // Check if we need to re-add after info-bar re-renders (every 11 seconds)
+    if (checkInterval) clearInterval(checkInterval);
+    checkInterval = setInterval(() => {
+      const existing = document.getElementById('space-weather-indicators');
+      if (existing) {
+        // Still exists, but might need event listeners re-attached
+        reattachEventListeners();
+      } else {
+        // Was removed, re-add it
+        console.log('🔄 Space weather indicators removed by re-render, re-adding...');
+        addSpaceWeatherToInfoBar();
+      }
+    }, 11000);
   }
 
   function createPropagationButton() {
@@ -71,23 +98,7 @@
       margin-left: 0.5rem;
     `;
 
-    button.addEventListener('click', (e) => {
-      e.stopPropagation();
-      togglePropagationPanel();
-    });
-
-    button.addEventListener('mouseenter', () => {
-      button.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
-      button.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
-      button.style.transform = 'translateY(-1px)';
-    });
-
-    button.addEventListener('mouseleave', () => {
-      button.style.background = 'rgba(0, 0, 0, 0.7)';
-      button.style.boxShadow = 'none';
-      button.style.transform = 'translateY(0)';
-    });
-
+    // Event listeners will be attached by reattachEventListeners()
     return button;
   }
 
@@ -130,23 +141,83 @@
     indicator.appendChild(icon);
     indicator.appendChild(status);
 
-    // Add hover effect
-    indicator.addEventListener('mouseenter', () => {
-      indicator.style.background = 'rgba(255, 255, 255, 0.1)';
-      showTooltip(indicator, bandKey);
-    });
-
-    indicator.addEventListener('mouseleave', () => {
-      indicator.style.background = 'transparent';
-      hideTooltip();
-    });
-
+    // Event listeners will be attached by reattachEventListeners()
     return indicator;
+  }
+
+  function reattachEventListeners() {
+    // Attach listeners to indicators
+    const bands = ['hf', 'gps', 'satcom'];
+    
+    bands.forEach(bandKey => {
+      const indicator = document.getElementById(`sw-indicator-${bandKey}`);
+      if (!indicator) return;
+
+      // Check if already has our listeners
+      if (indicator.dataset.listenersAttached === 'true') return;
+      indicator.dataset.listenersAttached = 'true';
+
+      // Remove old listeners by cloning (fresh start)
+      const newIndicator = indicator.cloneNode(true);
+      indicator.parentNode.replaceChild(newIndicator, indicator);
+      newIndicator.dataset.listenersAttached = 'true';
+
+      newIndicator.addEventListener('mouseenter', () => {
+        newIndicator.style.background = 'rgba(255, 255, 255, 0.1)';
+        showTooltip(newIndicator, bandKey);
+      });
+
+      newIndicator.addEventListener('mouseleave', () => {
+        newIndicator.style.background = 'transparent';
+        hideTooltip();
+      });
+    });
+
+    // Attach listeners to propagation button
+    const propBtn = document.getElementById('propagation-panel-btn');
+    if (propBtn && propBtn.dataset.listenersAttached !== 'true') {
+      propBtn.dataset.listenersAttached = 'true';
+
+      // Clone to remove old listeners
+      const newBtn = propBtn.cloneNode(true);
+      propBtn.parentNode.replaceChild(newBtn, propBtn);
+      newBtn.dataset.listenersAttached = 'true';
+
+      newBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePropagationPanel();
+      });
+
+      newBtn.addEventListener('mouseenter', () => {
+        newBtn.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
+        newBtn.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
+        newBtn.style.transform = 'translateY(-1px)';
+      });
+
+      newBtn.addEventListener('mouseleave', () => {
+        newBtn.style.background = 'rgba(0, 0, 0, 0.7)';
+        newBtn.style.boxShadow = 'none';
+        newBtn.style.transform = 'translateY(0)';
+      });
+    }
   }
 
   function updateIndicators() {
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
-    if (!data) return;
+    if (!data) {
+      // Data not ready yet, show gray dots
+      const bands = ['hf', 'gps', 'satcom'];
+      bands.forEach(bandKey => {
+        const indicator = document.getElementById(`sw-indicator-${bandKey}`);
+        if (!indicator) return;
+        const statusDot = indicator.querySelector('.sw-status-dot');
+        if (statusDot) {
+          statusDot.style.background = '#888';
+          statusDot.style.boxShadow = 'none';
+        }
+      });
+      return;
+    }
 
     const bands = ['hf', 'gps', 'satcom'];
     
@@ -292,5 +363,8 @@
     addSpaceWeatherToInfoBar();
   }
 
-  console.log('✅ Space weather info bar (enhanced) loaded');
+  // Also listen for space weather data updates
+  document.addEventListener('spaceweather:updated', updateIndicators);
+
+  console.log('✅ Space weather info bar loaded');
 })();
