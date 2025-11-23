@@ -10,32 +10,33 @@ window.STREAMS = {
 };
 
 window.YT_CHANNELS = {
-  bloomberg: "https://www.youtube.com/embed/iEpJwprxDdk?autoplay=1",
-  foxnation: "https://www.youtube.com/embed/4nMfRpesYfw?autoplay=1",
-  skynews:   "https://www.youtube.com/embed/YDvsBbKfLPA?autoplay=1",
-  france24:  "https://www.youtube.com/embed/Ap-UM1O9RBU?autoplay=1",
-  dw:        "https://www.youtube.com/embed/LuKwFajn37U?autoplay=1",
-  gijoe:     "https://www.youtube.com/embed/TZ3mxF4U__k?autoplay=1",
-  euronews:  "https://www.youtube.com/embed/pykpO5kQJ98?autoplay=1",
-  aljazeera: "https://www.youtube.com/embed/gCNeDWCI0vo?autoplay=1",
-  abc:       "https://www.youtube.com/embed/iipR5yUp36o?autoplay=1",
-  trt:       "https://www.youtube.com/embed/nuunj2Gpcrg?autoplay=1"
+  bloomberg: "/yt/bloomberg/index.m3u8",
+  foxnation: "/yt/foxnation/index.m3u8",
+  skynews:   "/yt/skynews/index.m3u8",
+  france24:  "/yt/france24/index.m3u8",
+  dw:        "/yt/dw/index.m3u8",
+  gijoe:     "/yt/gijoe/index.m3u8",
+  euronews:  "/yt/euronews/index.m3u8",
+  aljazeera: "/yt/aljazeera/index.m3u8",
+  abc:       "/yt/abc/index.m3u8",
+  trt:       "/yt/trt/index.m3u8"
 };
 
 window.CHANNELS = {
   cbs:       { type: "hls", label: "CBS 2.1",       url: window.STREAMS.cbs },
   nbc:       { type: "hls", label: "NBC 4.1",       url: window.STREAMS.nbc },
   fox:       { type: "hls", label: "FOX 5.1",       url: window.STREAMS.fox },
-  abc:       { type: "yt",  label: "ABC News",      url: window.YT_CHANNELS.abc },
-  bloomberg: { type: "yt",  label: "Bloomberg",     url: window.YT_CHANNELS.bloomberg },
-  foxnation: { type: "yt",  label: "Fox Nation",    url: window.YT_CHANNELS.foxnation },
-  skynews:   { type: "yt",  label: "Sky News",      url: window.YT_CHANNELS.skynews },
-  france24:  { type: "yt",  label: "France 24",     url: window.YT_CHANNELS.france24 },
-  dw:        { type: "yt",  label: "DW",            url: window.YT_CHANNELS.dw },
-  gijoe:     { type: "yt",  label: "GI Joe",        url: window.YT_CHANNELS.gijoe },
-  euronews:  { type: "yt",  label: "Euronews",      url: window.YT_CHANNELS.euronews },
-  aljazeera: { type: "yt",  label: "Al Jazeera",    url: window.YT_CHANNELS.aljazeera },
-  trt:       { type: "yt", label: "TRT World",      url: window.YT_CHANNELS.trt }
+
+  bloomberg: { type: "hls", label: "Bloomberg",     url: window.YT_CHANNELS.bloomberg },
+  foxnation: { type: "hls", label: "Fox Nation",    url: window.YT_CHANNELS.foxnation },
+  skynews:   { type: "hls", label: "Sky News",      url: window.YT_CHANNELS.skynews },
+  france24:  { type: "hls", label: "France 24",     url: window.YT_CHANNELS.france24 },
+  dw:        { type: "hls", label: "DW",            url: window.YT_CHANNELS.dw },
+  gijoe:     { type: "hls", label: "GI Joe",        url: window.YT_CHANNELS.gijoe },
+  euronews:  { type: "hls", label: "Euronews",      url: window.YT_CHANNELS.euronews },
+  aljazeera: { type: "hls", label: "Al Jazeera",    url: window.YT_CHANNELS.aljazeera },
+  abc:       { type: "hls", label: "ABC News",      url: window.YT_CHANNELS.abc },
+  trt:       { type: "hls", label: "TRT World",     url: window.YT_CHANNELS.trt }
 };
 
 window.CHANNEL_ORDER = [
