@@ -194,6 +194,7 @@
         ytDiv.id = `grid-yt-${cellNum}`;
         ytDiv.className = 'yt-container';
         ytDiv.style.display = 'none';
+        ytDiv.style.background = 'transparent';
 
         frame.appendChild(video);
         frame.appendChild(ytDiv);
