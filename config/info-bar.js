@@ -31,15 +31,6 @@
       overflow: visible !important; /* allow tooltip beyond the bar */
     }
 
-    /* Container just for the time/weather pills */
-    #info-bar-locations {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      justify-content: center;
-      align-items: center;
-    }
-
     .info-block {
       padding: 2px 10px;
       border-radius: 999px;
@@ -258,12 +249,6 @@
   // ---------- Create bar ----------
   const bar = document.createElement("div");
   bar.id = "info-bar";
-
-  // Inner container for time/weather blocks only
-  const locContainer = document.createElement("div");
-  locContainer.id = "info-bar-locations";
-
-  bar.appendChild(locContainer);
   document.body.appendChild(bar);
 
   // Weather cache
@@ -343,11 +328,13 @@
 
   // ---------- Render ----------
   function render() {
-    const locContainer = document.getElementById("info-bar-locations");
-    if (!locContainer) return;
+    const bar = document.getElementById("info-bar");
+    if (!bar) return;
 
-    // Only clear the location/forecast blocks, not the whole bar
-    locContainer.innerHTML = "";
+    // Remove existing time/weather blocks ONLY, keep other children (e.g. space-weather)
+    Array.from(bar.querySelectorAll(".info-block")).forEach(el => el.remove());
+
+    const spaceWeather = document.getElementById("space-weather-indicators");
 
     window.TIME_ZONES.forEach(loc => {
       const time = new Date().toLocaleString("en-US", {
@@ -410,11 +397,15 @@
         });
       }
 
-      locContainer.appendChild(div);
+      // Insert before space-weather indicators if present, so HF/GPS/SAT stay at the right edge
+      if (spaceWeather && bar.contains(spaceWeather)) {
+        bar.insertBefore(div, spaceWeather);
+      } else {
+        bar.appendChild(div);
+      }
     });
 
-    // NOTE: we DO NOT touch #space-weather-indicators or any other children
-    // of #info-bar here. They are managed by their own scripts.
+    // NOTE: we never touch #space-weather-indicators (or anything else non-.info-block)
   }
 
   // ---------- Start ----------
