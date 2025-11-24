@@ -1,5 +1,5 @@
 // ========================================
-// GRID-PRO DROPDOWN COMPATIBILITY PATCH v6
+// GRID-PRO DROPDOWN COMPATIBILITY PATCH v7
 // Hooks grid-pro's custom dropdowns to the modular GridPlayer,
 // waits for dropdowns to be opened before attaching listeners,
 // and provides a safe playGridCell stub + queue so early calls
@@ -9,9 +9,8 @@
 (function() {
   'use strict';
 
-  console.log('🔧 Grid-Pro Compatibility Patch v6 Loading...');
+  console.log('🔧 Grid-Pro Compatibility Patch v7 Loading...');
 
-  let listenersAttached = false;
   let pendingPlayRequests = [];
 
   // Install a safe stub early so grid-pro can call playGridCell
@@ -159,7 +158,7 @@
     initCompatibility();
   }
 
-  console.log('✅ Grid-Pro Compatibility Patch v6 loaded');
+  console.log('✅ Grid-Pro Compatibility Patch v7 loaded');
 })();
 
 // ========================================
@@ -169,6 +168,9 @@
 
 (function() {
   'use strict';
+
+  // Ensure namespace
+  window.RussellTV = window.RussellTV || {};
 
   // Grid configuration
   const GRID_LAYOUTS = {
@@ -599,7 +601,7 @@
 
   // Mute all streams
   function muteAll() {
-    console.log('>>> Muting all streams <<<');
+    console.log('>>> Muting all grid streams <<<');
     allMuted = true;
 
     // Save state
@@ -626,7 +628,7 @@
       }
     }
 
-    console.log('All streams muted');
+    console.log('All grid streams muted');
   }
 
   // Set which cell has audio
@@ -709,6 +711,24 @@
     }
     console.log('>>> updateAudioStates complete <<<');
   }
+
+  // 🔊 Expose a small GridAudio API for other modules (like keyboard-av-controls.js)
+  window.RussellTV.GridAudio = {
+    muteAll,
+    setAudioCell,
+    updateAudioStates,
+    toggleMuteAll: function() {
+      if (allMuted) {
+        // Unmute current audio cell (or 1 as a fallback)
+        setAudioCell(audioCell || 1);
+      } else {
+        muteAll();
+      }
+    },
+    getState: function() {
+      return { audioCell, allMuted };
+    }
+  };
 
   // Toggle focus mode (CSS layout only; flex-based)
   function toggleFocus(cellNum) {
@@ -820,7 +840,7 @@
     }
   }
 
-  // Keyboard shortcuts for layouts
+  // Keyboard shortcuts for layouts (grid-specific, not global AV)
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' ||
         e.target.tagName === 'TEXTAREA' ||
@@ -853,7 +873,7 @@
       }
     }
 
-    // F key for focus mode (CSS only)
+    // F key for focus mode (CSS only) in grid
     if (e.key === 'f' || e.key === 'F') {
       e.preventDefault();
       toggleFocus(focusedCell || 1);
@@ -898,6 +918,26 @@
   window.addEventListener('load', () => {
     replaceGridButton();
 
+    // Wrap ViewManager.showSingle to auto-mute grid when leaving grid view
+    if (window.RussellTV &&
+        window.RussellTV.ViewManager &&
+        typeof window.RussellTV.ViewManager.showSingle === 'function' &&
+        !window.RussellTV.ViewManager.__gridAudioPatched) {
+
+      const origShowSingle = window.RussellTV.ViewManager.showSingle;
+
+      window.RussellTV.ViewManager.showSingle = function() {
+        if (window.RussellTV.GridAudio && window.RussellTV.GridAudio.muteAll) {
+          window.RussellTV.GridAudio.muteAll();
+          console.log('🔇 Auto-muted grid audio when switching to single view');
+        }
+        return origShowSingle.apply(this, arguments);
+      };
+
+      window.RussellTV.ViewManager.__gridAudioPatched = true;
+      console.log('✅ Wrapped ViewManager.showSingle for auto grid mute');
+    }
+
     // DIAGNOSTIC: Check what functions are available
     console.log('=== DIAGNOSTIC INFO ===');
     console.log('window.playGridCell exists?', typeof window.playGridCell);
@@ -907,6 +947,7 @@
     console.log('window.YT_PLAYERS exists?', typeof window.YT_PLAYERS);
     console.log('window.CHANNELS:', window.CHANNELS);
     console.log('window.GRID_DEFAULTS:', window.GRID_DEFAULTS);
+    console.log('window.RussellTV.GridAudio:', window.RussellTV.GridAudio);
     console.log('=======================');
 
     // Load saved preferences
