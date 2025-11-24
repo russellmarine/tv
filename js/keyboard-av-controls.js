@@ -1,6 +1,6 @@
 /**
  * keyboard-av-controls.js - Keyboard shortcuts for audio/video
- * M = Mute/Unmute
+ * M = Mute/Unmute (single view, or grid-global in grid view)
  * F = Fullscreen (single view only)
  */
 
@@ -40,9 +40,20 @@
           }
         }
       } else if (inGridView) {
-        // Grid view - show helpful message
-        console.log('⌨️ M pressed in grid - use per-cell audio buttons or press A');
-        showNotification('Use 🔊 buttons on each cell, or press A to cycle audio');
+        // Grid view - use GridAudio API to toggle global mute for all grid cells
+        if (window.RussellTV && window.RussellTV.GridAudio && window.RussellTV.GridAudio.toggleMuteAll) {
+          window.RussellTV.GridAudio.toggleMuteAll();
+          const state = window.RussellTV.GridAudio.getState
+            ? window.RussellTV.GridAudio.getState()
+            : null;
+          console.log('⌨️ M pressed in grid - toggled global grid mute', state);
+          showNotification(state && !state.allMuted
+            ? 'Grid audio: ON (use 🔊 buttons or M to mute all)'
+            : 'Grid audio: ALL MUTED');
+        } else {
+          console.log('⌨️ M pressed in grid - GridAudio API not available');
+          showNotification('Audio controls not ready yet');
+        }
       }
     }
 
@@ -67,7 +78,7 @@
           }
         }
       }
-      // Note: Grid view already uses F for focus mode, so we don't interfere
+      // Note: Grid view uses F for focus mode via grid-pro, so we don't interfere
     }
   });
 
@@ -112,6 +123,6 @@
   }
 
   console.log('✅ Keyboard A/V controls loaded');
-  console.log('   M = Mute/Unmute');
+  console.log('   M = Mute/Unmute (single or grid-global)');
   console.log('   F = Fullscreen (single view)');
 })();
