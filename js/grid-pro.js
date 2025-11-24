@@ -1,15 +1,27 @@
 // ========================================
-// GRID-PRO DROPDOWN COMPATIBILITY PATCH v3
+// GRID-PRO DROPDOWN COMPATIBILITY PATCH v4
 // This hooks grid-pro's custom dropdowns to the modular GridPlayer
 // Waits for dropdowns to actually be opened before attaching listeners
+// Adds a safe playGridCell stub + queue so calls before GridPlayer is ready
+// are not lost.
 // ========================================
 
 (function() {
   'use strict';
   
-  console.log('🔧 Grid-Pro Compatibility Patch v3 Loading...');
+  console.log('🔧 Grid-Pro Compatibility Patch v4 Loading...');
   
   let listenersAttached = false;
+  let pendingPlayRequests = [];
+
+  // Install a safe stub early so grid-pro can call playGridCell
+  if (!window.playGridCell) {
+    window.playGridCell = function(cell, channelKey) {
+      console.log('⏸ GridPlayer not ready yet, queuing playGridCell:', cell, channelKey);
+      pendingPlayRequests.push({ cell, channelKey });
+    };
+    console.log('✅ Temporary playGridCell stub installed');
+  }
   
   // Wait for DOM and modules to be ready
   function initCompatibility() {
@@ -22,17 +34,28 @@
     
     console.log('✅ GridPlayer module found');
     
-    // Create the global playGridCell wrapper if needed
-    if (!window.playGridCell) {
-      window.playGridCell = function(cell, channelKey) {
-        console.log('📺 playGridCell called:', cell, channelKey);
-        if (window.RussellTV && window.RussellTV.GridPlayer) {
-          window.RussellTV.GridPlayer.playCell(cell, channelKey);
-        } else {
-          console.error('❌ GridPlayer not available');
+    // Replace stub with real playGridCell implementation
+    window.playGridCell = function(cell, channelKey) {
+      console.log('📺 playGridCell called:', cell, channelKey);
+      if (window.RussellTV && window.RussellTV.GridPlayer) {
+        window.RussellTV.GridPlayer.playCell(cell, channelKey);
+      } else {
+        console.error('❌ GridPlayer not available');
+      }
+    };
+    console.log('✅ playGridCell wrapper created');
+
+    // Flush any queued play requests from early calls
+    if (pendingPlayRequests.length > 0) {
+      console.log(`▶️ Flushing ${pendingPlayRequests.length} queued playGridCell calls`);
+      pendingPlayRequests.forEach(({ cell, channelKey }) => {
+        try {
+          window.playGridCell(cell, channelKey);
+        } catch (e) {
+          console.warn('Error flushing queued playGridCell:', cell, channelKey, e);
         }
-      };
-      console.log('✅ playGridCell wrapper created');
+      });
+      pendingPlayRequests = [];
     }
     
     // Patch UIControls.buildGrid to do nothing (grid-pro builds the grid)
@@ -136,7 +159,7 @@
     initCompatibility();
   }
   
-  console.log('✅ Grid-Pro Compatibility Patch v3 loaded');
+  console.log('✅ Grid-Pro Compatibility Patch v4 loaded');
 })();
 
 // ========================================
@@ -160,6 +183,7 @@
     let focusedCell = null;
     let audioCell = 1; // Which cell has audio active
     let allMuted = true; // Start with everything muted
+    let fullscreenCell = null; // Which cell is in browser fullscreen (if any)
 
     // Replace the grid button with a dropdown version
     function replaceGridButton() {
@@ -333,12 +357,17 @@
         const selector = createChannelSelector(cellNum);
         header.appendChild(selector);
 
-        // Focus button
+        // Focus / fullscreen button
         const focusBtn = document.createElement('button');
         focusBtn.className = 'grid-focus-btn';
         focusBtn.innerHTML = '⛶';
-        focusBtn.title = 'Focus this cell';
-        focusBtn.onclick = () => toggleFocus(cellNum);
+        focusBtn.title = 'Fullscreen this cell';
+        focusBtn.onclick = () => {
+            // Keep CSS focus mode for layout
+            toggleFocus(cellNum);
+            // Also toggle browser fullscreen on this cell
+            toggleFullscreenForCell(cellNum);
+        };
         header.appendChild(focusBtn);
 
         cell.appendChild(header);
@@ -473,7 +502,7 @@
 
     // Wait for HLS video to be ready and set audio state
     function waitForHLSVideo(cellNum, attempts) {
-        if (attempts > 20) {
+        if (attempts > 40) { // give it ~4 seconds total
             console.warn(`    Gave up waiting for HLS video ${cellNum}`);
             return;
         }
@@ -481,19 +510,28 @@
         setTimeout(() => {
             const video = document.getElementById(`grid-video-${cellNum}`);
             
-            if (video && video.readyState >= 2) { // HAVE_CURRENT_DATA or better
-                console.log(`    HLS video ready for cell ${cellNum}`);
-                const shouldBeMuted = allMuted || (cellNum !== audioCell);
-                video.muted = shouldBeMuted;
-                console.log(`    Set HLS video ${cellNum} muted: ${shouldBeMuted}`);
-                
-                // Ensure it's playing
-                if (video.paused) {
-                    video.play().catch(e => console.log(`    Play failed: ${e.message}`));
-                }
-            } else {
-                // Not ready yet, try again
+            if (!video) {
+                // Video element hasn't been created yet
                 waitForHLSVideo(cellNum, attempts + 1);
+                return;
+            }
+
+            const shouldBeMuted = allMuted || (cellNum !== audioCell);
+            video.muted = shouldBeMuted;
+            console.log(`    [waitForHLSVideo] Cell ${cellNum} muted: ${shouldBeMuted}, readyState: ${video.readyState}`);
+
+            // Always try to play once the element exists
+            if (video.paused) {
+                video.play().catch(e => {
+                    console.log(`    [waitForHLSVideo] Play attempt failed for cell ${cellNum}: ${e.message}`);
+                });
+            }
+
+            // If we're not at HAVE_CURRENT_DATA yet, keep polling a bit more
+            if (video.readyState < 2) {
+                waitForHLSVideo(cellNum, attempts + 1);
+            } else {
+                console.log(`    HLS video ready for cell ${cellNum}`);
             }
         }, 100);
     }
@@ -680,7 +718,7 @@
         console.log('>>> updateAudioStates complete <<<');
     }
 
-    // Toggle focus mode
+    // Toggle focus mode (CSS layout only)
     function toggleFocus(cellNum) {
         const wrapper = document.querySelector('#grid-view .grid-wrapper');
         if (!wrapper) return;
@@ -706,6 +744,34 @@
                     cell.classList.add('unfocused');
                     cell.classList.remove('focused');
                 }
+            });
+        }
+    }
+
+    // Toggle browser fullscreen for a given cell
+    function toggleFullscreenForCell(cellNum) {
+        const cell = document.querySelector(`.grid-cell-pro[data-cell="${cellNum}"]`);
+        if (!cell) return;
+
+        const target = cell.querySelector('.grid-cell-frame') || cell;
+
+        if (!document.fullscreenElement) {
+            if (target.requestFullscreen) {
+                target.requestFullscreen().then(() => {
+                    fullscreenCell = cellNum;
+                    console.log(`Entered fullscreen for cell ${cellNum}`);
+                }).catch(err => {
+                    console.warn('Fullscreen request failed:', err);
+                });
+            } else {
+                console.warn('Browser does not support requestFullscreen on this element');
+            }
+        } else {
+            document.exitFullscreen().then(() => {
+                console.log('Exited fullscreen');
+                fullscreenCell = null;
+            }).catch(err => {
+                console.warn('Exit fullscreen failed:', err);
             });
         }
     }
@@ -793,7 +859,7 @@
             }
         }
 
-        // F key for focus mode
+        // F key for focus mode (CSS only)
         if (e.key === 'f' || e.key === 'F') {
             e.preventDefault();
             toggleFocus(focusedCell || 1);
