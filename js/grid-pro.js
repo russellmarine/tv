@@ -1,15 +1,15 @@
 // ========================================
-// GRID-PRO DROPDOWN COMPATIBILITY PATCH v4
-// This hooks grid-pro's custom dropdowns to the modular GridPlayer
-// Waits for dropdowns to actually be opened before attaching listeners
-// Adds a safe playGridCell stub + queue so calls before GridPlayer is ready
-// are not lost.
+// GRID-PRO DROPDOWN COMPATIBILITY PATCH v6
+// Hooks grid-pro's custom dropdowns to the modular GridPlayer,
+// waits for dropdowns to be opened before attaching listeners,
+// and provides a safe playGridCell stub + queue so early calls
+// (before GridPlayer is ready) are not lost.
 // ========================================
 
 (function() {
   'use strict';
 
-  console.log('🔧 Grid-Pro Compatibility Patch v4 Loading...');
+  console.log('🔧 Grid-Pro Compatibility Patch v6 Loading...');
 
   let listenersAttached = false;
   let pendingPlayRequests = [];
@@ -159,12 +159,12 @@
     initCompatibility();
   }
 
-  console.log('✅ Grid-Pro Compatibility Patch v4 loaded');
+  console.log('✅ Grid-Pro Compatibility Patch v6 loaded');
 })();
 
 // ========================================
 // END COMPATIBILITY PATCH
-// Your original grid-pro.js code continues below...
+// GRID-PRO MAIN LOGIC (flex-based layout)
 // ========================================
 
 (function() {
@@ -294,7 +294,8 @@
     } catch (e) {}
   }
 
-  // Rebuild grid with new layout (no overlap)
+  // Rebuild grid with new layout
+  // Layout sizing is handled entirely by grid-pro.css (flexbox)
   function rebuildGrid(config) {
     const wrapper = document.querySelector('#grid-view .grid-wrapper');
     if (!wrapper) return;
@@ -304,12 +305,6 @@
 
     // Set data attribute for CSS sizing
     wrapper.setAttribute('data-layout', currentLayout);
-
-    // Force proper CSS grid layout so cells don't overlap
-    wrapper.style.display = 'grid';
-    wrapper.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
-    wrapper.style.gridTemplateRows = `repeat(${config.rows}, 1fr)`;
-    wrapper.style.gridAutoRows = '1fr';
 
     // Clear and rebuild cells
     wrapper.innerHTML = '';
@@ -715,7 +710,7 @@
     console.log('>>> updateAudioStates complete <<<');
   }
 
-  // Toggle focus mode (CSS layout only)
+  // Toggle focus mode (CSS layout only; flex-based)
   function toggleFocus(cellNum) {
     const wrapper = document.querySelector('#grid-view .grid-wrapper');
     if (!wrapper) return;
