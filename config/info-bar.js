@@ -1,379 +1,452 @@
-// RussellTV Combined Time + Weather Footer (with SVG icons, tooltips & temp color)
-// Uses: window.TIME_ZONES, window.WEATHER_QUERIES, window.fetchWeather, optional window.WU_LINKS
+/**
+ * space-weather-infobar.js - Space weather indicators for info bar
+ */
 
 (function() {
-  if (!window.TIME_ZONES) {
-    console.warn("TIME_ZONES missing; footer not initialized.");
-    return;
+  'use strict';
+
+  console.log('🛰️ Space weather info bar loading...');
+
+  let hideTooltipTimer = null;
+  let currentTooltipBand = null;
+  let tooltipLocked = false;
+
+  function init() {
+    // Wait for both info-bar and space weather data to be ready
+    const checkReady = setInterval(() => {
+      const infoBar = document.getElementById('info-bar');
+      const hasConfig = window.SPACE_WEATHER_CONFIG;
+      const hasData = window.RussellTV?.SpaceWeather;
+
+      if (infoBar && hasConfig && hasData) {
+        clearInterval(checkReady);
+        addIndicators();
+        startMaintenance();
+      }
+    }, 500);
   }
 
-  // ---------- Styles ----------
-  const style = document.createElement("style");
-  style.textContent = `
-    #info-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(0,0,0,0.90);
-      color: #fff;
-      padding: 6px 10px;
-      font-size: 0.78rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      z-index: 9999;
-      box-sizing: border-box;
-      justify-content: center;
-      align-items: center;
-      backdrop-filter: blur(4px);
-      border-top: 1px solid rgba(255,255,255,0.1);
-      overflow: visible !important; /* allow tooltip beyond the bar */
+  function addIndicators() {
+    const infoBar = document.getElementById('info-bar');
+    if (!infoBar) return;
+
+    // Make sure we have a little reserved space on the right
+    const cs = window.getComputedStyle(infoBar);
+    const pr = parseInt(cs.paddingRight, 10) || 0;
+    if (pr < 120) {
+      infoBar.style.paddingRight = '120px';
     }
 
-    .info-block {
-      padding: 2px 10px;
-      border-radius: 999px;
-      white-space: nowrap;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.04);
-      cursor: default;
-      position: relative;
-      display: inline-flex;           /* center contents */
-      align-items: center;
-      justify-content: center;
-      gap: 0.35rem;                   /* space between icon and text */
-    }
-
-    .info-block strong {
-      font-weight: 600;
-    }
-
-    /* Temperature color bands */
-    .temp-neutral { background: rgba(255,255,255,0.05); }
-
-    .temp-freezing {
-      background: rgba(135,206,250,0.30);
-      border-color: rgba(135,206,250,0.9);
-    }
-    .temp-cold {
-      background: rgba(100,149,237,0.30);
-      border-color: rgba(100,149,237,0.9);
-    }
-    .temp-mild {
-      background: rgba(144,238,144,0.30);
-      border-color: rgba(144,238,144,0.9);
-    }
-    .temp-warm {
-      background: rgba(255,165,0,0.28);
-      border-color: rgba(255,165,0,0.9);
-    }
-    .temp-hot {
-      background: rgba(220,20,60,0.30);
-      border-color: rgba(220,20,60,0.9);
-    }
-
-    /* ======== TOOLTIP SYSTEM ======== */
-
-    .info-block.has-tooltip::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      left: 50%;
-      bottom: 135%;
-      transform: translateX(-50%);
-      padding: 6px 10px;
-      font-size: 0.70rem;
-      white-space: pre-line;
-      max-width: 260px;
-      border-radius: 4px;
-      background: rgba(0,0,0,0.85); /* fallback for neutral/no-weather */
-      border: 1px solid rgba(255,255,255,0.45);
-      color: #000;                  /* readable dark text on bright backgrounds */
-      opacity: 0;
-      pointer-events: none;
-      z-index: 10000;
-      box-shadow: 0 0 10px rgba(0,0,0,0.9);
-      transition: opacity 0.12s ease-out, transform 0.12s ease-out;
-    }
-
-    .info-block.has-tooltip::before {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: 125%;
-      transform: translateX(-50%);
-      border-width: 6px;
-      border-style: solid;
-      border-color: rgba(255,255,255,0.45) transparent transparent transparent;
-      opacity: 0;
-      pointer-events: none;
-      z-index: 9999;
-      transition: opacity 0.12s ease-out;
-    }
-
-    /* ======== TEMP-COLORED TOOLTIP BACKGROUNDS (SOLID) ======== */
-    .temp-freezing.has-tooltip::after {
-      background: rgba(135,206,250,1.0);
-      border-color: rgba(135,206,250,1.0);
-    }
-    .temp-freezing.has-tooltip::before {
-      border-color: rgba(135,206,250,1.0) transparent transparent transparent;
-    }
-
-    .temp-cold.has-tooltip::after {
-      background: rgba(100,149,237,1.0);
-      border-color: rgba(100,149,237,1.0);
-    }
-    .temp-cold.has-tooltip::before {
-      border-color: rgba(100,149,237,1.0) transparent transparent transparent;
-    }
-
-    .temp-mild.has-tooltip::after {
-      background: rgba(144,238,144,1.0);
-      border-color: rgba(144,238,144,1.0);
-    }
-    .temp-mild.has-tooltip::before {
-      border-color: rgba(144,238,144,1.0) transparent transparent transparent;
-    }
-
-    .temp-warm.has-tooltip::after {
-      background: rgba(255,165,0,1.0);
-      border-color: rgba(255,165,0,1.0);
-    }
-    .temp-warm.has-tooltip::before {
-      border-color: rgba(255,165,0,1.0) transparent transparent transparent;
-    }
-
-    .temp-hot.has-tooltip::after {
-      background: rgba(220,20,60,1.0);
-      border-color: rgba(220,20,60,1.0);
-    }
-    .temp-hot.has-tooltip::before {
-      border-color: rgba(220,20,60,1.0) transparent transparent transparent;
-    }
-
-    /* Hover to show */
-    .info-block.has-tooltip:hover::after,
-    .info-block.has-tooltip:hover::before {
-      opacity: 1;
-    }
-
-    /* ======== WEATHER ICONS (SVG + STRONGER ANIMATION) ======== */
-
-    .wx-icon-wrap {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 2px;
-    }
-
-    .wx-icon {
-      width: 20px;
-      height: 20px;
-      display: inline-block;
-      vertical-align: middle;
-      transform-origin: center center;
-    }
-
-    .wx-sunny  { animation: wx-sun-pulse   3s ease-in-out infinite; }
-    .wx-cloudy { animation: wx-cloud-drift 5s ease-in-out infinite; }
-    .wx-rain   { animation: wx-rain-bob    1.6s ease-in-out infinite; }
-    .wx-storm  { animation: wx-storm-flash 2.3s ease-in-out infinite; }
-    .wx-snow   { animation: wx-snow-float  3.2s ease-in-out infinite; }
-    .wx-wind   { animation: wx-wind-sway   3s ease-in-out infinite; }
-    .wx-fog    { animation: wx-fog-breathe 4.5s ease-in-out infinite; }
-
-    @keyframes wx-sun-pulse {
-      0%, 100% { transform: scale(1);    filter: brightness(1) saturate(1); }
-      50%      { transform: scale(1.12); filter: brightness(1.3) saturate(1.1); }
-    }
-
-    @keyframes wx-cloud-drift {
-      0%, 100% { transform: translateX(0);   filter: brightness(1); }
-      50%      { transform: translateX(4px); filter: brightness(1.1); }
-    }
-
-    @keyframes wx-rain-bob {
-      0%, 100% { transform: translateY(0);   filter: brightness(1); }
-      50%      { transform: translateY(3px); filter: brightness(1.15); }
-    }
-
-    @keyframes wx-storm-flash {
-      0%, 100% { filter: brightness(1);   transform: translateY(0); }
-      40%      { filter: brightness(1);   transform: translateY(0); }
-      50%      { filter: brightness(1.7); transform: translateY(1px); }
-      60%      { filter: brightness(1);   transform: translateY(0); }
-    }
-
-    @keyframes wx-snow-float {
-      0%, 100% { transform: translateY(0);    filter: brightness(1); }
-      50%      { transform: translateY(-3px); filter: brightness(1.1); }
-    }
-
-    @keyframes wx-wind-sway {
-      0%, 100% { transform: translateX(0);    filter: brightness(1); }
-      50%      { transform: translateX(-4px); filter: brightness(1.1); }
-    }
-
-    @keyframes wx-fog-breathe {
-      0%, 100% { opacity: 1;   filter: brightness(1); }
-      50%      { opacity: 0.6; filter: brightness(0.9); }
-    }
-  `;
-  document.head.appendChild(style);
-
-  // ---------- Create bar ----------
-  const bar = document.createElement("div");
-  bar.id = "info-bar";
-  document.body.appendChild(bar);
-
-  // Weather cache
-  let weatherMap = {};
-
-  // ---------- Temp -> class ----------
-  function tempClass(temp) {
-    if (temp == null || isNaN(temp)) return "temp-neutral";
-    if (temp <= 32) return "temp-freezing";
-    if (temp <= 50) return "temp-cold";
-    if (temp <= 70) return "temp-mild";
-    if (temp <= 85) return "temp-warm";
-    return "temp-hot";
-  }
-
-  // ---------- Weather icon key ----------
-  function iconKeyFor(main, desc) {
-    const w = `${main} ${desc}`.toLowerCase();
-    if (w.includes("thunder")) return "storm";
-    if (w.includes("storm"))   return "storm";
-    if (w.includes("rain") || w.includes("drizzle")) return "rain";
-    if (w.includes("snow") || w.includes("sleet"))   return "snow";
-    if (w.includes("wind"))    return "wind";
-    if (w.includes("cloud"))   return "cloudy";
-    if (w.includes("fog") || w.includes("mist") || w.includes("haze") || w.includes("smoke")) return "fog";
-    return "sunny";
-  }
-
-  // ---------- Fetch weather ----------
-  async function updateWeather() {
-    if (!window.WEATHER_QUERIES || typeof window.fetchWeather !== "function") {
-      weatherMap = {};
-      render();
+    // If already present, don't duplicate
+    if (document.getElementById('space-weather-indicators')) {
+      console.log('✅ Space weather indicators already exist');
       return;
     }
 
-    const newMap = {};
-    for (const [label, query] of Object.entries(window.WEATHER_QUERIES)) {
-      const isZulu = /zulu/i.test(label);
-      if (isZulu) {
-        newMap[label] = null;
-        continue;
-      }
+    const container = document.createElement('span');
+    container.id = 'space-weather-indicators';
+    container.style.cssText = `
+      position: absolute;
+      right: 12px;
+      bottom: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-left: 1rem;
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+      pointer-events: auto;
+    `;
 
-      try {
-        const d = await window.fetchWeather(query);
-        if (!d || (d.cod && d.cod !== 200)) {
-          newMap[label] = null;
-          continue;
-        }
+    ['hf', 'gps', 'satcom'].forEach(bandKey => {
+      container.appendChild(createIndicator(bandKey));
+    });
 
-        const main = d.weather?.[0]?.main || "";
-        const desc = d.weather?.[0]?.description || "";
-        const temp = Math.round(d.main.temp);
-        const hi   = Math.round(d.main.temp_max);
-        const lo   = Math.round(d.main.temp_min);
-        const humidity = Math.round(d.main.humidity);
-        const wind = d.wind?.speed ? Math.round(d.wind.speed) : null;
+    container.appendChild(createPropButton());
 
-        newMap[label] = { main, desc, temp, hi, lo, humidity, wind };
-      } catch {
-        newMap[label] = null;
-      }
-    }
+    infoBar.appendChild(container);
 
-    weatherMap = newMap;
-    render();
+    console.log('✅ Space weather indicators added to info bar');
+
+    attachListeners();
+    updateColors();
+    setInterval(updateColors, 60000);
   }
 
-  // ---------- Render ----------
-  function render() {
-    const bar = document.getElementById("info-bar");
-    if (!bar) return;
+  function createIndicator(bandKey) {
+    const span = document.createElement('span');
+    span.id = `sw-indicator-${bandKey}`;
+    span.className = 'sw-indicator';
+    span.dataset.band = bandKey;
+    span.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      padding: 0.35rem 0.7rem;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 120, 0, 0.3);
+      pointer-events: auto;
+    `;
 
-    // Remove existing time/weather blocks ONLY
-    Array.from(bar.querySelectorAll(".info-block")).forEach(el => el.remove());
+    const icon = document.createElement('span');
+    icon.style.cssText = `
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      color: rgba(180, 180, 180, 0.9);
+    `;
+    
+    if (bandKey === 'hf') icon.textContent = 'HF';
+    else if (bandKey === 'gps') icon.textContent = 'GPS';
+    else if (bandKey === 'satcom') icon.textContent = 'SAT';
 
-    // Grab reference to space-weather container so we can stay in front of it
-    const spaceWeather = document.getElementById("space-weather-indicators");
+    const dot = document.createElement('span');
+    dot.className = 'sw-status-dot';
+    dot.style.cssText = `
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #888;
+      display: inline-block;
+    `;
 
-    window.TIME_ZONES.forEach(loc => {
-      const time = new Date().toLocaleString("en-US", {
-        timeZone: loc.tz,
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit"
-      });
+    span.appendChild(icon);
+    span.appendChild(dot);
 
-      const isZulu = /zulu/i.test(loc.label);
-      const w = weatherMap[loc.label];
+    return span;
+  }
 
-      let cls = "info-block temp-neutral";
-      let content = `<strong>${loc.label}</strong> ${time}`;
-      let tooltip = null;
+  function createPropButton() {
+    const btn = document.createElement('button');
+    btn.id = 'propagation-panel-btn';
+    btn.innerHTML = '⚡';
+    btn.title = 'Click for detailed propagation forecast';
+    btn.style.cssText = `
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 120, 0, 0.4);
+      border-radius: 6px;
+      padding: 0.2rem 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      margin-left: 0.5rem;
+      filter: hue-rotate(20deg) saturate(1.5);
+    `;
 
-      if (!isZulu && w) {
-        cls = "info-block " + tempClass(w.temp) + " has-tooltip";
+    return btn;
+  }
 
-        const key = iconKeyFor(w.main, w.desc);
-        const iconUrl = `/icons/weather/${key}.svg`;
-        const iconClass = `wx-icon wx-${key}`;
+  // Hide tooltip only if not hovering any pill or the tooltip
+  function scheduleTooltipHide() {
+    if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+    hideTooltipTimer = setTimeout(() => {
+      if (tooltipLocked) return;
 
-        const iconHtml = `
-          <span class="wx-icon-wrap">
-            <img class="${iconClass}" src="${iconUrl}" alt="${w.main || "Weather"} icon">
-          </span>
-        `.trim();
+      const tooltip = document.getElementById('space-weather-tooltip');
+      const hoveredIndicator = document.querySelector('.sw-indicator:hover');
 
-        content += ` ${iconHtml} ${w.hi}°/${w.lo}°`;
+      if (tooltip && tooltip.matches(':hover')) return;
+      if (hoveredIndicator) return;
 
-        tooltip =
-          `${loc.label}\n` +
-          `Time: ${time}\n` +
-          `Conditions: ${w.main} (${w.desc})\n` +
-          `Current: ${w.temp}°F\n` +
-          `High/Low: ${w.hi}°F / ${w.lo}°F` +
-          (w.humidity != null ? `\nHumidity: ${w.humidity}%` : "") +
-          (w.wind != null ? `\nWind: ${w.wind} mph` : "");
+      hideTooltip();
+    }, 400);
+  }
+
+  function attachListeners() {
+    ['hf', 'gps', 'satcom'].forEach(bandKey => {
+      const indicator = document.getElementById(`sw-indicator-${bandKey}`);
+      if (!indicator || indicator._hasListeners) return;
+      
+      indicator._hasListeners = true;
+
+      indicator.onmouseenter = function() {
+        this.style.background = 'rgba(255, 120, 0, 0.15)';
+        this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
+        
+        if (!tooltipLocked) {
+          if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+          showTooltip(this, bandKey, false);
+          currentTooltipBand = bandKey;
+        }
+      };
+
+      indicator.onmouseleave = function() {
+        if (!tooltipLocked || currentTooltipBand !== bandKey) {
+          this.style.background = 'rgba(0, 0, 0, 0.5)';
+          this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+        }
+
+        if (!tooltipLocked) {
+          scheduleTooltipHide();
+        }
+      };
+
+      indicator.onclick = function(e) {
+        e.stopPropagation();
+        
+        if (tooltipLocked && currentTooltipBand === bandKey) {
+          tooltipLocked = false;
+          hideTooltip();
+          this.style.background = 'rgba(0, 0, 0, 0.5)';
+          this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+          this.style.boxShadow = 'none';
+          currentTooltipBand = null;
+        } else {
+          ['hf', 'gps', 'satcom'].forEach(key => {
+            const ind = document.getElementById(`sw-indicator-${key}`);
+            if (ind) {
+              ind.style.background = 'rgba(0, 0, 0, 0.5)';
+              ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+              ind.style.boxShadow = 'none';
+            }
+          });
+          
+          this.style.background = 'linear-gradient(135deg, rgba(255, 80, 0, 0.3), rgba(255, 150, 0, 0.2))';
+          this.style.borderColor = 'rgba(255, 150, 0, 0.8)';
+          this.style.boxShadow = '0 0 10px rgba(255, 120, 0, 0.4)';
+          
+          tooltipLocked = true;
+          showTooltip(this, bandKey, true);
+          currentTooltipBand = bandKey;
+        }
+      };
+    });
+
+    const btn = document.getElementById('propagation-panel-btn');
+    if (btn) {
+      btn.style.position = 'relative';
+      btn.style.zIndex = '10002';
+      
+      if (!btn.onclick) {
+        console.log('⚡ Attaching propagation button listener');
+
+        btn.onclick = function(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          
+          console.log('⚡ Propagation button clicked');
+
+          tooltipLocked = false;
+          currentTooltipBand = null;
+          hideTooltip();
+
+          if (window.RussellTV?.PropagationPanel) {
+            window.RussellTV.PropagationPanel.toggle();
+          } else {
+            console.error('❌ PropagationPanel module not available');
+          }
+        };
+
+        btn.onmouseenter = function() {
+          this.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
+          this.style.borderColor = 'rgba(255,120,0,0.8)';
+          this.style.boxShadow = '0 0 12px rgba(255,100,0,0.8), 0 0 20px rgba(255,140,0,0.4)';
+          this.style.transform = 'translateY(-2px) scale(1.05)';
+          this.style.filter = 'hue-rotate(0deg) saturate(2) brightness(1.2)';
+        };
+
+        btn.onmouseleave = function() {
+          this.style.background = 'rgba(0, 0, 0, 0.7)';
+          this.style.borderColor = 'rgba(255, 120, 0, 0.4)';
+          this.style.boxShadow = 'none';
+          this.style.transform = 'translateY(0) scale(1)';
+          this.style.filter = 'hue-rotate(20deg) saturate(1.5)';
+        };
       }
+    }
+  }
 
-      const div = document.createElement("div");
-      div.className = cls;
-      div.innerHTML = content;
-
-      if (tooltip) {
-        div.setAttribute("data-tooltip", tooltip);
-      }
-
-      const wuUrl = window.WU_LINKS && window.WU_LINKS[loc.label];
-      if (wuUrl && !isZulu) {
-        div.style.cursor = "pointer";
-        div.addEventListener("click", () => {
-          window.open(wuUrl, "_blank", "noopener");
-        });
-      }
-
-      // Insert each pill *before* the space-weather cluster if it exists,
-      // otherwise just append. This keeps space-weather as the last flex item.
-      if (spaceWeather && bar.contains(spaceWeather)) {
-        bar.insertBefore(div, spaceWeather);
+  function startMaintenance() {
+    setInterval(() => {
+      const container = document.getElementById('space-weather-indicators');
+      if (!container) {
+        console.log('🔄 Re-adding space weather indicators');
+        addIndicators();
       } else {
-        bar.appendChild(div);
+        attachListeners();
+      }
+    }, 6000);
+  }
+
+  function updateColors() {
+    const data = window.RussellTV?.SpaceWeather?.getCurrentData();
+    if (!data) return;
+
+    ['hf', 'gps', 'satcom'].forEach(bandKey => {
+      const indicator = document.getElementById(`sw-indicator-${bandKey}`);
+      if (!indicator) return;
+
+      const dot = indicator.querySelector('.sw-status-dot');
+      const status = data.status[bandKey];
+      const statusInfo = window.SPACE_WEATHER_CONFIG.statusLevels[status];
+
+      if (dot && statusInfo) {
+        dot.style.background = statusInfo.color;
+        dot.style.boxShadow = (status === 'red' || status === 'orange') 
+          ? `0 0 8px ${statusInfo.color}` 
+          : 'none';
       }
     });
   }
 
-  // ---------- Start ----------
-  render();
-  updateWeather();
-  setInterval(render, 10 * 1000);
-  setInterval(updateWeather, 10 * 60 * 1000);
+  function showTooltip(indicator, bandKey, locked) {
+    const data = window.RussellTV?.SpaceWeather?.getCurrentData();
+    if (!data) return;
+
+    hideTooltip();
+
+    const detailed = window.RussellTV.SpaceWeather.getDetailedStatus(bandKey);
+    if (!detailed) return;
+
+    const tooltip = document.createElement('div');
+    tooltip.id = 'space-weather-tooltip';
+    tooltip.style.cssText = `
+      position: fixed;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(20, 10, 0, 0.98) 100%);
+      color: white;
+      padding: 1rem 1.25rem;
+      border-radius: 16px;
+      font-size: 0.85rem;
+      z-index: 10001;
+      pointer-events: auto;
+      border: 2px solid rgba(255, 120, 0, 0.6);
+      box-shadow: 
+        0 8px 24px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(255, 120, 0, 0.3),
+        inset 0 1px 0 rgba(255, 150, 0, 0.2);
+      min-width: 300px;
+      max-width: 380px;
+      backdrop-filter: blur(10px);
+    `;
+
+    const rect = indicator.getBoundingClientRect();
+    tooltip.style.left = `${rect.left + rect.width / 2}px`;
+    tooltip.style.bottom = `${window.innerHeight - rect.top + 15}px`;
+    tooltip.style.transform = 'translateX(-50%)';
+
+    tooltip.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255, 120, 0, 0.3);">
+        <span style="font-size: 1.3rem;">${detailed.icon}</span>
+        <span style="font-size: 1rem;">${detailed.band}</span>
+        <span style="margin-left: auto; font-size: 1.1rem;">${detailed.statusIcon}</span>
+      </div>
+      <div style="margin-bottom: 0.75rem;">
+        <strong>Status:</strong> <span style="color: ${detailed.color}; font-weight: bold;">${detailed.status}</span>
+      </div>
+      <div style="margin-bottom: 0.75rem; font-size: 0.85rem; opacity: 0.95; line-height: 1.4;">
+        ${detailed.description}
+      </div>
+      <div style="margin-bottom: 0.5rem; font-size: 0.85rem;">
+        <strong style="color: rgba(255, 150, 0, 0.9);">Frequencies:</strong> ${detailed.frequencies}
+      </div>
+      <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.75rem; line-height: 1.4;">
+        <strong style="color: rgba(255, 150, 0, 0.9);">Uses:</strong> ${detailed.uses}
+      </div>
+      ${bandKey === 'hf' ? `
+      <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3);">
+        <a href="https://weatherspotter.net/propagation.php" target="_blank" 
+           style="
+             color: #ffbb00;
+             text-decoration: none;
+             font-size: 0.85rem;
+             display: block;
+             margin-bottom: 0.5rem;
+             padding: 0.4rem 0.75rem;
+             background: rgba(255, 120, 0, 0.15);
+             border-radius: 8px;
+             border: 1px solid rgba(255, 120, 0, 0.3);
+             transition: all 0.2s ease;
+           ">
+          📊 View HF Propagation Maps →
+        </a>
+        <a href="https://www.voacap.com/prediction.html" target="_blank"
+           style="
+             color: #ffbb00;
+             text-decoration: none;
+             font-size: 0.85rem;
+             display: block;
+             padding: 0.4rem 0.75rem;
+             background: rgba(255, 120, 0, 0.15);
+             border-radius: 8px;
+             border: 1px solid rgba(255, 120, 0, 0.3);
+             transition: all 0.2s ease;
+           ">
+          📡 VOACAP Path Analysis →
+        </a>
+      </div>
+      ` : ''}
+      <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.75rem; opacity: 0.8;">
+        <strong>Current Conditions:</strong><br>
+        Radio: R${data.scales.R} | Solar: S${data.scales.S} | Geo: G${data.scales.G}<br>
+        Kp Index: ${data.kpIndex.toFixed(1)}<br>
+        Updated: ${formatTime(data.timestamp)}
+      </div>
+      <div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.7rem; opacity: 0.6;">
+        ${locked ? '🔒 Locked - Click indicator to unlock' : '💡 Click to lock tooltip'}
+      </div>
+    `;
+
+    document.body.appendChild(tooltip);
+
+    if (!locked) {
+      tooltip.onmouseenter = () => {
+        if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+      };
+      tooltip.onmouseleave = () => {
+        scheduleTooltipHide();
+      };
+    }
+  }
+
+  function hideTooltip() {
+    if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+    const tooltip = document.getElementById('space-weather-tooltip');
+    if (tooltip) tooltip.remove();
+
+    if (!tooltipLocked) {
+      ['hf', 'gps', 'satcom'].forEach(key => {
+        const ind = document.getElementById(`sw-indicator-${key}`);
+        if (ind) {
+          ind.style.background = 'rgba(0, 0, 0, 0.5)';
+          ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+          ind.style.boxShadow = 'none';
+        }
+      });
+      currentTooltipBand = null;
+    }
+  }
+
+  function formatTime(date) {
+    const now = new Date();
+    const diff = Math.floor((now - date) / 60000);
+    if (diff < 1) return 'Just now';
+    if (diff < 60) return `${diff}m ago`;
+    const hours = Math.floor(diff / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return date.toLocaleString();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  document.addEventListener('click', (e) => {
+    const tooltip = document.getElementById('space-weather-tooltip');
+    if (
+      tooltip &&
+      !e.target.closest('.sw-indicator') &&
+      !e.target.closest('#space-weather-tooltip') &&
+      !e.target.closest('#propagation-panel-btn')
+    ) {
+      hideTooltip();
+      tooltipLocked = false;
+      currentTooltipBand = null;
+    }
+  });
+
+  console.log('✅ Space weather info bar loaded');
 })();
