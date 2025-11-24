@@ -175,15 +175,13 @@
       transform-origin: center center;
     }
 
-    /* Desktop animations – mobile ticker disables these via #info-bar-mobile overrides */
-
-    .wx-sunny { animation: wx-sun-pulse 3s ease-in-out infinite; }
+    .wx-sunny  { animation: wx-sun-pulse   3s ease-in-out infinite; }
     .wx-cloudy { animation: wx-cloud-drift 5s ease-in-out infinite; }
-    .wx-rain { animation: wx-rain-bob 1.6s ease-in-out infinite; }
-    .wx-storm { animation: wx-storm-flash 2.3s ease-in-out infinite; }
-    .wx-snow { animation: wx-snow-float 3.2s ease-in-out infinite; }
-    .wx-wind { animation: wx-wind-sway 3s ease-in-out infinite; }
-    .wx-fog { animation: wx-fog-breathe 4.5s ease-in-out infinite; }
+    .wx-rain   { animation: wx-rain-bob    1.6s ease-in-out infinite; }
+    .wx-storm  { animation: wx-storm-flash 2.3s ease-in-out infinite; }
+    .wx-snow   { animation: wx-snow-float  3.2s ease-in-out infinite; }
+    .wx-wind   { animation: wx-wind-sway   3s ease-in-out infinite; }
+    .wx-fog    { animation: wx-fog-breathe 4.5s ease-in-out infinite; }
 
     @keyframes wx-sun-pulse {
       0%, 100% { transform: scale(1);    filter: brightness(1) saturate(1); }
@@ -301,8 +299,11 @@
     const bar = document.getElementById("info-bar");
     if (!bar) return;
 
-    // Remove existing time/weather blocks ONLY, keep everything else (space weather, etc.)
+    // Remove existing time/weather blocks ONLY
     Array.from(bar.querySelectorAll(".info-block")).forEach(el => el.remove());
+
+    // Grab reference to space-weather container so we can stay in front of it
+    const spaceWeather = document.getElementById("space-weather-indicators");
 
     window.TIME_ZONES.forEach(loc => {
       const time = new Date().toLocaleString("en-US", {
@@ -352,7 +353,6 @@
         div.setAttribute("data-tooltip", tooltip);
       }
 
-      // Weather Underground link hookup (if configured)
       const wuUrl = window.WU_LINKS && window.WU_LINKS[loc.label];
       if (wuUrl && !isZulu) {
         div.style.cursor = "pointer";
@@ -361,8 +361,13 @@
         });
       }
 
-      // Just append; any space-weather element already in the bar will stay after these
-      bar.appendChild(div);
+      // Insert each pill *before* the space-weather cluster if it exists,
+      // otherwise just append. This keeps space-weather as the last flex item.
+      if (spaceWeather && bar.contains(spaceWeather)) {
+        bar.insertBefore(div, spaceWeather);
+      } else {
+        bar.appendChild(div);
+      }
     });
   }
 
