@@ -25,9 +25,19 @@
       z-index: 9999;
       box-sizing: border-box;
       justify-content: center;
+      align-items: center;
       backdrop-filter: blur(4px);
       border-top: 1px solid rgba(255,255,255,0.1);
       overflow: visible !important; /* allow tooltip beyond the bar */
+    }
+
+    /* Container just for the time/weather pills */
+    #info-bar-locations {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      align-items: center;
     }
 
     .info-block {
@@ -248,6 +258,12 @@
   // ---------- Create bar ----------
   const bar = document.createElement("div");
   bar.id = "info-bar";
+
+  // Inner container for time/weather blocks only
+  const locContainer = document.createElement("div");
+  locContainer.id = "info-bar-locations";
+
+  bar.appendChild(locContainer);
   document.body.appendChild(bar);
 
   // Weather cache
@@ -327,10 +343,11 @@
 
   // ---------- Render ----------
   function render() {
-    // Save space weather indicators before clearing
-    const spaceWeather = document.getElementById('space-weather-indicators');
-    
-    bar.innerHTML = "";
+    const locContainer = document.getElementById("info-bar-locations");
+    if (!locContainer) return;
+
+    // Only clear the location/forecast blocks, not the whole bar
+    locContainer.innerHTML = "";
 
     window.TIME_ZONES.forEach(loc => {
       const time = new Date().toLocaleString("en-US", {
@@ -393,13 +410,11 @@
         });
       }
 
-      bar.appendChild(div);
+      locContainer.appendChild(div);
     });
 
-    // Re-add space weather indicators if they existed
-    if (spaceWeather) {
-      bar.appendChild(spaceWeather);
-    }
+    // NOTE: we DO NOT touch #space-weather-indicators or any other children
+    // of #info-bar here. They are managed by their own scripts.
   }
 
   // ---------- Start ----------
