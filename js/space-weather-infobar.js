@@ -204,16 +204,27 @@
       btn.style.position = 'relative';
       btn.style.zIndex = '10002';
 
+      // 🔧 NEW: manual open/close of #propagation-panel instead of calling toggle()
       btn.onclick = function(e) {
         e.stopPropagation();
         e.preventDefault();
+
         tooltipLocked = false;
         currentTooltipBand = null;
         hideTooltip();
-        if (window.RussellTV?.PropagationPanel) {
-          window.RussellTV.PropagationPanel.toggle();
+
+        const panel = document.getElementById('propagation-panel');
+        if (!panel) {
+          console.error('❌ propagation-panel element not found');
+          return;
+        }
+
+        const currentDisplay = window.getComputedStyle(panel).display;
+        if (currentDisplay === 'none') {
+          panel.style.display = 'block';
+          panel.style.zIndex = '10000';
         } else {
-          console.error('❌ PropagationPanel module not available');
+          panel.style.display = 'none';
         }
       };
 
