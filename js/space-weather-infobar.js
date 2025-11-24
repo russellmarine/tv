@@ -10,7 +10,7 @@
 
   let hideTooltipTimer = null;
   let currentTooltipBand = null; // Track which tooltip is showing
-  let tooltipLocked = false; // Track if tooltip is locked by click
+  let tooltipLocked = false;     // Track if tooltip is locked by click
 
   function init() {
     // Wait for both info-bar and space weather data to be ready
@@ -71,8 +71,6 @@
   }
 
   function createIndicator(bandKey) {
-    const band = window.SPACE_WEATHER_CONFIG.bands[bandKey];
-
     const span = document.createElement('span');
     span.id = `sw-indicator-${bandKey}`;
     span.className = 'sw-indicator';
@@ -90,7 +88,7 @@
       pointer-events: auto;
     `;
 
-    // Icon - grey lettering for all bands
+    // Label (HF / GPS / SAT)
     const icon = document.createElement('span');
     icon.style.cssText = `
       font-size: 0.75rem;
@@ -241,27 +239,17 @@
           e.preventDefault();
           
           console.log('⚡ Propagation button clicked');
-          
-          setTimeout(() => {
-            tooltipLocked = false;
-            currentTooltipBand = null;
-            hideTooltip();
-            
-            ['hf', 'gps', 'satcom'].forEach(key => {
-              const ind = document.getElementById(`sw-indicator-${key}`);
-              if (ind) {
-                ind.style.background = 'rgba(0, 0, 0, 0.5)';
-                ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
-                ind.style.boxShadow = 'none';
-              }
-            });
-            
-            if (window.RussellTV?.PropagationPanel) {
-              window.RussellTV.PropagationPanel.toggle();
-            } else {
-              console.error('❌ PropagationPanel module not available');
-            }
-          }, 10);
+
+          // Just clean up tooltip state, then let panel handle itself
+          tooltipLocked = false;
+          currentTooltipBand = null;
+          hideTooltip();
+
+          if (window.RussellTV?.PropagationPanel) {
+            window.RussellTV.PropagationPanel.toggle();
+          } else {
+            console.error('❌ PropagationPanel module not available');
+          }
         };
 
         btn.onmouseenter = function() {
@@ -469,23 +457,12 @@
   // Close tooltip when clicking outside
   document.addEventListener('click', (e) => {
     const tooltip = document.getElementById('space-weather-tooltip');
-    const propPanel = document.getElementById('propagation-panel');
-    
-    // Don't hide tooltip if clicking on propagation panel
-    if (
-      propPanel &&
-      propPanel.style.display === 'block' &&
-      e.target.closest('#propagation-panel')
-    ) {
-      return;
-    }
     
     if (
       tooltip &&
       !e.target.closest('.sw-indicator') &&
       !e.target.closest('#space-weather-tooltip') &&
-      !e.target.closest('#propagation-panel-btn') &&
-      !e.target.closest('#propagation-panel')
+      !e.target.closest('#propagation-panel-btn')
     ) {
       // Fully close & unlock when clicking outside
       hideTooltip();
