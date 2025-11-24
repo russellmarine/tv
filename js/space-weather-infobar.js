@@ -9,6 +9,8 @@
   console.log('🛰️ Space weather info bar loading...');
 
   let hideTooltipTimer = null;
+  let currentTooltipBand = null; // Track which tooltip is showing
+  let tooltipLocked = false; // Track if tooltip is locked by click
 
   function init() {
     // Wait for both info-bar and space weather data to be ready
@@ -80,23 +82,23 @@
       align-items: center;
       gap: 0.35rem;
       cursor: pointer;
-      padding: 0.3rem 0.6rem;
-      border-radius: 12px;
+      padding: 0.35rem 0.7rem;
+      border-radius: 14px;
       transition: all 0.2s ease;
       background: rgba(0, 0, 0, 0.5);
       border: 1px solid rgba(255, 120, 0, 0.3);
+      pointer-events: auto;
     `;
 
-    // Icon - use grey lettering for all bands
+    // Icon - grey lettering for all bands
     const icon = document.createElement('span');
     icon.style.cssText = `
-      font-size: 0.7rem;
+      font-size: 0.75rem;
       font-weight: bold;
       letter-spacing: 0.5px;
       color: rgba(180, 180, 180, 0.9);
     `;
     
-    // Set text based on band
     if (bandKey === 'hf') {
       icon.textContent = 'HF';
     } else if (bandKey === 'gps') {
@@ -142,9 +144,22 @@
     return btn;
   }
 
-  let currentTooltipBand = null; // Track which tooltip is showing
-  let tooltipLocked = false; // Track if tooltip is locked by click
-  let propagationButtonHasListeners = false; // Track if prop button has listeners (don't rely on DOM)
+  // Shared helper: hide tooltip only if we are NOT hovering any pill or the tooltip
+  function scheduleTooltipHide() {
+    if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+    hideTooltipTimer = setTimeout(() => {
+      if (tooltipLocked) return;
+
+      const tooltip = document.getElementById('space-weather-tooltip');
+      const hoveredIndicator = document.querySelector('.sw-indicator:hover');
+
+      // If mouse is still on a pill or tooltip, don’t hide
+      if (tooltip && tooltip.matches(':hover')) return;
+      if (hoveredIndicator) return;
+
+      hideTooltip();
+    }, 400);
+  }
 
   function attachListeners() {
     // Attach to each indicator - HOVER to preview, CLICK to lock
@@ -154,12 +169,11 @@
       
       indicator._hasListeners = true;
 
-      // Hover to show preview (unless locked)
+      // Hover anywhere on the pill to show preview (unless locked)
       indicator.onmouseenter = function() {
         this.style.background = 'rgba(255, 120, 0, 0.15)';
         this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
         
-        // Only show tooltip on hover if not locked
         if (!tooltipLocked) {
           if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
           showTooltip(this, bandKey, false); // false = not locked
@@ -173,24 +187,15 @@
           this.style.background = 'rgba(0, 0, 0, 0.5)';
           this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
         }
-        
-        // Hide tooltip after delay if not locked
+
         if (!tooltipLocked) {
-          hideTooltipTimer = setTimeout(() => {
-            const tooltip = document.getElementById('space-weather-tooltip');
-            if (tooltip && !tooltip.matches(':hover')) {
-              hideTooltip();
-            }
-          }, 400);
+          scheduleTooltipHide();
         }
       };
 
-      // Click to lock/unlock tooltip
+      // Click anywhere on the pill to lock/unlock tooltip
       indicator.onclick = function(e) {
         e.stopPropagation();
-        
-        // Allow propagation panel to stay open - don't auto-close it
-        // User can manually close if needed
         
         if (tooltipLocked && currentTooltipBand === bandKey) {
           // Clicking same locked indicator - unlock and hide
@@ -202,7 +207,6 @@
           currentTooltipBand = null;
         } else {
           // Lock this indicator's tooltip
-          // First reset all indicators
           ['hf', 'gps', 'satcom'].forEach(key => {
             const ind = document.getElementById(`sw-indicator-${key}`);
             if (ind) {
@@ -212,7 +216,6 @@
             }
           });
           
-          // Highlight and lock this indicator
           this.style.background = 'linear-gradient(135deg, rgba(255, 80, 0, 0.3), rgba(255, 150, 0, 0.2))';
           this.style.borderColor = 'rgba(255, 150, 0, 0.8)';
           this.style.boxShadow = '0 0 10px rgba(255, 120, 0, 0.4)';
@@ -227,11 +230,9 @@
     // Attach to propagation button
     const btn = document.getElementById('propagation-panel-btn');
     if (btn) {
-      // Always set position and z-index
       btn.style.position = 'relative';
       btn.style.zIndex = '10002';
       
-      // Only re-attach if onclick is missing (button was recreated)
       if (!btn.onclick) {
         console.log('⚡ Attaching propagation button listener');
 
@@ -241,14 +242,11 @@
           
           console.log('⚡ Propagation button clicked');
           
-          // Small delay to ensure any pending tooltip operations complete
           setTimeout(() => {
-            // Force unlock and hide tooltips
             tooltipLocked = false;
             currentTooltipBand = null;
             hideTooltip();
             
-            // Reset all indicators
             ['hf', 'gps', 'satcom'].forEach(key => {
               const ind = document.getElementById(`sw-indicator-${key}`);
               if (ind) {
@@ -290,10 +288,8 @@
     setInterval(() => {
       const container = document.getElementById('space-weather-indicators');
       if (container) {
-        // Container exists, make sure listeners are attached
         attachListeners();
       } else {
-        // Container was removed, re-add it
         console.log('🔄 Re-adding space weather indicators');
         addIndicators();
       }
@@ -388,9 +384,7 @@
              border-radius: 8px;
              border: 1px solid rgba(255, 120, 0, 0.3);
              transition: all 0.2s ease;
-           "
-           onmouseover="this.style.background='rgba(255, 120, 0, 0.3)'; this.style.borderColor='rgba(255, 150, 0, 0.6)'; this.style.color='#fff'"
-           onmouseout="this.style.background='rgba(255, 120, 0, 0.15)'; this.style.borderColor='rgba(255, 120, 0, 0.3)'; this.style.color='#ffbb00'">
+           ">
           📊 View HF Propagation Maps →
         </a>
         <a href="https://www.voacap.com/prediction.html" target="_blank"
@@ -404,9 +398,7 @@
              border-radius: 8px;
              border: 1px solid rgba(255, 120, 0, 0.3);
              transition: all 0.2s ease;
-           "
-           onmouseover="this.style.background='rgba(255, 120, 0, 0.3)'; this.style.borderColor='rgba(255, 150, 0, 0.6)'; this.style.color='#fff'"
-           onmouseout="this.style.background='rgba(255, 120, 0, 0.15)'; this.style.borderColor='rgba(255, 120, 0, 0.3)'; this.style.color='#ffbb00'">
+           ">
           📡 VOACAP Path Analysis →
         </a>
       </div>
@@ -424,21 +416,16 @@
 
     document.body.appendChild(tooltip);
 
-    // Clear any timers
     if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
 
-    // If not locked, allow tooltip hover to keep it open
+    // As long as we hover tooltip OR any pill, keep it alive when not locked
     if (!locked) {
       tooltip.onmouseenter = () => {
         if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
       };
 
       tooltip.onmouseleave = () => {
-        hideTooltipTimer = setTimeout(() => {
-          if (!tooltipLocked) {
-            hideTooltip();
-          }
-        }, 400);
+        scheduleTooltipHide();
       };
     }
   }
@@ -484,7 +471,7 @@
     const tooltip = document.getElementById('space-weather-tooltip');
     const propPanel = document.getElementById('propagation-panel');
     
-    // Don't hide tooltip if clicking on propagation panel or its button
+    // Don't hide tooltip if clicking on propagation panel
     if (
       propPanel &&
       propPanel.style.display === 'block' &&
