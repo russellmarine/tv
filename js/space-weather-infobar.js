@@ -1,6 +1,5 @@
 /**
  * space-weather-infobar.js - Space weather indicators for info bar
- * Simple, reliable version
  */
 
 (function() {
@@ -9,8 +8,8 @@
   console.log('🛰️ Space weather info bar loading...');
 
   let hideTooltipTimer = null;
-  let currentTooltipBand = null; // Track which tooltip is showing
-  let tooltipLocked = false;     // Track if tooltip is locked by click
+  let currentTooltipBand = null;
+  let tooltipLocked = false;
 
   function init() {
     // Wait for both info-bar and space weather data to be ready
@@ -31,42 +30,36 @@
     const infoBar = document.getElementById('info-bar');
     if (!infoBar) return;
 
-    // Check if already added
+    // If already present, don't duplicate
     if (document.getElementById('space-weather-indicators')) {
       console.log('✅ Space weather indicators already exist');
       return;
     }
 
-    // Create container
     const container = document.createElement('span');
     container.id = 'space-weather-indicators';
     container.style.cssText = `
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      margin-left: 1rem;
       padding-left: 1rem;
       border-left: 1px solid rgba(255, 255, 255, 0.2);
+      margin-left: auto;          /* push to far right of the bar */
+      pointer-events: auto;
     `;
 
-    // Create indicators
     ['hf', 'gps', 'satcom'].forEach(bandKey => {
       container.appendChild(createIndicator(bandKey));
     });
 
-    // Add propagation button
     container.appendChild(createPropButton());
 
-    // Add to bar
     infoBar.appendChild(container);
-    
+
     console.log('✅ Space weather indicators added to info bar');
 
-    // Attach event listeners and update colors
     attachListeners();
     updateColors();
-
-    // Update colors every minute
     setInterval(updateColors, 60000);
   }
 
@@ -88,7 +81,6 @@
       pointer-events: auto;
     `;
 
-    // Label (HF / GPS / SAT)
     const icon = document.createElement('span');
     icon.style.cssText = `
       font-size: 0.75rem;
@@ -97,15 +89,10 @@
       color: rgba(180, 180, 180, 0.9);
     `;
     
-    if (bandKey === 'hf') {
-      icon.textContent = 'HF';
-    } else if (bandKey === 'gps') {
-      icon.textContent = 'GPS';
-    } else if (bandKey === 'satcom') {
-      icon.textContent = 'SAT';
-    }
+    if (bandKey === 'hf') icon.textContent = 'HF';
+    else if (bandKey === 'gps') icon.textContent = 'GPS';
+    else if (bandKey === 'satcom') icon.textContent = 'SAT';
 
-    // Status dot
     const dot = document.createElement('span');
     dot.className = 'sw-status-dot';
     dot.style.cssText = `
@@ -142,7 +129,7 @@
     return btn;
   }
 
-  // Shared helper: hide tooltip only if we are NOT hovering any pill or the tooltip
+  // Hide tooltip only if not hovering any pill or the tooltip
   function scheduleTooltipHide() {
     if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
     hideTooltipTimer = setTimeout(() => {
@@ -151,7 +138,6 @@
       const tooltip = document.getElementById('space-weather-tooltip');
       const hoveredIndicator = document.querySelector('.sw-indicator:hover');
 
-      // If mouse is still on a pill or tooltip, don’t hide
       if (tooltip && tooltip.matches(':hover')) return;
       if (hoveredIndicator) return;
 
@@ -160,27 +146,24 @@
   }
 
   function attachListeners() {
-    // Attach to each indicator - HOVER to preview, CLICK to lock
     ['hf', 'gps', 'satcom'].forEach(bandKey => {
       const indicator = document.getElementById(`sw-indicator-${bandKey}`);
       if (!indicator || indicator._hasListeners) return;
       
       indicator._hasListeners = true;
 
-      // Hover anywhere on the pill to show preview (unless locked)
       indicator.onmouseenter = function() {
         this.style.background = 'rgba(255, 120, 0, 0.15)';
         this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
         
         if (!tooltipLocked) {
           if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-          showTooltip(this, bandKey, false); // false = not locked
+          showTooltip(this, bandKey, false);
           currentTooltipBand = bandKey;
         }
       };
 
       indicator.onmouseleave = function() {
-        // Only reset style if not locked on this indicator
         if (!tooltipLocked || currentTooltipBand !== bandKey) {
           this.style.background = 'rgba(0, 0, 0, 0.5)';
           this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
@@ -191,12 +174,10 @@
         }
       };
 
-      // Click anywhere on the pill to lock/unlock tooltip
       indicator.onclick = function(e) {
         e.stopPropagation();
         
         if (tooltipLocked && currentTooltipBand === bandKey) {
-          // Clicking same locked indicator - unlock and hide
           tooltipLocked = false;
           hideTooltip();
           this.style.background = 'rgba(0, 0, 0, 0.5)';
@@ -204,7 +185,6 @@
           this.style.boxShadow = 'none';
           currentTooltipBand = null;
         } else {
-          // Lock this indicator's tooltip
           ['hf', 'gps', 'satcom'].forEach(key => {
             const ind = document.getElementById(`sw-indicator-${key}`);
             if (ind) {
@@ -219,13 +199,12 @@
           this.style.boxShadow = '0 0 10px rgba(255, 120, 0, 0.4)';
           
           tooltipLocked = true;
-          showTooltip(this, bandKey, true); // true = locked
+          showTooltip(this, bandKey, true);
           currentTooltipBand = bandKey;
         }
       };
     });
 
-    // Attach to propagation button
     const btn = document.getElementById('propagation-panel-btn');
     if (btn) {
       btn.style.position = 'relative';
@@ -240,7 +219,6 @@
           
           console.log('⚡ Propagation button clicked');
 
-          // Just clean up tooltip state, then let panel handle itself
           tooltipLocked = false;
           currentTooltipBand = null;
           hideTooltip();
@@ -272,14 +250,13 @@
   }
 
   function startMaintenance() {
-    // Re-attach listeners every 6 seconds (after info-bar re-renders every 10 seconds)
     setInterval(() => {
       const container = document.getElementById('space-weather-indicators');
-      if (container) {
-        attachListeners();
-      } else {
+      if (!container) {
         console.log('🔄 Re-adding space weather indicators');
         addIndicators();
+      } else {
+        attachListeners();
       }
     }, 6000);
   }
@@ -309,7 +286,7 @@
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
     if (!data) return;
 
-    hideTooltip(); // Remove any existing tooltip
+    hideTooltip();
 
     const detailed = window.RussellTV.SpaceWeather.getDetailedStatus(bandKey);
     if (!detailed) return;
@@ -336,7 +313,7 @@
     `;
 
     const rect = indicator.getBoundingClientRect();
-    tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
+    tooltip.style.left = `${rect.left + rect.width / 2}px`;
     tooltip.style.bottom = `${window.innerHeight - rect.top + 15}px`;
     tooltip.style.transform = 'translateX(-50%)';
 
@@ -404,14 +381,10 @@
 
     document.body.appendChild(tooltip);
 
-    if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-
-    // As long as we hover tooltip OR any pill, keep it alive when not locked
     if (!locked) {
       tooltip.onmouseenter = () => {
         if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
       };
-
       tooltip.onmouseleave = () => {
         scheduleTooltipHide();
       };
@@ -422,8 +395,7 @@
     if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
     const tooltip = document.getElementById('space-weather-tooltip');
     if (tooltip) tooltip.remove();
-    
-    // Reset all indicator styles only if not locked
+
     if (!tooltipLocked) {
       ['hf', 'gps', 'satcom'].forEach(key => {
         const ind = document.getElementById(`sw-indicator-${key}`);
@@ -447,24 +419,20 @@
     return date.toLocaleString();
   }
 
-  // Start
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
 
-  // Close tooltip when clicking outside
   document.addEventListener('click', (e) => {
     const tooltip = document.getElementById('space-weather-tooltip');
-    
     if (
       tooltip &&
       !e.target.closest('.sw-indicator') &&
       !e.target.closest('#space-weather-tooltip') &&
       !e.target.closest('#propagation-panel-btn')
     ) {
-      // Fully close & unlock when clicking outside
       hideTooltip();
       tooltipLocked = false;
       currentTooltipBand = null;
