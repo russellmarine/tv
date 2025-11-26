@@ -269,21 +269,6 @@ main {
   border-radius: 8px;
 }
 
-/* ---------- Info Bar (desktop) ---------- */
-#info-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.9);
-  color: #fff;
-  font-size: 0.75rem;
-  padding: 0.25rem 0.75rem;
-  box-sizing: border-box;
-  z-index: 1000;
-  overflow: hidden;
-}
-
 /* Mobile cloned ticker bar */
 #info-bar-mobile {
   display: none;

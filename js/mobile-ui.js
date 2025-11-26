@@ -1,6 +1,7 @@
 /**
  * mobile-ui.js - Mobile-specific UI features
  * Handles mobile dropdown and ticker (with space weather support)
+ * Updated to work with unified info-bar.js
  */
 
 window.RussellTV = window.RussellTV || {};
@@ -52,8 +53,8 @@ window.RussellTV.MobileUI = (function() {
     
     if (infoBlocks.length === 0) return;
 
-    // Get space weather indicators
-    const spaceWeather = document.getElementById('space-weather-indicators');
+    // Get space weather section (new unified structure)
+    const spaceWeatherSection = document.getElementById('space-weather-section');
 
     // Build ticker content
     let tickerHTML = '';
@@ -64,9 +65,9 @@ window.RussellTV.MobileUI = (function() {
     });
 
     // Add space weather at the end if it exists
-    if (spaceWeather) {
+    if (spaceWeatherSection) {
       tickerHTML += ' <span style="margin: 0 0.5rem;">·</span> ';
-      tickerHTML += spaceWeather.outerHTML;
+      tickerHTML += spaceWeatherSection.outerHTML;
     }
 
     // Triple duplicate for extra seamless loop (reduces visible gaps)
@@ -82,10 +83,6 @@ window.RussellTV.MobileUI = (function() {
     // Smooth update: temporarily pause animation, update, resume
     const wasRunning = mobileInner.classList.contains('ticker-running');
     if (wasRunning) {
-      // Save current animation position
-      const computedStyle = window.getComputedStyle(mobileInner);
-      const transform = computedStyle.transform;
-      
       // Pause animation
       mobileInner.style.animation = 'none';
       
@@ -105,7 +102,7 @@ window.RussellTV.MobileUI = (function() {
     }
     
     // Re-attach space weather event listeners to mobile clones
-    if (spaceWeather && window.RussellTV.SpaceWeather) {
+    if (spaceWeatherSection && window.RussellTV.SpaceWeather) {
       attachMobileSpaceWeatherListeners();
     }
   }
@@ -114,8 +111,8 @@ window.RussellTV.MobileUI = (function() {
     const mobileInner = document.getElementById('info-bar-mobile-inner');
     if (!mobileInner) return;
 
-    // Find all space weather indicators in mobile ticker (there will be 2 due to duplication)
-    const mobileIndicators = mobileInner.querySelectorAll('.sw-indicator');
+    // Find all space weather indicators in mobile ticker
+    const mobileIndicators = mobileInner.querySelectorAll('.sw-indicator[data-band]');
     
     mobileIndicators.forEach(indicator => {
       const bandKey = indicator.dataset.band;
@@ -126,14 +123,14 @@ window.RussellTV.MobileUI = (function() {
       indicator._hasMobileListeners = true;
 
       indicator.addEventListener('mouseenter', function() {
-        this.style.background = 'rgba(255, 255, 255, 0.1)';
+        this.style.background = 'rgba(255, 120, 0, 0.15)';
         showMobileTooltip(this, bandKey);
       });
 
       indicator.addEventListener('mouseleave', function() {
-        this.style.background = 'transparent';
+        this.style.background = '';
         setTimeout(() => {
-          const tooltip = document.getElementById('space-weather-tooltip');
+          const tooltip = document.getElementById('sw-tooltip');
           if (tooltip && !tooltip.matches(':hover')) {
             hideTooltip();
           }
@@ -150,27 +147,50 @@ window.RussellTV.MobileUI = (function() {
 
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
-        if (window.RussellTV && window.RussellTV.PropagationPanel) {
-          window.RussellTV.PropagationPanel.toggle();
+        const panel = document.getElementById('propagation-panel');
+        if (panel) {
+          panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
         }
       });
 
       btn.addEventListener('mouseenter', function() {
-        this.style.background = 'linear-gradient(90deg, rgba(255,80,0,0.25), rgba(255,150,0,0.25))';
-        this.style.boxShadow = '0 0 8px rgba(255,120,0,0.6)';
-        this.style.transform = 'translateY(-1px)';
+        this.style.background = 'rgba(255, 120, 0, 0.15)';
+        this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
       });
 
       btn.addEventListener('mouseleave', function() {
-        this.style.background = 'rgba(0, 0, 0, 0.7)';
-        this.style.boxShadow = 'none';
-        this.style.transform = 'translateY(0)';
+        this.style.background = '';
+        this.style.borderColor = '';
+      });
+    });
+
+    // Find settings buttons in mobile ticker
+    const mobileSettingsBtns = mobileInner.querySelectorAll('#feature-settings-btn');
+    
+    mobileSettingsBtns.forEach(btn => {
+      if (btn._hasMobileListeners) return;
+      btn._hasMobileListeners = true;
+
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (window.RussellTV?.Features?.toggleSettings) {
+          window.RussellTV.Features.toggleSettings();
+        }
+      });
+
+      btn.addEventListener('mouseenter', function() {
+        this.style.background = 'rgba(255, 120, 0, 0.15)';
+        this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
+      });
+
+      btn.addEventListener('mouseleave', function() {
+        this.style.background = '';
+        this.style.borderColor = '';
       });
     });
   }
 
   function showMobileTooltip(indicator, bandKey) {
-    // Use the same tooltip function from space-weather-infobar.js
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
     if (!data) return;
 
@@ -180,72 +200,55 @@ window.RussellTV.MobileUI = (function() {
     if (!detailed) return;
 
     const tooltip = document.createElement('div');
-    tooltip.id = 'space-weather-tooltip';
+    tooltip.id = 'sw-tooltip';
+    tooltip.className = 'visible';
     tooltip.style.cssText = `
       position: fixed;
-      background: rgba(0, 0, 0, 0.95);
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(20, 10, 0, 0.98));
       color: white;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      border-radius: 16px;
       font-size: 0.85rem;
       z-index: 10001;
       pointer-events: auto;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      min-width: 280px;
-      max-width: 350px;
+      border: 2px solid rgba(255, 120, 0, 0.6);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 120, 0, 0.3);
+      min-width: 300px;
+      max-width: 380px;
+      backdrop-filter: blur(10px);
     `;
 
     const rect = indicator.getBoundingClientRect();
     tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
-    tooltip.style.bottom = `${window.innerHeight - rect.top + 10}px`;
+    tooltip.style.bottom = `${window.innerHeight - rect.top + 12}px`;
     tooltip.style.transform = 'translateX(-50%)';
 
-    const html = `
-      <div style="font-weight: bold; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-        <span style="font-size: 1.2rem;">${detailed.icon}</span>
-        <span>${detailed.band}</span>
-        <span style="margin-left: auto;">${detailed.statusIcon}</span>
+    tooltip.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255, 120, 0, 0.3);">
+        <span style="font-size: 1.3rem;">${detailed.icon}</span>
+        <span style="font-size: 1rem;">${detailed.band}</span>
+        <span style="margin-left: auto; font-size: 1.1rem;">${detailed.statusIcon}</span>
       </div>
-      <div style="margin-bottom: 0.5rem;">
-        <strong>Status:</strong> <span style="color: ${detailed.color};">${detailed.status}</span>
+      <div style="margin-bottom: 0.75rem;">
+        <strong>Status:</strong> <span style="color: ${detailed.color}; font-weight: bold;">${detailed.status}</span>
       </div>
-      <div style="margin-bottom: 0.5rem; font-size: 0.8rem; opacity: 0.9;">
+      <div style="margin-bottom: 0.75rem; font-size: 0.85rem; opacity: 0.95; line-height: 1.4;">
         ${detailed.description}
       </div>
-      <div style="margin-bottom: 0.25rem; font-size: 0.8rem;">
-        <strong>Frequencies:</strong> ${detailed.frequencies}
+      <div style="margin-bottom: 0.5rem; font-size: 0.85rem;">
+        <strong style="color: rgba(255, 150, 0, 0.9);">Frequencies:</strong> ${detailed.frequencies}
       </div>
-      <div style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 0.5rem;">
-        <strong>Uses:</strong> ${detailed.uses}
+      <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.75rem; line-height: 1.4;">
+        <strong style="color: rgba(255, 150, 0, 0.9);">Uses:</strong> ${detailed.uses}
       </div>
-      ${bandKey === 'hf' ? `
-      <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.2);">
-        <a href="https://weatherspotter.net/propagation.php" target="_blank" 
-           style="color: #ff9900; text-decoration: none; font-size: 0.8rem; display: block; margin-bottom: 0.3rem;"
-           onmouseover="this.style.color='#ffbb00'" onmouseout="this.style.color='#ff9900'">
-          📊 View HF Propagation Maps →
-        </a>
-        <a href="https://www.voacap.com/prediction.html" target="_blank"
-           style="color: #ff9900; text-decoration: none; font-size: 0.8rem; display: block;"
-           onmouseover="this.style.color='#ffbb00'" onmouseout="this.style.color='#ff9900'">
-          📡 VOACAP Path Analysis →
-        </a>
-      </div>
-      ` : ''}
-      <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.75rem; opacity: 0.7;">
+      <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.75rem; opacity: 0.8;">
         <strong>Current Conditions:</strong><br>
         Radio: R${data.scales.R} | Solar: S${data.scales.S} | Geo: G${data.scales.G}<br>
         Kp Index: ${data.kpIndex.toFixed(1)}
       </div>
     `;
 
-    tooltip.innerHTML = html;
     document.body.appendChild(tooltip);
-
-    tooltip.addEventListener('mouseenter', () => {
-      // Keep tooltip open
-    });
 
     tooltip.addEventListener('mouseleave', () => {
       setTimeout(() => hideTooltip(), 200);
@@ -253,7 +256,7 @@ window.RussellTV.MobileUI = (function() {
   }
 
   function hideTooltip() {
-    const tooltip = document.getElementById('space-weather-tooltip');
+    const tooltip = document.getElementById('sw-tooltip');
     if (tooltip) tooltip.remove();
   }
 
@@ -265,15 +268,15 @@ window.RussellTV.MobileUI = (function() {
 
     function startTickerWhenReady() {
       const content = desktopBar.innerHTML.trim();
-      const spaceWeather = document.getElementById('space-weather-indicators');
+      const spaceWeatherSection = document.getElementById('space-weather-section');
       
       if (!content) {
         setTimeout(startTickerWhenReady, 1000);
         return;
       }
 
-      // Wait for space weather to appear (it loads after ~1-2 seconds)
-      if (!spaceWeather) {
+      // Wait for space weather section to appear
+      if (!spaceWeatherSection) {
         setTimeout(startTickerWhenReady, 500);
         return;
       }
@@ -284,7 +287,7 @@ window.RussellTV.MobileUI = (function() {
       // Add ticker animation class
       mobileInner.classList.add('ticker-running');
 
-      // Update ticker every 6 seconds (in sync with space-weather maintenance)
+      // Update ticker every 6 seconds
       if (tickerUpdateInterval) clearInterval(tickerUpdateInterval);
       tickerUpdateInterval = setInterval(updateTickerContent, 6000);
 
@@ -299,6 +302,6 @@ window.RussellTV.MobileUI = (function() {
   return {
     initChannelDropdown,
     initTicker,
-    updateTickerContent // Expose for manual updates
+    updateTickerContent
   };
 })();
