@@ -660,31 +660,20 @@
   // ============ FEATURE TOGGLE HANDLING ============
 
   function handleFeatureToggle({ feature, enabled }) {
-    console.log(`[InfoBar] ===== TOGGLE EVENT RECEIVED =====`);
-    console.log(`[InfoBar] Feature: ${feature}, Enabled: ${enabled}`);
-    console.log(`[InfoBar] Current featureStates BEFORE:`, JSON.stringify(featureStates));
-    
     featureStates[feature] = enabled;
-    
-    console.log(`[InfoBar] Current featureStates AFTER:`, JSON.stringify(featureStates));
 
     // Re-render to apply changes instantly
-    console.log(`[InfoBar] Calling render()...`);
     render();
 
     // Special case for weather tooltips (CSS class on body)
     if (feature === 'weather-tooltips') {
       document.body.classList.toggle('weather-tooltips-disabled', !enabled);
     }
-    
-    console.log(`[InfoBar] ===== TOGGLE COMPLETE =====`);
   }
 
   // ============ INITIALIZATION ============
 
   function init() {
-    console.log(`[InfoBar] ===== INITIALIZING =====`);
-    
     // Add styles
     const styleEl = document.createElement('style');
     styleEl.textContent = styles;
@@ -697,11 +686,9 @@
 
     // Load initial feature states from storage
     const stored = window.RussellTV?.Storage?.load?.('featureToggles');
-    console.log(`[InfoBar] Loaded from storage:`, stored);
     if (stored) {
       Object.assign(featureStates, stored);
     }
-    console.log(`[InfoBar] Initial featureStates:`, JSON.stringify(featureStates));
 
     // Apply weather tooltips state
     if (!featureStates['weather-tooltips']) {
@@ -709,9 +696,7 @@
     }
 
     // Listen for feature toggles
-    console.log(`[InfoBar] Registering feature:toggle listener...`);
     Events.on('feature:toggle', handleFeatureToggle);
-    console.log(`[InfoBar] Listener registered`);
 
     // Listen for space weather data updates
     Events.on('spaceweather:data-updated', updateIndicatorColors);
