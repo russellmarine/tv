@@ -752,6 +752,12 @@
     // Update indicator colors periodically
     setInterval(updateIndicatorColors, 60000);
 
+    // Expose weather data for other modules
+    window.RussellTV.InfoBar = {
+      getWeather: (label) => weatherMap[label] || null,
+      getAllWeather: () => ({ ...weatherMap })
+    };
+
     console.log('✅ [InfoBar] Unified bar initialized');
   }
 
