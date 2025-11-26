@@ -232,12 +232,15 @@
   }
 
   function updatePanelContent() {
+    console.log('[Propagation] updatePanelContent called, panel exists:', !!panel);
     if (!panel) return;
 
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
     const config = window.SPACE_WEATHER_CONFIG;
+    console.log('[Propagation] data:', !!data, 'config:', !!config);
 
     const contentEl = panel.querySelector('.panel-content');
+    console.log('[Propagation] contentEl:', !!contentEl);
     if (!contentEl) return;
 
     if (!data || !config) {
@@ -253,6 +256,8 @@
     const bandListEl = panel.querySelector('#prop-band-list');
     const forecastEl = panel.querySelector('#prop-forecast');
     const lastUpdateEl = panel.querySelector('#prop-last-update');
+    
+    console.log('[Propagation] gridEl:', !!gridEl, 'bandListEl:', !!bandListEl, 'forecastEl:', !!forecastEl);
 
     // If elements don't exist yet, skip update
     if (!gridEl || !bandListEl || !forecastEl) return;
