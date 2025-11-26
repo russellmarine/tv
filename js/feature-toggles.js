@@ -1,9 +1,6 @@
 /**
  * feature-toggles.js - Modular feature toggle system for RussellTV
- * - Persists settings to localStorage
- * - Provides settings UI panel
- * - Emits events when features toggle
- * - Integrates with info bar (gear icon)
+ * SIMPLIFIED VERSION - instant toggles, gear always visible
  */
 
 window.RussellTV = window.RussellTV || {};
@@ -11,8 +8,6 @@ window.RussellTV = window.RussellTV || {};
 window.RussellTV.Features = (function() {
   'use strict';
 
-  const STORAGE_KEY = 'russelltv.featureToggles';  // Matches storage.js naming convention
-  
   // Feature definitions with defaults - ALL ON by default
   const FEATURE_DEFINITIONS = {
     'space-weather-indicators': {
@@ -45,144 +40,185 @@ window.RussellTV.Features = (function() {
     }
   };
 
-  // Category definitions
   const CATEGORIES = {
-    'space-comms': {
-      label: 'Space Comms Suite',
-      icon: '📡',
-      description: 'Space weather and satellite communication tools'
-    },
-    'weather': {
-      label: 'Weather Features',
-      icon: '🌤️',
-      description: 'Weather information and forecasts'
-    }
+    'space-comms': { label: 'Space Comms Suite', icon: '📡' },
+    'weather': { label: 'Weather Features', icon: '🌤️' }
   };
 
   let featureStates = {};
   let settingsPanelVisible = false;
 
-  /**
-   * Initialize the feature toggle system
-   */
+  // ============ INITIALIZATION ============
+  
   function init() {
     loadSettings();
-    createSettingsButton();
+    waitForInfoBar();
     createSettingsPanel();
-    applyInitialStates();
-    
     console.log('⚙️ Feature toggles initialized:', featureStates);
   }
 
-  /**
-   * Load settings from localStorage via Storage module (or use defaults)
-   */
-  function loadSettings() {
-    try {
-      const stored = window.RussellTV?.Storage?.loadFeatureToggles();
-      if (stored) {
-        // Merge with defaults (in case new features were added)
-        featureStates = {};
-        for (const [key, def] of Object.entries(FEATURE_DEFINITIONS)) {
-          featureStates[key] = stored.hasOwnProperty(key) ? stored[key] : def.default;
+  function waitForInfoBar() {
+    // Check frequently and continuously
+    setInterval(() => {
+      const container = document.getElementById('space-weather-indicators');
+      const infoBar = document.getElementById('info-bar');
+      
+      // Ensure gear button exists and is visible
+      let btn = document.getElementById('feature-settings-btn');
+      
+      if (container) {
+        // Preferred: put inside the container for correct spacing
+        if (!btn) {
+          btn = createGearButtonElement();
+          container.appendChild(btn);
+        } else if (!container.contains(btn)) {
+          // Move it into container if it's elsewhere
+          container.appendChild(btn);
         }
-      } else {
-        // Use defaults
-        featureStates = {};
-        for (const [key, def] of Object.entries(FEATURE_DEFINITIONS)) {
-          featureStates[key] = def.default;
+      } else if (infoBar) {
+        // Fallback: put in info bar if container doesn't exist
+        if (!btn) {
+          btn = createGearButtonElement();
+          btn.style.position = 'absolute';
+          btn.style.right = '12px';
+          btn.style.bottom = '6px';
+          infoBar.appendChild(btn);
         }
       }
-    } catch (error) {
-      console.error('⚙️ Error loading feature settings:', error);
-      // Fall back to defaults
+      
+      // Always ensure it's visible
+      if (btn) {
+        btn.style.display = 'inline-block';
+        btn.style.visibility = 'visible';
+        btn.style.opacity = '1';
+      }
+      
+      // Apply states
+      applyAllStates();
+    }, 500);
+  }
+  
+  function createGearButtonElement() {
+    const btn = document.createElement('button');
+    btn.id = 'feature-settings-btn';
+    btn.innerHTML = '⚙️';
+    btn.title = 'Display Settings';
+    btn.style.cssText = `
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 120, 0, 0.3);
+      border-radius: 6px;
+      padding: 0.3rem 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      z-index: 10002;
+      line-height: 1;
+      margin-left: 0.5rem;
+    `;
+
+    btn.onmouseenter = () => {
+      btn.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
+      btn.style.borderColor = 'rgba(255,120,0,0.8)';
+      btn.style.boxShadow = '0 0 12px rgba(255,100,0,0.6)';
+    };
+
+    btn.onmouseleave = () => {
+      btn.style.background = 'rgba(0, 0, 0, 0.6)';
+      btn.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+      btn.style.boxShadow = 'none';
+    };
+
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      toggleSettingsPanel();
+    };
+    
+    return btn;
+  }
+
+  function loadSettings() {
+    try {
+      const stored = window.RussellTV?.Storage?.loadFeatureToggles?.() || 
+                     JSON.parse(localStorage.getItem('russelltv.featureToggles'));
       featureStates = {};
+      for (const [key, def] of Object.entries(FEATURE_DEFINITIONS)) {
+        featureStates[key] = stored?.[key] ?? def.default;
+      }
+    } catch (e) {
+      // Use defaults
       for (const [key, def] of Object.entries(FEATURE_DEFINITIONS)) {
         featureStates[key] = def.default;
       }
     }
   }
 
-  /**
-   * Save settings via Storage module
-   */
   function saveSettings() {
     try {
       if (window.RussellTV?.Storage?.saveFeatureToggles) {
         window.RussellTV.Storage.saveFeatureToggles(featureStates);
       } else {
-        // Fallback if Storage module not available
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(featureStates));
+        localStorage.setItem('russelltv.featureToggles', JSON.stringify(featureStates));
       }
-      console.log('⚙️ Feature settings saved');
-    } catch (error) {
-      console.error('⚙️ Error saving feature settings:', error);
+    } catch (e) {
+      console.warn('⚙️ Could not save settings:', e);
     }
   }
 
-  /**
-   * Create the settings gear button in the info bar
-   * Always positioned at far right, never hidden
-   */
-  function createSettingsButton() {
-    const checkReady = setInterval(() => {
-      const infoBar = document.getElementById('info-bar');
-      if (infoBar) {
-        clearInterval(checkReady);
-        
-        // Check if button already exists
-        if (document.getElementById('feature-settings-btn')) return;
-        
-        const btn = document.createElement('button');
-        btn.id = 'feature-settings-btn';
-        btn.innerHTML = '⚙️';
-        btn.title = 'Display Settings';
-        btn.style.cssText = `
-          position: absolute;
-          right: 12px;
-          bottom: 6px;
-          background: rgba(0, 0, 0, 0.6);
-          border: 1px solid rgba(255, 120, 0, 0.3);
-          border-radius: 6px;
-          padding: 0.3rem 0.5rem;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: all 0.25s ease;
-          z-index: 10002;
-          line-height: 1;
-        `;
-        
-        btn.addEventListener('mouseenter', () => {
-          btn.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
-          btn.style.borderColor = 'rgba(255,120,0,0.8)';
-          btn.style.boxShadow = '0 0 12px rgba(255,100,0,0.6)';
-          btn.style.transform = 'scale(1.1)';
-        });
-        
-        btn.addEventListener('mouseleave', () => {
-          btn.style.background = 'rgba(0, 0, 0, 0.6)';
-          btn.style.borderColor = 'rgba(255, 120, 0, 0.3)';
-          btn.style.boxShadow = 'none';
-          btn.style.transform = 'scale(1)';
-        });
-        
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          toggleSettingsPanel();
-        });
-        
-        // Add directly to info bar
-        infoBar.appendChild(btn);
-      }
-    }, 500);
+  // ============ GEAR BUTTON (ALWAYS VISIBLE) ============
+
+  function createGearButton(infoBar) {
+    // Always recreate if missing
+    let btn = document.getElementById('feature-settings-btn');
+    
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'feature-settings-btn';
+      btn.innerHTML = '⚙️';
+      btn.title = 'Display Settings';
+      infoBar.appendChild(btn);
+    }
+    
+    // Always reset styles (in case something changed them)
+    btn.style.cssText = `
+      position: absolute;
+      right: 12px;
+      bottom: 6px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 120, 0, 0.3);
+      border-radius: 6px;
+      padding: 0.3rem 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      z-index: 10002;
+      line-height: 1;
+      display: inline-block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    `;
+
+    // Re-attach event handlers
+    btn.onmouseenter = () => {
+      btn.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
+      btn.style.borderColor = 'rgba(255,120,0,0.8)';
+      btn.style.boxShadow = '0 0 12px rgba(255,100,0,0.6)';
+    };
+
+    btn.onmouseleave = () => {
+      btn.style.background = 'rgba(0, 0, 0, 0.6)';
+      btn.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+      btn.style.boxShadow = 'none';
+    };
+
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      toggleSettingsPanel();
+    };
   }
 
-  /**
-   * Create the settings panel
-   */
+  // ============ SETTINGS PANEL ============
+
   function createSettingsPanel() {
     if (document.getElementById('feature-settings-panel')) return;
-    
+
     const panel = document.createElement('div');
     panel.id = 'feature-settings-panel';
     panel.style.cssText = `
@@ -195,462 +231,95 @@ window.RussellTV.Features = (function() {
       background: linear-gradient(145deg, rgba(10, 5, 0, 0.98) 0%, rgba(25, 12, 0, 0.98) 100%);
       border: 2px solid rgba(255, 120, 0, 0.5);
       border-radius: 16px;
-      padding: 0;
       z-index: 10003;
       display: none;
-      box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.9),
-        0 0 30px rgba(255, 100, 0, 0.2),
-        inset 0 1px 0 rgba(255, 150, 0, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 100, 0, 0.2);
       color: white;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      backdrop-filter: blur(12px);
     `;
-    
+
     document.body.appendChild(panel);
-    updateSettingsPanelContent();
-    
-    // NOTE: Settings panel only closes via the X button, not by clicking outside
-    // This keeps the panel open until user explicitly closes it
+    renderPanelContent();
   }
 
-  /**
-   * Update the settings panel content
-   */
-  function updateSettingsPanelContent() {
+  function renderPanelContent() {
     const panel = document.getElementById('feature-settings-panel');
     if (!panel) return;
-    
-    // Check if all features are enabled
-    const allEnabled = Object.values(featureStates).every(v => v);
-    const allDisabled = Object.values(featureStates).every(v => !v);
-    
-    // Group features by category
-    const categorizedFeatures = {};
-    for (const [key, def] of Object.entries(FEATURE_DEFINITIONS)) {
-      if (!categorizedFeatures[def.category]) {
-        categorizedFeatures[def.category] = [];
-      }
-      categorizedFeatures[def.category].push({ key, ...def });
-    }
-    
+
+    const allOn = Object.values(featureStates).every(v => v);
+    const allOff = Object.values(featureStates).every(v => !v);
+
     let html = `
-      <div style="
-        padding: 1rem 1.25rem;
-        background: linear-gradient(135deg, rgba(255, 80, 0, 0.15) 0%, rgba(255, 120, 0, 0.05) 100%);
-        border-bottom: 1px solid rgba(255, 120, 0, 0.3);
-        border-radius: 14px 14px 0 0;
-      ">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px;">
-            ⚙️ Display Settings
-          </h3>
-          <button id="close-settings-panel" style="
-            background: none;
-            border: none;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0;
-            width: 30px;
-            height: 30px;
-            line-height: 1;
-            transition: color 0.2s;
-          ">&times;</button>
-        </div>
+      <div style="padding: 1rem; background: rgba(255, 80, 0, 0.1); border-bottom: 1px solid rgba(255, 120, 0, 0.3); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 600;">⚙️ Display Settings</span>
+        <button id="settings-close-btn" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
       </div>
-      
-      <!-- Master Toggle -->
-      <div style="
-        padding: 0.75rem 1.25rem;
-        background: rgba(255, 255, 255, 0.03);
-        border-bottom: 1px solid rgba(255, 120, 0, 0.2);
-        display: flex;
-        gap: 0.5rem;
-      ">
-        <button id="toggle-all-on" style="
-          flex: 1;
-          padding: 0.5rem;
-          background: ${allEnabled ? 'rgba(255, 120, 0, 0.3)' : 'rgba(255, 255, 255, 0.05)'};
-          border: 1px solid ${allEnabled ? 'rgba(255, 150, 0, 0.6)' : 'rgba(255, 255, 255, 0.2)'};
-          border-radius: 8px;
-          color: ${allEnabled ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)'};
-          font-size: 0.85rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        ">✓ All On</button>
-        <button id="toggle-all-off" style="
-          flex: 1;
-          padding: 0.5rem;
-          background: ${allDisabled ? 'rgba(255, 60, 0, 0.3)' : 'rgba(255, 255, 255, 0.05)'};
-          border: 1px solid ${allDisabled ? 'rgba(255, 100, 0, 0.6)' : 'rgba(255, 255, 255, 0.2)'};
-          border-radius: 8px;
-          color: ${allDisabled ? '#ff9966' : 'rgba(255, 255, 255, 0.7)'};
-          font-size: 0.85rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        ">✗ All Off</button>
+      <div style="padding: 0.75rem 1rem; display: flex; gap: 0.5rem; border-bottom: 1px solid rgba(255,120,0,0.2);">
+        <button id="toggle-all-on-btn" style="flex:1; padding: 0.5rem; background: ${allOn ? 'rgba(255,120,0,0.3)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${allOn ? 'rgba(255,150,0,0.6)' : 'rgba(255,255,255,0.2)'}; border-radius: 8px; color: ${allOn ? '#ffcc00' : 'rgba(255,255,255,0.7)'}; cursor: pointer; font-weight: 600;">✓ All On</button>
+        <button id="toggle-all-off-btn" style="flex:1; padding: 0.5rem; background: ${allOff ? 'rgba(255,60,0,0.3)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${allOff ? 'rgba(255,100,0,0.6)' : 'rgba(255,255,255,0.2)'}; border-radius: 8px; color: ${allOff ? '#ff9966' : 'rgba(255,255,255,0.7)'}; cursor: pointer; font-weight: 600;">✗ All Off</button>
       </div>
-      
-      <div style="padding: 1rem 1.25rem;">
+      <div style="padding: 1rem;">
     `;
-    
-    // Render each category
+
+    // Group by category
     for (const [catKey, catDef] of Object.entries(CATEGORIES)) {
-      const features = categorizedFeatures[catKey] || [];
+      const features = Object.entries(FEATURE_DEFINITIONS).filter(([k, v]) => v.category === catKey);
       if (features.length === 0) continue;
-      
-      html += `
-        <div style="margin-bottom: 1.25rem;">
-          <div style="
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: rgba(255, 150, 0, 0.9);
-            margin-bottom: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-          ">
-            ${catDef.icon} ${catDef.label}
-          </div>
-      `;
-      
-      for (const feature of features) {
-        const isEnabled = featureStates[feature.key];
+
+      html += `<div style="font-size: 0.75rem; font-weight: 600; color: rgba(255,150,0,0.9); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">${catDef.icon} ${catDef.label}</div>`;
+
+      for (const [key, def] of features) {
+        const isOn = featureStates[key];
         html += `
-          <div class="feature-toggle-row" data-feature="${feature.key}" style="
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-          ">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <span style="font-size: 1.2rem;">${feature.icon}</span>
+          <div class="feature-row" data-key="${key}" style="display: flex; align-items: center; justify-content: space-between; padding: 0.6rem; margin-bottom: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer;">
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <span style="font-size: 1.1rem;">${def.icon}</span>
               <div>
-                <div style="font-size: 0.9rem; font-weight: 500;">${feature.label}</div>
-                <div style="font-size: 0.75rem; opacity: 0.6; margin-top: 0.1rem;">${feature.description}</div>
+                <div style="font-size: 0.85rem; font-weight: 500;">${def.label}</div>
+                <div style="font-size: 0.7rem; opacity: 0.6;">${def.description}</div>
               </div>
             </div>
-            <div class="toggle-switch" style="
-              width: 48px;
-              height: 26px;
-              background: ${isEnabled ? 'linear-gradient(135deg, #ff8800, #ff5500)' : 'rgba(255, 255, 255, 0.15)'};
-              border-radius: 13px;
-              position: relative;
-              transition: all 0.3s ease;
-              box-shadow: ${isEnabled ? '0 0 10px rgba(255, 100, 0, 0.5)' : 'inset 0 1px 3px rgba(0,0,0,0.3)'};
-            ">
-              <div class="toggle-knob" style="
-                width: 22px;
-                height: 22px;
-                background: white;
-                border-radius: 50%;
-                position: absolute;
-                top: 2px;
-                left: ${isEnabled ? '24px' : '2px'};
-                transition: all 0.3s ease;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-              "></div>
+            <div class="toggle-track" style="width: 44px; height: 24px; background: ${isOn ? 'linear-gradient(135deg, #ff8800, #ff5500)' : 'rgba(255,255,255,0.15)'}; border-radius: 12px; position: relative; ${isOn ? 'box-shadow: 0 0 8px rgba(255,100,0,0.5);' : ''}">
+              <div class="toggle-knob" style="width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: ${isOn ? '22px' : '2px'}; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>
             </div>
           </div>
         `;
       }
-      
-      html += `</div>`;
+      html += `<div style="height: 0.75rem;"></div>`;
     }
-    
+
     html += `
       </div>
-      
-      <div style="
-        padding: 0.75rem 1.25rem;
-        border-top: 1px solid rgba(255, 120, 0, 0.2);
-        font-size: 0.75rem;
-        color: rgba(255, 255, 255, 0.5);
-        text-align: center;
-      ">
-        💾 Settings auto-saved to browser
-      </div>
+      <div style="padding: 0.75rem; border-top: 1px solid rgba(255,120,0,0.2); font-size: 0.7rem; color: rgba(255,255,255,0.5); text-align: center;">💾 Settings auto-saved</div>
     `;
-    
+
     panel.innerHTML = html;
+    attachPanelListeners();
+  }
+
+  function attachPanelListeners() {
+    document.getElementById('settings-close-btn')?.addEventListener('click', hideSettingsPanel);
     
-    // Attach event listeners
-    document.getElementById('close-settings-panel')?.addEventListener('click', hideSettingsPanel);
-    
-    document.getElementById('toggle-all-on')?.addEventListener('click', () => {
-      setAllFeatures(true);
-    });
-    
-    document.getElementById('toggle-all-off')?.addEventListener('click', () => {
-      setAllFeatures(false);
-    });
-    
-    // Feature toggle rows
-    panel.querySelectorAll('.feature-toggle-row').forEach(row => {
+    document.getElementById('toggle-all-on-btn')?.addEventListener('click', () => setAll(true));
+    document.getElementById('toggle-all-off-btn')?.addEventListener('click', () => setAll(false));
+
+    document.querySelectorAll('.feature-row').forEach(row => {
       row.addEventListener('click', () => {
-        const featureKey = row.dataset.feature;
-        toggleFeature(featureKey);
-      });
-      
-      row.addEventListener('mouseenter', () => {
-        row.style.background = 'rgba(255, 120, 0, 0.1)';
-        row.style.borderColor = 'rgba(255, 120, 0, 0.3)';
-      });
-      
-      row.addEventListener('mouseleave', () => {
-        row.style.background = 'rgba(255, 255, 255, 0.03)';
-        row.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        const key = row.dataset.key;
+        toggle(key);
       });
     });
   }
 
-  /**
-   * Toggle a specific feature
-   */
-  function toggleFeature(featureKey) {
-    if (!FEATURE_DEFINITIONS.hasOwnProperty(featureKey)) {
-      console.warn(`⚙️ Unknown feature: ${featureKey}`);
-      return;
-    }
-    
-    const newState = !featureStates[featureKey];
-    featureStates[featureKey] = newState;
-    saveSettings();
-    updateSettingsPanelContent();
-    
-    // Dispatch event for this specific feature
-    window.dispatchEvent(new CustomEvent('feature:toggle', {
-      detail: { feature: featureKey, enabled: newState }
-    }));
-    
-    // Also dispatch a general event
-    window.dispatchEvent(new CustomEvent('features:changed', {
-      detail: { states: { ...featureStates } }
-    }));
-    
-    console.log(`⚙️ Feature "${featureKey}" ${newState ? 'enabled' : 'disabled'}`);
-    
-    // Apply the change immediately
-    applyFeatureState(featureKey, newState);
-  }
-
-  /**
-   * Set all features on or off
-   */
-  function setAllFeatures(enabled) {
-    for (const key of Object.keys(FEATURE_DEFINITIONS)) {
-      featureStates[key] = enabled;
-    }
-    saveSettings();
-    updateSettingsPanelContent();
-    
-    // Dispatch events
-    for (const key of Object.keys(FEATURE_DEFINITIONS)) {
-      window.dispatchEvent(new CustomEvent('feature:toggle', {
-        detail: { feature: key, enabled }
-      }));
-    }
-    
-    window.dispatchEvent(new CustomEvent('features:changed', {
-      detail: { states: { ...featureStates } }
-    }));
-    
-    console.log(`⚙️ All features ${enabled ? 'enabled' : 'disabled'}`);
-    
-    // Apply all changes
-    applyAllFeatureStates();
-  }
-
-  /**
-   * Check if a feature is enabled
-   */
-  function isEnabled(featureKey) {
-    return featureStates[featureKey] === true;
-  }
-
-  /**
-   * Get all feature states
-   */
-  function getAllStates() {
-    return { ...featureStates };
-  }
-
-  /**
-   * Apply a single feature state (show/hide related elements)
-   */
-  function applyFeatureState(featureKey, enabled) {
-    switch (featureKey) {
-      case 'space-weather-indicators':
-        // Hide/show the indicator pills (HF, GPS, SAT) individually
-        const hfIndicator = document.getElementById('sw-indicator-hf');
-        const gpsIndicator = document.getElementById('sw-indicator-gps');
-        const satIndicator = document.getElementById('sw-indicator-satcom');
-        
-        if (hfIndicator) hfIndicator.style.display = enabled ? 'inline-flex' : 'none';
-        if (gpsIndicator) gpsIndicator.style.display = enabled ? 'inline-flex' : 'none';
-        if (satIndicator) satIndicator.style.display = enabled ? 'inline-flex' : 'none';
-        
-        // Also update the border/padding on container when empty
-        const indicators = document.getElementById('space-weather-indicators');
-        if (indicators) {
-          const propEnabled = featureStates['propagation-panel'];
-          if (enabled || propEnabled) {
-            indicators.style.paddingLeft = '1rem';
-            indicators.style.borderLeft = '1px solid rgba(255, 255, 255, 0.2)';
-          } else {
-            indicators.style.paddingLeft = '0';
-            indicators.style.borderLeft = 'none';
-          }
-        }
-        break;
-        
-      case 'propagation-panel':
-        const propBtn = document.getElementById('propagation-panel-btn');
-        if (propBtn) {
-          propBtn.style.display = enabled ? 'inline-block' : 'none';
-        }
-        // Also hide the panel if open
-        if (!enabled) {
-          const panel = document.getElementById('propagation-panel');
-          if (panel) panel.style.display = 'none';
-        }
-        // Update container styling
-        const indicatorsContainer = document.getElementById('space-weather-indicators');
-        if (indicatorsContainer) {
-          const indicatorsEnabled = featureStates['space-weather-indicators'];
-          if (enabled || indicatorsEnabled) {
-            indicatorsContainer.style.paddingLeft = '1rem';
-            indicatorsContainer.style.borderLeft = '1px solid rgba(255, 255, 255, 0.2)';
-          } else {
-            indicatorsContainer.style.paddingLeft = '0';
-            indicatorsContainer.style.borderLeft = 'none';
-          }
-        }
-        break;
-        
-      case 'satellite-planner':
-        const satBtn = document.getElementById('satellite-planner-btn');
-        if (satBtn) {
-          satBtn.style.display = enabled ? 'inline-block' : 'none';
-        }
-        // Also hide the panel if open
-        if (!enabled) {
-          const panel = document.getElementById('satellite-planner-panel');
-          if (panel) panel.style.display = 'none';
-        }
-        break;
-        
-      case 'weather-tooltips':
-        // Toggle weather tooltip visibility via CSS class
-        document.body.classList.toggle('weather-tooltips-disabled', !enabled);
-        break;
-    }
-    
-    // ALWAYS ensure gear button exists and is visible after any state change
-    ensureGearButtonVisible();
-  }
-  
-  /**
-   * Ensure the gear button is always visible
-   */
-  function ensureGearButtonVisible() {
-    let btn = document.getElementById('feature-settings-btn');
-    const infoBar = document.getElementById('info-bar');
-    
-    if (!infoBar) return;
-    
-    // If button doesn't exist, recreate it
-    if (!btn) {
-      btn = document.createElement('button');
-      btn.id = 'feature-settings-btn';
-      btn.innerHTML = '⚙️';
-      btn.title = 'Display Settings';
-      btn.style.cssText = `
-        position: absolute;
-        right: 12px;
-        bottom: 6px;
-        background: rgba(0, 0, 0, 0.6);
-        border: 1px solid rgba(255, 120, 0, 0.3);
-        border-radius: 6px;
-        padding: 0.3rem 0.5rem;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.25s ease;
-        z-index: 10002;
-        line-height: 1;
-      `;
-      
-      btn.addEventListener('mouseenter', () => {
-        btn.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
-        btn.style.borderColor = 'rgba(255,120,0,0.8)';
-        btn.style.boxShadow = '0 0 12px rgba(255,100,0,0.6)';
-        btn.style.transform = 'scale(1.1)';
-      });
-      
-      btn.addEventListener('mouseleave', () => {
-        btn.style.background = 'rgba(0, 0, 0, 0.6)';
-        btn.style.borderColor = 'rgba(255, 120, 0, 0.3)';
-        btn.style.boxShadow = 'none';
-        btn.style.transform = 'scale(1)';
-      });
-      
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleSettingsPanel();
-      });
-      
-      infoBar.appendChild(btn);
-    }
-    
-    // Always ensure it's visible
-    btn.style.display = 'inline-block';
-  }
-
-  /**
-   * Apply all feature states on initial load
-   */
-  function applyAllFeatureStates() {
-    for (const [key, enabled] of Object.entries(featureStates)) {
-      applyFeatureState(key, enabled);
-    }
-  }
-
-  /**
-   * Apply initial states - runs multiple times to catch late-loading components
-   */
-  function applyInitialStates() {
-    // Apply immediately
-    applyAllFeatureStates();
-    
-    // Also apply after components load (but no long delays)
-    setTimeout(applyAllFeatureStates, 100);
-    setTimeout(applyAllFeatureStates, 500);
-    setTimeout(applyAllFeatureStates, 1500);
-  }
-
-  /**
-   * Show the settings panel
-   */
   function showSettingsPanel() {
     const panel = document.getElementById('feature-settings-panel');
     if (panel) {
-      updateSettingsPanelContent();
+      renderPanelContent();
       panel.style.display = 'block';
       settingsPanelVisible = true;
     }
   }
 
-  /**
-   * Hide the settings panel
-   */
   function hideSettingsPanel() {
     const panel = document.getElementById('feature-settings-panel');
     if (panel) {
@@ -659,79 +328,150 @@ window.RussellTV.Features = (function() {
     }
   }
 
-  /**
-   * Toggle the settings panel
-   */
   function toggleSettingsPanel() {
-    if (settingsPanelVisible) {
-      hideSettingsPanel();
-    } else {
-      showSettingsPanel();
+    settingsPanelVisible ? hideSettingsPanel() : showSettingsPanel();
+  }
+
+  // ============ TOGGLE LOGIC (INSTANT) ============
+
+  function toggle(key) {
+    if (!FEATURE_DEFINITIONS[key]) return;
+    
+    featureStates[key] = !featureStates[key];
+    applyState(key);  // INSTANT - apply first
+    saveSettings();   // Then save
+    updateToggleUI(key);  // Update just the toggle switch
+    updateAllOnOffButtons();
+    
+    // Dispatch event for other components
+    window.dispatchEvent(new CustomEvent('feature:toggle', {
+      detail: { feature: key, enabled: featureStates[key] }
+    }));
+  }
+
+  function setAll(enabled) {
+    // Apply all states FIRST (instant visual feedback)
+    for (const key of Object.keys(FEATURE_DEFINITIONS)) {
+      featureStates[key] = enabled;
+      applyState(key);
+    }
+    
+    // Then save and update UI
+    saveSettings();
+    renderPanelContent();
+    
+    window.dispatchEvent(new CustomEvent('features:changed', {
+      detail: { states: { ...featureStates } }
+    }));
+  }
+
+  // Update just one toggle switch without re-rendering everything
+  function updateToggleUI(key) {
+    const row = document.querySelector(`.feature-row[data-key="${key}"]`);
+    if (!row) return;
+    
+    const isOn = featureStates[key];
+    const track = row.querySelector('.toggle-track');
+    const knob = row.querySelector('.toggle-knob');
+    
+    if (track) {
+      track.style.background = isOn ? 'linear-gradient(135deg, #ff8800, #ff5500)' : 'rgba(255,255,255,0.15)';
+      track.style.boxShadow = isOn ? '0 0 8px rgba(255,100,0,0.5)' : 'none';
+    }
+    if (knob) {
+      knob.style.left = isOn ? '22px' : '2px';
     }
   }
 
-  /**
-   * Register a new feature dynamically
-   */
-  function registerFeature(key, definition) {
-    if (FEATURE_DEFINITIONS.hasOwnProperty(key)) {
-      console.warn(`⚙️ Feature "${key}" already registered`);
-      return;
+  function updateAllOnOffButtons() {
+    const allOn = Object.values(featureStates).every(v => v);
+    const allOff = Object.values(featureStates).every(v => !v);
+    
+    const onBtn = document.getElementById('toggle-all-on-btn');
+    const offBtn = document.getElementById('toggle-all-off-btn');
+    
+    if (onBtn) {
+      onBtn.style.background = allOn ? 'rgba(255,120,0,0.3)' : 'rgba(255,255,255,0.05)';
+      onBtn.style.borderColor = allOn ? 'rgba(255,150,0,0.6)' : 'rgba(255,255,255,0.2)';
+      onBtn.style.color = allOn ? '#ffcc00' : 'rgba(255,255,255,0.7)';
     }
-    
-    FEATURE_DEFINITIONS[key] = definition;
-    
-    // Load state for new feature
-    try {
-      const stored = window.RussellTV?.Storage?.loadFeatureToggles();
-      if (stored) {
-        featureStates[key] = stored.hasOwnProperty(key) ? stored[key] : definition.default;
-      } else {
-        featureStates[key] = definition.default;
-      }
-    } catch (e) {
-      featureStates[key] = definition.default;
-    }
-    
-    console.log(`⚙️ Feature "${key}" registered`);
-    
-    // Update panel if visible
-    if (settingsPanelVisible) {
-      updateSettingsPanelContent();
+    if (offBtn) {
+      offBtn.style.background = allOff ? 'rgba(255,60,0,0.3)' : 'rgba(255,255,255,0.05)';
+      offBtn.style.borderColor = allOff ? 'rgba(255,100,0,0.6)' : 'rgba(255,255,255,0.2)';
+      offBtn.style.color = allOff ? '#ff9966' : 'rgba(255,255,255,0.7)';
     }
   }
 
-  /**
-   * Register a new category dynamically
-   */
-  function registerCategory(key, definition) {
-    if (CATEGORIES.hasOwnProperty(key)) {
-      console.warn(`⚙️ Category "${key}" already registered`);
-      return;
-    }
+  // ============ APPLY STATES TO DOM (INSTANT) ============
+
+  function applyState(key) {
+    const enabled = featureStates[key];
     
-    CATEGORIES[key] = definition;
-    console.log(`⚙️ Category "${key}" registered`);
+    switch (key) {
+      case 'space-weather-indicators':
+        const hf = document.getElementById('sw-indicator-hf');
+        const gps = document.getElementById('sw-indicator-gps');
+        const sat = document.getElementById('sw-indicator-satcom');
+        if (hf) hf.style.display = enabled ? 'inline-flex' : 'none';
+        if (gps) gps.style.display = enabled ? 'inline-flex' : 'none';
+        if (sat) sat.style.display = enabled ? 'inline-flex' : 'none';
+        break;
+
+      case 'propagation-panel':
+        const propBtn = document.getElementById('propagation-panel-btn');
+        if (propBtn) propBtn.style.display = enabled ? 'inline-block' : 'none';
+        if (!enabled) {
+          const panel = document.getElementById('propagation-panel');
+          if (panel) panel.style.display = 'none';
+        }
+        break;
+
+      case 'satellite-planner':
+        const satBtn = document.getElementById('satellite-planner-btn');
+        if (satBtn) satBtn.style.display = enabled ? 'inline-block' : 'none';
+        if (!enabled) {
+          const panel = document.getElementById('satellite-planner-panel');
+          if (panel) panel.style.display = 'none';
+        }
+        break;
+
+      case 'weather-tooltips':
+        document.body.classList.toggle('weather-tooltips-disabled', !enabled);
+        break;
+    }
   }
 
-  // Initialize when DOM is ready
+  function applyAllStates() {
+    for (const key of Object.keys(featureStates)) {
+      applyState(key);
+    }
+  }
+
+  // ============ PUBLIC API ============
+
+  function isEnabled(key) {
+    return featureStates[key] === true;
+  }
+
+  function getAllStates() {
+    return { ...featureStates };
+  }
+
+  // Initialize
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
 
-  // Public API
   return {
     isEnabled,
     getAllStates,
-    toggleFeature,
-    setAllFeatures,
+    toggleFeature: toggle,
+    setAllFeatures: setAll,
     showSettings: showSettingsPanel,
     hideSettings: hideSettingsPanel,
     toggleSettings: toggleSettingsPanel,
-    registerFeature,
-    registerCategory,
-    applyStates: applyAllFeatureStates
+    applyStates: applyAllStates
   };
 })();
