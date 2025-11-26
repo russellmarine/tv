@@ -1,5 +1,6 @@
 /**
  * space-weather-infobar.js - Space weather indicators for info bar
+ * FIXED VERSION - addresses tooltip and click issues
  */
 
 (function() {
@@ -10,6 +11,7 @@
   let hideTooltipTimer = null;
   let currentTooltipBand = null;
   let tooltipLocked = false;
+  let isCreatingTooltip = false; // NEW: prevents race conditions
 
   function init() {
     const checkReady = setInterval(() => {
@@ -133,16 +135,32 @@
     return btn;
   }
 
+  // FIX: Improved hide scheduling with better state checks
   function scheduleTooltipHide() {
+    if (tooltipLocked) return; // Don't schedule hide if locked
+    
     if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+    
     hideTooltipTimer = setTimeout(() => {
-      if (tooltipLocked) return;
+      if (tooltipLocked || isCreatingTooltip) return;
+      
       const tooltip = document.getElementById('space-weather-tooltip');
       const hoveredIndicator = document.querySelector('.sw-indicator:hover');
+      
+      // Check if mouse is over tooltip or any indicator
       if (tooltip && tooltip.matches(':hover')) return;
       if (hoveredIndicator) return;
+      
       hideTooltip();
-    }, 400);
+    }, 300); // Slightly shorter delay for responsiveness
+  }
+
+  // FIX: Cancel any pending hide when we know we want to show
+  function cancelScheduledHide() {
+    if (hideTooltipTimer) {
+      clearTimeout(hideTooltipTimer);
+      hideTooltipTimer = null;
+    }
   }
 
   function attachListeners() {
@@ -151,27 +169,42 @@
       if (!indicator || indicator._hasListeners) return;
       indicator._hasListeners = true;
 
-      indicator.onmouseenter = function() {
+      indicator.addEventListener('mouseenter', function() {
         this.style.background = 'rgba(255, 120, 0, 0.15)';
         this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
+        
         if (!tooltipLocked) {
-          if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+          cancelScheduledHide(); // FIX: Cancel any pending hide
           showTooltip(this, bandKey, false);
           currentTooltipBand = bandKey;
         }
-      };
+      });
 
-      indicator.onmouseleave = function() {
+      indicator.addEventListener('mouseleave', function(e) {
+        // FIX: Check if we're moving to the tooltip
+        const relatedTarget = e.relatedTarget;
+        const tooltip = document.getElementById('space-weather-tooltip');
+        
         if (!tooltipLocked || currentTooltipBand !== bandKey) {
           this.style.background = 'rgba(0, 0, 0, 0.5)';
           this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
         }
-        if (!tooltipLocked) scheduleTooltipHide();
-      };
+        
+        // FIX: Don't schedule hide if moving to tooltip
+        if (tooltip && (tooltip === relatedTarget || tooltip.contains(relatedTarget))) {
+          return;
+        }
+        
+        if (!tooltipLocked) {
+          scheduleTooltipHide();
+        }
+      });
 
-      indicator.onclick = function(e) {
+      indicator.addEventListener('click', function(e) {
         e.stopPropagation();
+        
         if (tooltipLocked && currentTooltipBand === bandKey) {
+          // Unlock and hide
           tooltipLocked = false;
           hideTooltip();
           this.style.background = 'rgba(0, 0, 0, 0.5)';
@@ -179,23 +212,19 @@
           this.style.boxShadow = 'none';
           currentTooltipBand = null;
         } else {
-          ['hf', 'gps', 'satcom'].forEach(key => {
-            const ind = document.getElementById(`sw-indicator-${key}`);
-            if (ind) {
-              ind.style.background = 'rgba(0, 0, 0, 0.5)';
-              ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
-              ind.style.boxShadow = 'none';
-            }
-          });
+          // Lock to this indicator
+          resetAllIndicatorStyles();
+          
           this.style.background =
             'linear-gradient(135deg, rgba(255, 80, 0, 0.3), rgba(255, 150, 0, 0.2))';
           this.style.borderColor = 'rgba(255, 150, 0, 0.8)';
           this.style.boxShadow = '0 0 10px rgba(255, 120, 0, 0.4)';
+          
           tooltipLocked = true;
-          showTooltip(this, bandKey, true);
           currentTooltipBand = bandKey;
+          showTooltip(this, bandKey, true);
         }
-      };
+      });
     });
 
     const btn = document.getElementById('propagation-panel-btn');
@@ -204,11 +233,16 @@
       btn.style.position = 'relative';
       btn.style.zIndex = '10002';
 
-      // 🔧 NEW: manual open/close of #propagation-panel instead of calling toggle()
-      btn.onclick = function(e) {
+      // FIX: Use mousedown instead of click for more immediate response
+      // This helps with the "two click" issue when window isn't focused
+      btn.addEventListener('mousedown', function(e) {
+        // Only respond to left click
+        if (e.button !== 0) return;
+        
         e.stopPropagation();
         e.preventDefault();
 
+        // Clean up tooltip state
         tooltipLocked = false;
         currentTooltipBand = null;
         hideTooltip();
@@ -226,9 +260,15 @@
         } else {
           panel.style.display = 'none';
         }
-      };
+      });
 
-      btn.onmouseenter = function() {
+      // FIX: Also add click handler to prevent any default behavior
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+      });
+
+      btn.addEventListener('mouseenter', function() {
         this.style.background =
           'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
         this.style.borderColor = 'rgba(255,120,0,0.8)';
@@ -236,16 +276,28 @@
           '0 0 12px rgba(255,100,0,0.8), 0 0 20px rgba(255,140,0,0.4)';
         this.style.transform = 'translateY(-2px) scale(1.05)';
         this.style.filter = 'hue-rotate(0deg) saturate(2) brightness(1.2)';
-      };
+      });
 
-      btn.onmouseleave = function() {
+      btn.addEventListener('mouseleave', function() {
         this.style.background = 'rgba(0, 0, 0, 0.7)';
         this.style.borderColor = 'rgba(255, 120, 0, 0.4)';
         this.style.boxShadow = 'none';
         this.style.transform = 'translateY(0) scale(1)';
         this.style.filter = 'hue-rotate(20deg) saturate(1.5)';
-      };
+      });
     }
+  }
+
+  // FIX: Helper function to reset all indicator styles
+  function resetAllIndicatorStyles() {
+    ['hf', 'gps', 'satcom'].forEach(key => {
+      const ind = document.getElementById(`sw-indicator-${key}`);
+      if (ind) {
+        ind.style.background = 'rgba(0, 0, 0, 0.5)';
+        ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+        ind.style.boxShadow = 'none';
+      }
+    });
   }
 
   function startMaintenance() {
@@ -282,12 +334,27 @@
   }
 
   function showTooltip(indicator, bandKey, locked) {
+    // FIX: Prevent race conditions with flag
+    if (isCreatingTooltip) return;
+    isCreatingTooltip = true;
+    
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
-    if (!data) return;
+    if (!data) {
+      isCreatingTooltip = false;
+      return;
+    }
 
-    hideTooltip();
+    // FIX: Remove existing tooltip first, but only if it exists
+    const existingTooltip = document.getElementById('space-weather-tooltip');
+    if (existingTooltip) {
+      existingTooltip.remove();
+    }
+    
     const detailed = window.RussellTV.SpaceWeather.getDetailedStatus(bandKey);
-    if (!detailed) return;
+    if (!detailed) {
+      isCreatingTooltip = false;
+      return;
+    }
 
     const tooltip = document.createElement('div');
     tooltip.id = 'space-weather-tooltip';
@@ -358,30 +425,35 @@
 
     document.body.appendChild(tooltip);
 
-    if (!locked) {
-      tooltip.onmouseenter = () => {
-        if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-      };
-      tooltip.onmouseleave = () => {
+    // FIX: Always attach hover listeners for better UX
+    tooltip.addEventListener('mouseenter', () => {
+      cancelScheduledHide();
+    });
+    
+    tooltip.addEventListener('mouseleave', (e) => {
+      // FIX: Check if moving back to an indicator
+      const relatedTarget = e.relatedTarget;
+      const isMovingToIndicator = relatedTarget && relatedTarget.closest('.sw-indicator');
+      
+      if (!tooltipLocked && !isMovingToIndicator) {
         scheduleTooltipHide();
-      };
-    }
+      }
+    });
+
+    // FIX: Reset flag after creation complete
+    isCreatingTooltip = false;
   }
 
   function hideTooltip() {
-    if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
+    cancelScheduledHide();
+    
     const tooltip = document.getElementById('space-weather-tooltip');
-    if (tooltip) tooltip.remove();
+    if (tooltip) {
+      tooltip.remove();
+    }
 
     if (!tooltipLocked) {
-      ['hf', 'gps', 'satcom'].forEach(key => {
-        const ind = document.getElementById(`sw-indicator-${key}`);
-        if (ind) {
-          ind.style.background = 'rgba(0, 0, 0, 0.5)';
-          ind.style.borderColor = 'rgba(255, 120, 0, 0.3)';
-          ind.style.boxShadow = 'none';
-        }
-      });
+      resetAllIndicatorStyles();
       currentTooltipBand = null;
     }
   }
@@ -402,17 +474,18 @@
     init();
   }
 
+  // FIX: Improved global click handler
   document.addEventListener('click', (e) => {
     const tooltip = document.getElementById('space-weather-tooltip');
-    if (
-      tooltip &&
-      !e.target.closest('.sw-indicator') &&
-      !e.target.closest('#space-weather-tooltip') &&
-      !e.target.closest('#propagation-panel-btn')
-    ) {
+    const clickedIndicator = e.target.closest('.sw-indicator');
+    const clickedTooltip = e.target.closest('#space-weather-tooltip');
+    const clickedPropBtn = e.target.closest('#propagation-panel-btn');
+    
+    if (tooltip && !clickedIndicator && !clickedTooltip && !clickedPropBtn) {
       hideTooltip();
       tooltipLocked = false;
       currentTooltipBand = null;
+      resetAllIndicatorStyles();
     }
   });
 
