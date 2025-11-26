@@ -416,7 +416,7 @@
 
     const label = document.createElement('span');
     label.className = 'sw-indicator-label';
-    label.textContent = bandKey === 'hf' ? 'HF' : bandKey === 'gps' ? 'GPS' : 'SAT/EHF';
+    label.textContent = bandKey === 'hf' ? 'HF' : bandKey === 'gps' ? 'GPS' : 'SAT';
 
     const dot = document.createElement('span');
     dot.className = 'sw-status-dot';
@@ -553,6 +553,23 @@
     swTooltip.style.bottom = `${window.innerHeight - rect.top + 12}px`;
     swTooltip.style.transform = 'translateX(-50%)';
 
+    // Enhance frequencies for SATCOM to include EHF
+    let frequencies = detailed.frequencies;
+    if (bandKey === 'satcom') {
+      frequencies = 'C/X/Ku/Ka + EHF (V/W)';
+    }
+
+    // Build global conditions summary
+    const kp = data.kpIndex;
+    let conditionsSummary = '';
+    if (data.scales.R >= 3 || data.scales.S >= 3 || data.scales.G >= 3) {
+      conditionsSummary = '⚠️ Active conditions - monitor for impacts';
+    } else if (data.scales.R >= 2 || data.scales.S >= 2 || data.scales.G >= 2 || kp >= 4) {
+      conditionsSummary = '📡 Minor disturbances possible';
+    } else {
+      conditionsSummary = '✅ Quiet conditions - nominal operations';
+    }
+
     swTooltip.innerHTML = `
       <div style="font-weight: bold; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255, 120, 0, 0.3);">
         <span style="font-size: 1.3rem;">${detailed.icon}</span>
@@ -565,20 +582,17 @@
       <div style="margin-bottom: 0.75rem; font-size: 0.85rem; opacity: 0.95; line-height: 1.4;">
         ${detailed.description}
       </div>
-      <div style="margin-bottom: 0.5rem; font-size: 0.85rem;">
-        <strong style="color: rgba(255, 150, 0, 0.9);">Frequencies:</strong> ${detailed.frequencies}
+      <div style="margin-bottom: 0.75rem; font-size: 0.85rem;">
+        <strong style="color: rgba(255, 150, 0, 0.9);">Frequencies:</strong> ${frequencies}
       </div>
-      <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.75rem; line-height: 1.4;">
-        <strong style="color: rgba(255, 150, 0, 0.9);">Uses:</strong> ${detailed.uses}
+      <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.8rem;">
+        <strong>Global Conditions:</strong> ${conditionsSummary}<br>
+        <span style="opacity: 0.8; font-size: 0.75rem;">
+          R${data.scales.R} (Radio) · S${data.scales.S} (Solar) · G${data.scales.G} (Geomag) · Kp ${kp.toFixed(1)}
+        </span>
       </div>
-      <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.75rem; opacity: 0.8;">
-        <strong>Current Conditions:</strong><br>
-        Radio: R${data.scales.R} | Solar: S${data.scales.S} | Geo: G${data.scales.G}<br>
-        Kp Index: ${data.kpIndex.toFixed(1)}<br>
-        Updated: ${formatTime(data.timestamp)}
-      </div>
-      <div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.7rem; opacity: 0.6;">
-        ${locked ? '🔒 Click indicator to unlock' : '💡 Click to lock'}
+      <div style="text-align: center; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 120, 0, 0.2); font-size: 0.65rem; opacity: 0.5;">
+        ${locked ? '🔒 Click to unlock' : '💡 Click to lock'} · Updated ${formatTime(data.timestamp)}
       </div>
     `;
 
