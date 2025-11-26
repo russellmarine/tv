@@ -1,12 +1,16 @@
 /**
- * info-bar.js - Bottom info bar with time and weather
+ * info-bar.js - Unified bottom info bar
+ * 
+ * Combines: Time, Weather, Space Weather Indicators, Settings
  * 
  * Events Emitted:
- * - 'infobar:ready' (sticky) - Bar element exists in DOM
- * - 'infobar:rendered' - Weather/time blocks have been updated
+ * - 'infobar:ready' (sticky) - Bar is ready
+ * - 'infobar:rendered' - Content updated
  * 
  * Events Listened:
  * - 'core:ready' - Start initialization
+ * - 'feature:toggle' - Show/hide features
+ * - 'spaceweather:data-updated' - Refresh indicator colors
  */
 
 (function() {
@@ -41,15 +45,13 @@
       z-index: 9999;
       box-sizing: border-box;
       justify-content: center;
+      align-items: center;
       backdrop-filter: blur(4px);
       border-top: 1px solid rgba(255,255,255,0.1);
       overflow: visible !important;
     }
 
-    #info-bar-content {
-      display: contents;
-    }
-
+    /* Time/Weather blocks */
     .info-block {
       padding: 2px 10px;
       border-radius: 999px;
@@ -62,6 +64,7 @@
       align-items: center;
       justify-content: center;
       gap: 0.35rem;
+      flex-shrink: 0;
     }
 
     .info-block strong { font-weight: 600; }
@@ -184,13 +187,91 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.6; }
     }
+
+    /* ============ SPACE WEATHER SECTION ============ */
+    
+    #space-weather-section {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-left: 0.75rem;
+      margin-left: 0.25rem;
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+      flex-shrink: 0;
+    }
+
+    .sw-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+      transition: all 0.2s ease;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 120, 0, 0.3);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .sw-indicator:hover {
+      background: rgba(255, 120, 0, 0.15);
+      border-color: rgba(255, 120, 0, 0.5);
+    }
+
+    .sw-indicator-label {
+      font-size: 0.72rem;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      color: rgba(200, 200, 200, 0.95);
+    }
+
+    .sw-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #888;
+      flex-shrink: 0;
+    }
+
+    /* Space weather tooltip */
+    #sw-tooltip {
+      position: fixed;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(20, 10, 0, 0.98));
+      color: white;
+      padding: 1rem 1.25rem;
+      border-radius: 16px;
+      font-size: 0.85rem;
+      z-index: 10001;
+      pointer-events: auto;
+      border: 2px solid rgba(255, 120, 0, 0.6);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 120, 0, 0.3);
+      min-width: 300px;
+      max-width: 380px;
+      backdrop-filter: blur(10px);
+      display: none;
+    }
+
+    #sw-tooltip.visible {
+      display: block;
+    }
   `;
 
   // ============ STATE ============
 
   let weatherMap = {};
   let bar = null;
-  let contentContainer = null;
+  let swTooltip = null;
+  let currentTooltipBand = null;
+  let tooltipLocked = false;
+  let hideTooltipTimer = null;
+
+  // Feature states (synced with feature-toggles.js)
+  let featureStates = {
+    'space-weather-indicators': true,
+    'propagation-panel': true,
+    'weather-tooltips': true
+  };
 
   // ============ HELPERS ============
 
@@ -214,14 +295,23 @@
     return 'sunny';
   }
 
+  function formatTime(date) {
+    if (!date) return 'Unknown';
+    const now = new Date();
+    const diff = Math.floor((now - date) / 60000);
+    if (diff < 1) return 'Just now';
+    if (diff < 60) return `${diff}m ago`;
+    return `${Math.floor(diff / 60)}h ago`;
+  }
+
   // ============ RENDERING ============
 
-  function renderTimeWeatherBlocks() {
-    if (!contentContainer) return;
+  function render() {
+    if (!bar) return;
 
-    // Clear only the content container, not the whole bar
-    contentContainer.innerHTML = '';
+    bar.innerHTML = '';
 
+    // Time/Weather blocks
     window.TIME_ZONES.forEach(loc => {
       const time = new Date().toLocaleString('en-US', {
         timeZone: loc.tz,
@@ -268,11 +358,261 @@
         div.addEventListener('click', () => window.open(wuUrl, '_blank', 'noopener'));
       }
 
-      contentContainer.appendChild(div);
+      bar.appendChild(div);
     });
+
+    // Space Weather Section
+    renderSpaceWeatherSection();
 
     Events.emit('infobar:rendered');
   }
+
+  function renderSpaceWeatherSection() {
+    const section = document.createElement('div');
+    section.id = 'space-weather-section';
+
+    const config = window.SPACE_WEATHER_CONFIG;
+    const showIndicators = featureStates['space-weather-indicators'];
+    const showPropPanel = featureStates['propagation-panel'];
+
+    // HF, GPS, SAT indicators
+    if (config && showIndicators) {
+      ['hf', 'gps', 'satcom'].forEach(bandKey => {
+        const indicator = createIndicator(bandKey);
+        section.appendChild(indicator);
+      });
+    }
+
+    // Propagation panel button
+    if (showPropPanel) {
+      const propBtn = createPropButton();
+      section.appendChild(propBtn);
+    }
+
+    // Settings button (always visible)
+    const settingsBtn = createSettingsButton();
+    section.appendChild(settingsBtn);
+
+    bar.appendChild(section);
+
+    // Update colors after rendering
+    updateIndicatorColors();
+  }
+
+  function createIndicator(bandKey) {
+    const config = window.SPACE_WEATHER_CONFIG;
+    const band = config?.bands?.[bandKey];
+
+    const span = document.createElement('span');
+    span.id = `sw-indicator-${bandKey}`;
+    span.className = 'sw-indicator';
+    span.dataset.band = bandKey;
+
+    const label = document.createElement('span');
+    label.className = 'sw-indicator-label';
+    label.textContent = bandKey === 'hf' ? 'HF' : bandKey === 'gps' ? 'GPS' : 'SAT';
+
+    const dot = document.createElement('span');
+    dot.className = 'sw-status-dot';
+
+    span.appendChild(label);
+    span.appendChild(dot);
+
+    // Tooltip events
+    span.addEventListener('mouseenter', () => {
+      if (!tooltipLocked) {
+        showSwTooltip(span, bandKey, false);
+      }
+    });
+
+    span.addEventListener('mouseleave', () => {
+      if (!tooltipLocked) {
+        scheduleHideTooltip();
+      }
+    });
+
+    span.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (tooltipLocked && currentTooltipBand === bandKey) {
+        tooltipLocked = false;
+        hideSwTooltip();
+      } else {
+        tooltipLocked = true;
+        showSwTooltip(span, bandKey, true);
+      }
+    });
+
+    return span;
+  }
+
+  function createPropButton() {
+    const span = document.createElement('span');
+    span.id = 'propagation-panel-btn';
+    span.className = 'sw-indicator';
+    span.title = 'Propagation Forecast';
+
+    const label = document.createElement('span');
+    label.className = 'sw-indicator-label';
+    label.textContent = '⚡';
+
+    span.appendChild(label);
+
+    span.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideSwTooltip();
+      tooltipLocked = false;
+
+      const panel = document.getElementById('propagation-panel');
+      if (panel) {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      }
+    });
+
+    return span;
+  }
+
+  function createSettingsButton() {
+    const span = document.createElement('span');
+    span.id = 'feature-settings-btn';
+    span.className = 'sw-indicator';
+    span.title = 'Display Settings';
+
+    const label = document.createElement('span');
+    label.className = 'sw-indicator-label';
+    label.textContent = '⚙️';
+
+    span.appendChild(label);
+
+    span.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.RussellTV?.Features?.toggleSettings) {
+        window.RussellTV.Features.toggleSettings();
+      }
+    });
+
+    return span;
+  }
+
+  // ============ SPACE WEATHER TOOLTIP ============
+
+  function createSwTooltipElement() {
+    if (swTooltip) return;
+
+    swTooltip = document.createElement('div');
+    swTooltip.id = 'sw-tooltip';
+    document.body.appendChild(swTooltip);
+
+    swTooltip.addEventListener('mouseenter', () => {
+      cancelHideTooltip();
+    });
+
+    swTooltip.addEventListener('mouseleave', () => {
+      if (!tooltipLocked) {
+        scheduleHideTooltip();
+      }
+    });
+  }
+
+  function showSwTooltip(indicator, bandKey, locked) {
+    cancelHideTooltip();
+    currentTooltipBand = bandKey;
+
+    const data = window.RussellTV?.SpaceWeather?.getCurrentData();
+    const detailed = window.RussellTV?.SpaceWeather?.getDetailedStatus?.(bandKey);
+
+    if (!data || !detailed) {
+      return;
+    }
+
+    createSwTooltipElement();
+
+    const rect = indicator.getBoundingClientRect();
+    swTooltip.style.left = `${rect.left + rect.width / 2}px`;
+    swTooltip.style.bottom = `${window.innerHeight - rect.top + 12}px`;
+    swTooltip.style.transform = 'translateX(-50%)';
+
+    swTooltip.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255, 120, 0, 0.3);">
+        <span style="font-size: 1.3rem;">${detailed.icon}</span>
+        <span style="font-size: 1rem;">${detailed.band}</span>
+        <span style="margin-left: auto; font-size: 1.1rem;">${detailed.statusIcon}</span>
+      </div>
+      <div style="margin-bottom: 0.75rem;">
+        <strong>Status:</strong> <span style="color: ${detailed.color}; font-weight: bold;">${detailed.status}</span>
+      </div>
+      <div style="margin-bottom: 0.75rem; font-size: 0.85rem; opacity: 0.95; line-height: 1.4;">
+        ${detailed.description}
+      </div>
+      <div style="margin-bottom: 0.5rem; font-size: 0.85rem;">
+        <strong style="color: rgba(255, 150, 0, 0.9);">Frequencies:</strong> ${detailed.frequencies}
+      </div>
+      <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.75rem; line-height: 1.4;">
+        <strong style="color: rgba(255, 150, 0, 0.9);">Uses:</strong> ${detailed.uses}
+      </div>
+      <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.75rem; opacity: 0.8;">
+        <strong>Current Conditions:</strong><br>
+        Radio: R${data.scales.R} | Solar: S${data.scales.S} | Geo: G${data.scales.G}<br>
+        Kp Index: ${data.kpIndex.toFixed(1)}<br>
+        Updated: ${formatTime(data.timestamp)}
+      </div>
+      <div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 120, 0, 0.3); font-size: 0.7rem; opacity: 0.6;">
+        ${locked ? '🔒 Click indicator to unlock' : '💡 Click to lock'}
+      </div>
+    `;
+
+    swTooltip.classList.add('visible');
+  }
+
+  function hideSwTooltip() {
+    cancelHideTooltip();
+    if (swTooltip) {
+      swTooltip.classList.remove('visible');
+    }
+    currentTooltipBand = null;
+  }
+
+  function scheduleHideTooltip() {
+    cancelHideTooltip();
+    hideTooltipTimer = setTimeout(() => {
+      if (!tooltipLocked) {
+        hideSwTooltip();
+      }
+    }, 300);
+  }
+
+  function cancelHideTooltip() {
+    if (hideTooltipTimer) {
+      clearTimeout(hideTooltipTimer);
+      hideTooltipTimer = null;
+    }
+  }
+
+  // ============ INDICATOR COLORS ============
+
+  function updateIndicatorColors() {
+    const data = window.RussellTV?.SpaceWeather?.getCurrentData();
+    const config = window.SPACE_WEATHER_CONFIG;
+
+    if (!data || !config) return;
+
+    ['hf', 'gps', 'satcom'].forEach(bandKey => {
+      const indicator = document.getElementById(`sw-indicator-${bandKey}`);
+      if (!indicator) return;
+
+      const dot = indicator.querySelector('.sw-status-dot');
+      const status = data.status[bandKey];
+      const statusInfo = config.statusLevels?.[status];
+
+      if (dot && statusInfo) {
+        dot.style.background = statusInfo.color;
+        dot.style.boxShadow = (status === 'red' || status === 'orange')
+          ? `0 0 8px ${statusInfo.color}`
+          : 'none';
+      }
+    });
+  }
+
+  // ============ WEATHER FETCHING ============
 
   async function fetchWeather() {
     if (!window.WEATHER_QUERIES || typeof window.fetchWeather !== 'function') {
@@ -311,6 +651,20 @@
     weatherMap = newMap;
   }
 
+  // ============ FEATURE TOGGLE HANDLING ============
+
+  function handleFeatureToggle({ feature, enabled }) {
+    featureStates[feature] = enabled;
+
+    // Re-render to apply changes instantly
+    render();
+
+    // Special case for weather tooltips (CSS class on body)
+    if (feature === 'weather-tooltips') {
+      document.body.classList.toggle('weather-tooltips-disabled', !enabled);
+    }
+  }
+
   // ============ INITIALIZATION ============
 
   function init() {
@@ -319,41 +673,61 @@
     styleEl.textContent = styles;
     document.head.appendChild(styleEl);
 
-    // Create bar structure
+    // Create bar
     bar = document.createElement('div');
     bar.id = 'info-bar';
-
-    // Content container for time/weather blocks (will be re-rendered)
-    contentContainer = document.createElement('div');
-    contentContainer.id = 'info-bar-content';
-    bar.appendChild(contentContainer);
-
     document.body.appendChild(bar);
 
-    // Signal that bar is ready
+    // Load initial feature states from storage
+    const stored = window.RussellTV?.Storage?.load?.('featureToggles');
+    if (stored) {
+      Object.assign(featureStates, stored);
+    }
+
+    // Apply weather tooltips state
+    if (!featureStates['weather-tooltips']) {
+      document.body.classList.add('weather-tooltips-disabled');
+    }
+
+    // Listen for feature toggles
+    Events.on('feature:toggle', handleFeatureToggle);
+
+    // Listen for space weather data updates
+    Events.on('spaceweather:data-updated', updateIndicatorColors);
+
+    // Close tooltip on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.sw-indicator') && !e.target.closest('#sw-tooltip')) {
+        tooltipLocked = false;
+        hideSwTooltip();
+      }
+    });
+
+    // Signal ready
     Events.emit('infobar:ready', { bar }, { sticky: true });
 
     // Initial render
-    renderTimeWeatherBlocks();
+    render();
 
     // Fetch weather and re-render
-    fetchWeather().then(() => {
-      renderTimeWeatherBlocks();
-    });
+    fetchWeather().then(() => render());
 
     // Update time every 10 seconds
-    setInterval(renderTimeWeatherBlocks, 10000);
+    setInterval(render, 10000);
 
     // Update weather every 10 minutes
     setInterval(async () => {
       await fetchWeather();
-      renderTimeWeatherBlocks();
+      render();
     }, 600000);
 
-    console.log('✅ [InfoBar] Initialized');
+    // Update indicator colors periodically
+    setInterval(updateIndicatorColors, 60000);
+
+    console.log('✅ [InfoBar] Unified bar initialized');
   }
 
-  // Wait for core to be ready
+  // Wait for core
   Events.whenReady('core:ready', init);
 
 })();
