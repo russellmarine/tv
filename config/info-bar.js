@@ -155,6 +155,14 @@
       opacity: 1;
     }
 
+    /* ======== WEATHER TOOLTIPS DISABLED STATE ======== */
+    /* When body has this class, weather tooltips are hidden */
+    body.weather-tooltips-disabled .info-block.has-tooltip::after,
+    body.weather-tooltips-disabled .info-block.has-tooltip::before {
+      display: none !important;
+      opacity: 0 !important;
+    }
+
     /* ======== WEATHER ICONS ======== */
 
     .wx-icon-wrap {
