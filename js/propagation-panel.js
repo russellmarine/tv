@@ -1,5 +1,6 @@
 /**
  * propagation-panel.js - Enhanced HF/SATCOM Propagation Panel
+ * FIXED VERSION - Uses centralized SpaceWeather data for consistency
  * - Draggable
  * - Location-aware (uses selected time zone)
  * - Weather-aware SATCOM predictions
@@ -25,11 +26,12 @@ window.RussellTV.PropagationPanel = (function() {
       const dataLine = lines[lines.length - 1];
       const parts = dataLine.split(/\s+/);
       
+      // FIX: Don't store kIndex here - we'll get it from centralized SpaceWeather
       solarData = {
         solarFlux: parseFloat(parts[3]) || 150,
         sunspotNumber: parseInt(parts[1]) || 50,
-        aIndex: parseFloat(parts[4]) || 10,
-        kIndex: parseFloat(parts[5]) || 2
+        aIndex: parseFloat(parts[4]) || 10
+        // kIndex removed - will use SpaceWeather.getCurrentData().kpIndex instead
       };
       
       console.log('☀️ Solar data fetched:', solarData);
@@ -39,11 +41,21 @@ window.RussellTV.PropagationPanel = (function() {
       solarData = {
         solarFlux: 150,
         sunspotNumber: 50,
-        aIndex: 10,
-        kIndex: 2
+        aIndex: 10
       };
       return solarData;
     }
+  }
+
+  // FIX: Helper function to get Kp index from centralized source
+  function getKpIndex() {
+    const swData = window.RussellTV?.SpaceWeather?.getCurrentData();
+    if (swData && typeof swData.kpIndex === 'number' && !isNaN(swData.kpIndex)) {
+      return swData.kpIndex;
+    }
+    // Fallback to a reasonable default
+    console.warn('⚠️ SpaceWeather data not available, using default Kp');
+    return 3;
   }
 
   // Calculate solar elevation angle for twilight determination
@@ -499,8 +511,9 @@ window.RussellTV.PropagationPanel = (function() {
       localTime = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) + ' UTC';
     }
 
+    // FIX: Get Kp index from centralized SpaceWeather data
     const swData = window.RussellTV?.SpaceWeather?.getCurrentData();
-    const kpIndex = swData?.kpIndex || solarData.kIndex || 3;
+    const kpIndex = getKpIndex(); // Use helper function for consistent Kp
 
     const mufData = calculateMUF(solarData.solarFlux, isDay, latitude, kpIndex);
     
@@ -509,13 +522,18 @@ window.RussellTV.PropagationPanel = (function() {
       solarFlux: solarData.solarFlux,
       sunspotNumber: solarData.sunspotNumber,
       kIndex: kpIndex,
-      rScale: swData?.scales.R || 0
+      rScale: swData?.scales?.R || 0
     };
 
     const bestBands = getBestBands(mufData, conditions);
 
-    const satcomStatus = swData?.status.satcom || 'green';
+    const satcomStatus = swData?.status?.satcom || 'green';
     const satcom = assessSATCOM(weather, satcomStatus);
+
+    // FIX: Show data source info for debugging
+    const dataSourceInfo = swData 
+      ? `Real-time (${formatTimeAgo(swData.timestamp)})`
+      : 'Default values';
 
     let html = `
       ${locationName ? `
@@ -642,12 +660,24 @@ window.RussellTV.PropagationPanel = (function() {
       </div>
 
       <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2); font-size: 0.75rem; opacity: 0.6; text-align: center;">
-        Updated: ${new Date().toLocaleTimeString()}<br>
+        Updated: ${new Date().toLocaleTimeString()} | Data: ${dataSourceInfo}<br>
         <span style="font-size: 0.7rem; opacity: 0.7;">💡 Drag header to move panel</span>
       </div>
     `;
 
     content.innerHTML = html;
+  }
+
+  // FIX: Helper to format time ago
+  function formatTimeAgo(date) {
+    if (!date) return 'unknown';
+    const now = new Date();
+    const diff = Math.floor((now - new Date(date)) / 60000);
+    if (diff < 1) return 'just now';
+    if (diff < 60) return `${diff}m ago`;
+    const hours = Math.floor(diff / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(date).toLocaleString();
   }
 
   function show() {
@@ -698,6 +728,14 @@ window.RussellTV.PropagationPanel = (function() {
       show();
     }
   }
+
+  // FIX: Listen for centralized space weather updates
+  window.addEventListener('spaceweather:updated', (e) => {
+    if (panelVisible) {
+      console.log('📡 Propagation panel received space weather update');
+      updatePanelContent();
+    }
+  });
 
   setInterval(() => {
     if (panelVisible) {
