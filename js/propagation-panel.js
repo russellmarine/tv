@@ -376,7 +376,10 @@
     createPanel();
 
     // Update when new data arrives
-    Events.on('spaceweather:data-updated', updatePanelContent);
+    Events.on('spaceweather:data-updated', () => {
+      console.log('[Propagation] Data updated, refreshing panel');
+      updatePanelContent();
+    });
 
     // Handle feature toggles
     Events.on('feature:toggle', ({ feature, enabled }) => {
@@ -384,6 +387,14 @@
         panel.style.display = 'none';
       }
     });
+
+    // Try to update content now in case data is already loaded
+    updatePanelContent();
+    
+    // Retry a few times in case data is still loading
+    setTimeout(updatePanelContent, 500);
+    setTimeout(updatePanelContent, 1500);
+    setTimeout(updatePanelContent, 3000);
 
     Events.emit('propagation:ready', null, { sticky: true });
 
