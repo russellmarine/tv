@@ -144,6 +144,8 @@
     hideTooltipTimer = setTimeout(() => {
       if (tooltipLocked || isCreatingTooltip) return;
       
+      // FIX: Use document.elementFromPoint with current mouse position
+      // to check what's actually under the cursor right now
       const tooltip = document.getElementById('space-weather-tooltip');
       const hoveredIndicator = document.querySelector('.sw-indicator:hover');
       
@@ -151,8 +153,51 @@
       if (tooltip && tooltip.matches(':hover')) return;
       if (hoveredIndicator) return;
       
+      // FIX: Also check if mouse is in the "bridge zone" between indicator and tooltip
+      if (tooltip && isMouseNearTooltipOrIndicator()) return;
+      
       hideTooltip();
-    }, 300); // Slightly shorter delay for responsiveness
+    }, 400); // Slightly longer delay to allow mouse travel
+  }
+  
+  // FIX: Track mouse position globally for better hover detection
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+  
+  document.addEventListener('mousemove', (e) => {
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  }, { passive: true });
+  
+  // FIX: Check if mouse is near the tooltip or any indicator (within a tolerance zone)
+  function isMouseNearTooltipOrIndicator() {
+    const tooltip = document.getElementById('space-weather-tooltip');
+    const tolerance = 25; // pixels of tolerance
+    
+    // Check tooltip
+    if (tooltip) {
+      const rect = tooltip.getBoundingClientRect();
+      if (lastMouseX >= rect.left - tolerance && 
+          lastMouseX <= rect.right + tolerance &&
+          lastMouseY >= rect.top - tolerance && 
+          lastMouseY <= rect.bottom + tolerance) {
+        return true;
+      }
+    }
+    
+    // Check all indicators
+    const indicators = document.querySelectorAll('.sw-indicator');
+    for (const ind of indicators) {
+      const rect = ind.getBoundingClientRect();
+      if (lastMouseX >= rect.left - tolerance && 
+          lastMouseX <= rect.right + tolerance &&
+          lastMouseY >= rect.top - tolerance && 
+          lastMouseY <= rect.bottom + tolerance) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   // FIX: Cancel any pending hide when we know we want to show
@@ -350,6 +395,12 @@
       existingTooltip.remove();
     }
     
+    // FIX: Also remove existing bridge
+    const existingBridge = document.getElementById('space-weather-tooltip-bridge');
+    if (existingBridge) {
+      existingBridge.remove();
+    }
+    
     const detailed = window.RussellTV.SpaceWeather.getDetailedStatus(bandKey);
     if (!detailed) {
       isCreatingTooltip = false;
@@ -379,7 +430,7 @@
 
     const rect = indicator.getBoundingClientRect();
     tooltip.style.left = `${rect.left + rect.width / 2}px`;
-    tooltip.style.bottom = `${window.innerHeight - rect.top + 15}px`;
+    tooltip.style.bottom = `${window.innerHeight - rect.top + 8}px`;
     tooltip.style.transform = 'translateX(-50%)';
 
     tooltip.innerHTML = `
@@ -424,6 +475,35 @@
     `;
 
     document.body.appendChild(tooltip);
+    
+    // FIX: Add invisible bridge element to connect indicator and tooltip
+    // This prevents the "gap" problem when moving mouse between them
+    const bridge = document.createElement('div');
+    bridge.id = 'space-weather-tooltip-bridge';
+    bridge.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      width: ${rect.width}px;
+      bottom: ${window.innerHeight - rect.top}px;
+      height: 12px;
+      background: transparent;
+      z-index: 10000;
+      pointer-events: auto;
+    `;
+    bridge.addEventListener('mouseenter', () => {
+      cancelScheduledHide();
+    });
+    bridge.addEventListener('mouseleave', (e) => {
+      const relatedTarget = e.relatedTarget;
+      const tooltip = document.getElementById('space-weather-tooltip');
+      const isMovingToTooltip = tooltip && (tooltip === relatedTarget || tooltip.contains(relatedTarget));
+      const isMovingToIndicator = relatedTarget && relatedTarget.closest('.sw-indicator');
+      
+      if (!tooltipLocked && !isMovingToTooltip && !isMovingToIndicator) {
+        scheduleTooltipHide();
+      }
+    });
+    document.body.appendChild(bridge);
 
     // FIX: Always attach hover listeners for better UX
     tooltip.addEventListener('mouseenter', () => {
@@ -450,6 +530,12 @@
     const tooltip = document.getElementById('space-weather-tooltip');
     if (tooltip) {
       tooltip.remove();
+    }
+    
+    // FIX: Also remove the bridge element
+    const bridge = document.getElementById('space-weather-tooltip-bridge');
+    if (bridge) {
+      bridge.remove();
     }
 
     if (!tooltipLocked) {
