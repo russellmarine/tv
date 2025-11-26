@@ -470,7 +470,9 @@
 
       const panel = document.getElementById('propagation-panel');
       if (panel) {
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        // Use computed style to check actual visibility
+        const isHidden = window.getComputedStyle(panel).display === 'none';
+        panel.style.display = isHidden ? 'block' : 'none';
       }
     });
 
