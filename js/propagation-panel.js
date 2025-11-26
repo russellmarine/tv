@@ -26,8 +26,8 @@
       position: fixed;
       top: 80px;
       right: 20px;
-      width: 380px;
-      max-height: 80vh;
+      width: 400px;
+      max-height: 85vh;
       overflow-y: auto;
       background: linear-gradient(145deg, rgba(10, 5, 0, 0.98) 0%, rgba(25, 12, 0, 0.98) 100%);
       border: 2px solid rgba(255, 120, 0, 0.5);
@@ -73,6 +73,131 @@
 
     #propagation-panel .panel-content {
       padding: 1rem 1.25rem;
+    }
+
+    #propagation-panel .location-selector {
+      margin-bottom: 1rem;
+    }
+
+    #propagation-panel .location-selector label {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.7;
+      margin-bottom: 0.4rem;
+    }
+
+    #propagation-panel .location-select {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 120, 0, 0.4);
+      border-radius: 8px;
+      color: white;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #propagation-panel .location-select:hover {
+      border-color: rgba(255, 120, 0, 0.7);
+    }
+
+    #propagation-panel .location-select:focus {
+      outline: none;
+      border-color: rgba(255, 120, 0, 0.9);
+      box-shadow: 0 0 8px rgba(255, 120, 0, 0.3);
+    }
+
+    #propagation-panel .location-select option {
+      background: #1a1a1a;
+      color: white;
+    }
+
+    #propagation-panel .location-info {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 120, 0, 0.3);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+    }
+
+    #propagation-panel .location-info-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(255, 120, 0, 0.2);
+    }
+
+    #propagation-panel .location-info-header .location-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    #propagation-panel .location-info-header .day-night-badge {
+      margin-left: auto;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    #propagation-panel .location-info-header .day-night-badge.day {
+      background: rgba(255, 200, 0, 0.3);
+      color: #ffd700;
+    }
+
+    #propagation-panel .location-info-header .day-night-badge.night {
+      background: rgba(100, 100, 200, 0.3);
+      color: #aaaaff;
+    }
+
+    #propagation-panel .location-info-header .day-night-badge.greyline {
+      background: rgba(255, 100, 100, 0.3);
+      color: #ff9999;
+    }
+
+    #propagation-panel .location-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    #propagation-panel .location-info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    #propagation-panel .location-info-item .item-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.6;
+    }
+
+    #propagation-panel .location-info-item .item-value {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    #propagation-panel .hf-assessment {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    #propagation-panel .hf-assessment-title {
+      font-weight: 600;
+      color: rgba(255, 150, 0, 0.9);
+      margin-bottom: 0.25rem;
     }
 
     #propagation-panel .status-grid {
@@ -177,6 +302,141 @@
   // ============ STATE ============
 
   let panel = null;
+  let selectedLocation = null;
+
+  // ============ SUN CALCULATIONS ============
+
+  // Calculate sunrise/sunset times for a given lat/lon and date
+  function calculateSunTimes(lat, lon, date = new Date()) {
+    const rad = Math.PI / 180;
+    const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+    
+    // Solar declination
+    const declination = -23.45 * Math.cos(rad * (360 / 365) * (dayOfYear + 10));
+    
+    // Hour angle
+    const latRad = lat * rad;
+    const decRad = declination * rad;
+    
+    // Sunrise/sunset hour angle (standard: -0.833 degrees for atmospheric refraction)
+    const cosHourAngle = (Math.sin(-0.833 * rad) - Math.sin(latRad) * Math.sin(decRad)) / 
+                          (Math.cos(latRad) * Math.cos(decRad));
+    
+    // Check for polar day/night
+    if (cosHourAngle > 1) {
+      return { polarNight: true };
+    }
+    if (cosHourAngle < -1) {
+      return { polarDay: true };
+    }
+    
+    const hourAngle = Math.acos(cosHourAngle) / rad;
+    
+    // Solar noon (in hours UTC)
+    const solarNoon = 12 - lon / 15;
+    
+    // Sunrise and sunset in UTC hours
+    const sunriseUTC = solarNoon - hourAngle / 15;
+    const sunsetUTC = solarNoon + hourAngle / 15;
+    
+    // Convert to Date objects
+    const sunrise = new Date(date);
+    sunrise.setUTCHours(Math.floor(sunriseUTC), Math.round((sunriseUTC % 1) * 60), 0, 0);
+    
+    const sunset = new Date(date);
+    sunset.setUTCHours(Math.floor(sunsetUTC), Math.round((sunsetUTC % 1) * 60), 0, 0);
+    
+    return { sunrise, sunset, solarNoon };
+  }
+
+  // Determine if location is in day, night, or greyline
+  function getDayNightStatus(lat, lon) {
+    const now = new Date();
+    const sunTimes = calculateSunTimes(lat, lon, now);
+    
+    if (sunTimes.polarDay) {
+      return { status: 'day', label: 'Polar Day', icon: '☀️' };
+    }
+    if (sunTimes.polarNight) {
+      return { status: 'night', label: 'Polar Night', icon: '🌙' };
+    }
+    
+    const { sunrise, sunset } = sunTimes;
+    const nowTime = now.getTime();
+    const sunriseTime = sunrise.getTime();
+    const sunsetTime = sunset.getTime();
+    
+    // Greyline is ~30 minutes around sunrise/sunset
+    const greylineWindow = 30 * 60 * 1000; // 30 minutes in ms
+    
+    if (Math.abs(nowTime - sunriseTime) < greylineWindow) {
+      return { status: 'greyline', label: 'Greyline (Sunrise)', icon: '🌅', sunTimes };
+    }
+    if (Math.abs(nowTime - sunsetTime) < greylineWindow) {
+      return { status: 'greyline', label: 'Greyline (Sunset)', icon: '🌇', sunTimes };
+    }
+    
+    if (nowTime > sunriseTime && nowTime < sunsetTime) {
+      return { status: 'day', label: 'Daytime', icon: '☀️', sunTimes };
+    }
+    
+    return { status: 'night', label: 'Nighttime', icon: '🌙', sunTimes };
+  }
+
+  // Get HF propagation assessment for location
+  function getHfAssessment(lat, lon, data) {
+    const dayNight = getDayNightStatus(lat, lon);
+    const kp = data?.kpIndex || 0;
+    const rScale = data?.scales?.R || 0;
+    
+    let assessment = '';
+    
+    if (dayNight.status === 'greyline') {
+      assessment = '🎯 Excellent DX conditions! Greyline enhancement active. ';
+      assessment += 'Long-path propagation may be possible on 20m-40m bands. ';
+    } else if (dayNight.status === 'day') {
+      assessment = 'Daytime propagation favors higher HF bands (15m-10m). ';
+      if (rScale >= 2) {
+        assessment += '⚠️ Solar flare activity may cause HF fadeouts on sunlit paths. ';
+      }
+    } else {
+      assessment = 'Nighttime propagation favors lower HF bands (40m-80m-160m). ';
+      assessment += 'F2 layer skip possible on 20m for long-path DX. ';
+    }
+    
+    // Geomagnetic effects based on latitude
+    const absLat = Math.abs(lat);
+    if (absLat > 55) {
+      if (kp >= 5) {
+        assessment += '🌌 Aurora likely visible! HF may be disrupted on polar paths but VHF aurora scatter possible. ';
+      } else if (kp >= 4) {
+        assessment += '📍 High-latitude location: Monitor for aurora and polar cap absorption. ';
+      }
+    } else if (absLat > 40 && kp >= 6) {
+      assessment += '📍 Mid-latitude auroral effects possible with current Kp. ';
+    }
+    
+    return assessment;
+  }
+
+  // Format time in location's timezone
+  function formatTimeInTz(date, tz) {
+    if (!date) return '--:--';
+    try {
+      return date.toLocaleTimeString('en-US', { 
+        timeZone: tz, 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      });
+    } catch {
+      return date.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      });
+    }
+  }
 
   // ============ PANEL CREATION ============
 
@@ -188,6 +448,14 @@
     styleEl.textContent = styles;
     document.head.appendChild(styleEl);
 
+    // Build location options from TIME_ZONES
+    const locations = window.TIME_ZONES || [];
+    let locationOptions = '<option value="">-- Select Location --</option>';
+    locations.forEach((loc, idx) => {
+      if (loc.label === 'Zulu') return; // Skip Zulu
+      locationOptions += `<option value="${idx}">${loc.label}</option>`;
+    });
+
     panel = document.createElement('div');
     panel.id = 'propagation-panel';
     panel.innerHTML = `
@@ -196,6 +464,13 @@
         <button class="panel-close">&times;</button>
       </div>
       <div class="panel-content">
+        <div class="location-selector">
+          <label>Location</label>
+          <select class="location-select" id="prop-location-select">
+            ${locationOptions}
+          </select>
+        </div>
+        <div id="prop-location-info"></div>
         <div class="status-grid" id="prop-status-grid"></div>
         <div class="section">
           <div class="section-title">Band Conditions</div>
@@ -219,6 +494,12 @@
       panel.style.display = 'none';
     });
 
+    // Load saved location
+    const savedIdx = window.RussellTV?.Storage?.load?.('propLocationIdx');
+    if (savedIdx !== null && savedIdx !== '' && window.TIME_ZONES?.[savedIdx]) {
+      selectedLocation = window.TIME_ZONES[parseInt(savedIdx)];
+    }
+
     // Close on outside click
     document.addEventListener('click', (e) => {
       if (panel.style.display !== 'none' &&
@@ -240,9 +521,25 @@
     const contentEl = panel.querySelector('.panel-content');
     if (!contentEl) return;
 
-    // If no data yet, show loading but preserve/recreate structure
+    // Build location options (in case panel was recreated)
+    const locations = window.TIME_ZONES || [];
+    let locationOptions = '<option value="">-- Select Location --</option>';
+    locations.forEach((loc, idx) => {
+      if (loc.label === 'Zulu') return;
+      const selected = selectedLocation && selectedLocation.label === loc.label ? 'selected' : '';
+      locationOptions += `<option value="${idx}" ${selected}>${loc.label}</option>`;
+    });
+
+    // If no data yet, show loading
     if (!data || !config) {
       contentEl.innerHTML = `
+        <div class="location-selector">
+          <label>Location</label>
+          <select class="location-select" id="prop-location-select">
+            ${locationOptions}
+          </select>
+        </div>
+        <div id="prop-location-info"></div>
         <div class="status-grid" id="prop-status-grid">
           <div style="grid-column: 1 / -1; text-align: center; padding: 1rem; opacity: 0.7;">
             Loading...
@@ -257,32 +554,78 @@
           <div id="prop-forecast" style="text-align: center; padding: 1rem; opacity: 0.7;">Loading...</div>
         </div>
       `;
+      attachLocationListener();
       return;
     }
 
-    // Ensure structure exists (recreate if needed)
-    let gridEl = panel.querySelector('#prop-status-grid');
-    let bandListEl = panel.querySelector('#prop-band-list');
-    let forecastEl = panel.querySelector('#prop-forecast');
-    const lastUpdateEl = panel.querySelector('#prop-last-update');
+    // Build location info HTML
+    let locationInfoHtml = '';
+    if (selectedLocation) {
+      const loc = selectedLocation;
+      const dayNight = getDayNightStatus(loc.lat, loc.lon);
+      const sunTimes = dayNight.sunTimes || calculateSunTimes(loc.lat, loc.lon);
+      const hfAssessment = getHfAssessment(loc.lat, loc.lon, data);
 
-    // If structure was wiped, recreate it
-    if (!gridEl || !bandListEl || !forecastEl) {
-      contentEl.innerHTML = `
-        <div class="status-grid" id="prop-status-grid"></div>
-        <div class="section">
-          <div class="section-title">Band Conditions</div>
-          <div id="prop-band-list"></div>
-        </div>
-        <div class="section">
-          <div class="section-title">Forecast</div>
-          <div id="prop-forecast"></div>
+      locationInfoHtml = `
+        <div class="location-info">
+          <div class="location-info-header">
+            <span class="location-name">${dayNight.icon} ${loc.label}</span>
+            <span class="day-night-badge ${dayNight.status}">${dayNight.label}</span>
+          </div>
+          <div class="location-info-grid">
+            <div class="location-info-item">
+              <span class="item-label">Latitude</span>
+              <span class="item-value">${loc.lat.toFixed(2)}°</span>
+            </div>
+            <div class="location-info-item">
+              <span class="item-label">Longitude</span>
+              <span class="item-value">${loc.lon.toFixed(2)}°</span>
+            </div>
+            <div class="location-info-item">
+              <span class="item-label">Sunrise</span>
+              <span class="item-value">${sunTimes.sunrise ? formatTimeInTz(sunTimes.sunrise, loc.tz) : '--:--'} local</span>
+            </div>
+            <div class="location-info-item">
+              <span class="item-label">Sunset</span>
+              <span class="item-value">${sunTimes.sunset ? formatTimeInTz(sunTimes.sunset, loc.tz) : '--:--'} local</span>
+            </div>
+          </div>
+          <div class="hf-assessment">
+            <div class="hf-assessment-title">📻 HF Propagation Assessment</div>
+            ${hfAssessment}
+          </div>
         </div>
       `;
-      gridEl = panel.querySelector('#prop-status-grid');
-      bandListEl = panel.querySelector('#prop-band-list');
-      forecastEl = panel.querySelector('#prop-forecast');
     }
+
+    // Full content HTML
+    contentEl.innerHTML = `
+      <div class="location-selector">
+        <label>Location</label>
+        <select class="location-select" id="prop-location-select">
+          ${locationOptions}
+        </select>
+      </div>
+      <div id="prop-location-info">${locationInfoHtml}</div>
+      <div class="status-grid" id="prop-status-grid"></div>
+      <div class="section">
+        <div class="section-title">Band Conditions</div>
+        <div id="prop-band-list"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Forecast</div>
+        <div id="prop-forecast"></div>
+      </div>
+    `;
+
+    // Re-attach location listener
+    attachLocationListener();
+
+    // Get elements
+    const gridEl = panel.querySelector('#prop-status-grid');
+    const bandListEl = panel.querySelector('#prop-band-list');
+    const forecastEl = panel.querySelector('#prop-forecast');
+    const lastUpdateEl = panel.querySelector('#prop-last-update');
 
     // Status grid
     const gridHtml = `
@@ -355,6 +698,29 @@
       const ago = formatTimeAgo(lastUpdate);
       lastUpdateEl.textContent = ` • Updated ${ago}`;
     }
+  }
+
+  function attachLocationListener() {
+    const locationSelect = panel?.querySelector('#prop-location-select');
+    if (!locationSelect) return;
+    
+    // Remove old listeners by replacing element
+    const newSelect = locationSelect.cloneNode(true);
+    locationSelect.parentNode.replaceChild(newSelect, locationSelect);
+    
+    newSelect.addEventListener('change', (e) => {
+      const idx = e.target.value;
+      if (idx === '') {
+        selectedLocation = null;
+      } else {
+        selectedLocation = window.TIME_ZONES[parseInt(idx)];
+      }
+      // Save selection
+      if (window.RussellTV?.Storage?.save) {
+        window.RussellTV.Storage.save('propLocationIdx', idx);
+      }
+      updatePanelContent();
+    });
   }
 
   // ============ HELPERS ============
