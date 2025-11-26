@@ -97,6 +97,7 @@
     });
 
     container.appendChild(createPropButton());
+    container.appendChild(createSettingsButton());
 
     infoBar.appendChild(container);
 
@@ -152,22 +153,94 @@
   }
 
   function createPropButton() {
-    const btn = document.createElement('button');
-    btn.id = 'propagation-panel-btn';
-    btn.innerHTML = '⚡';
-    btn.title = 'Click for detailed propagation forecast';
-    btn.style.cssText = `
-      background: rgba(0, 0, 0, 0.7);
-      border: 1px solid rgba(255, 120, 0, 0.4);
-      border-radius: 6px;
-      padding: 0.2rem 0.5rem;
-      font-size: 1rem;
+    const span = document.createElement('span');
+    span.id = 'propagation-panel-btn';
+    span.className = 'sw-indicator';
+    span.title = 'Click for detailed propagation forecast';
+    span.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
       cursor: pointer;
-      transition: all 0.25s ease;
-      margin-left: 0.5rem;
-      filter: hue-rotate(20deg) saturate(1.5);
+      padding: 0.35rem 0.7rem;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 120, 0, 0.3);
+      pointer-events: auto;
     `;
-    return btn;
+
+    const label = document.createElement('span');
+    label.style.cssText = `
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      color: rgba(180, 180, 180, 0.9);
+    `;
+    label.textContent = '⚡';
+
+    span.appendChild(label);
+
+    span.addEventListener('mouseenter', function() {
+      this.style.background = 'rgba(255, 120, 0, 0.15)';
+      this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
+    });
+
+    span.addEventListener('mouseleave', function() {
+      this.style.background = 'rgba(0, 0, 0, 0.5)';
+      this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+    });
+
+    return span;
+  }
+
+  function createSettingsButton() {
+    const span = document.createElement('span');
+    span.id = 'feature-settings-btn';
+    span.className = 'sw-indicator';
+    span.title = 'Display Settings';
+    span.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      padding: 0.35rem 0.7rem;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 120, 0, 0.3);
+      pointer-events: auto;
+    `;
+
+    const label = document.createElement('span');
+    label.style.cssText = `
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      color: rgba(180, 180, 180, 0.9);
+    `;
+    label.textContent = '⚙️';
+
+    span.appendChild(label);
+
+    span.addEventListener('mouseenter', function() {
+      this.style.background = 'rgba(255, 120, 0, 0.15)';
+      this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
+    });
+
+    span.addEventListener('mouseleave', function() {
+      this.style.background = 'rgba(0, 0, 0, 0.5)';
+      this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+    });
+
+    span.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (window.RussellTV?.Features?.toggleSettings) {
+        window.RussellTV.Features.toggleSettings();
+      }
+    });
+
+    return span;
   }
 
   // FIX: Improved hide scheduling with better state checks
@@ -310,11 +383,8 @@
     const btn = document.getElementById('propagation-panel-btn');
     if (btn && !btn._hasListeners) {
       btn._hasListeners = true;
-      btn.style.position = 'relative';
-      btn.style.zIndex = '10002';
 
-      // FIX: Use mousedown instead of click for more immediate response
-      // This helps with the "two click" issue when window isn't focused
+      // Use mousedown for immediate response
       btn.addEventListener('mousedown', function(e) {
         // Only respond to left click
         if (e.button !== 0) return;
@@ -349,21 +419,13 @@
       });
 
       btn.addEventListener('mouseenter', function() {
-        this.style.background =
-          'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
-        this.style.borderColor = 'rgba(255,120,0,0.8)';
-        this.style.boxShadow =
-          '0 0 12px rgba(255,100,0,0.8), 0 0 20px rgba(255,140,0,0.4)';
-        this.style.transform = 'translateY(-2px) scale(1.05)';
-        this.style.filter = 'hue-rotate(0deg) saturate(2) brightness(1.2)';
+        this.style.background = 'rgba(255, 120, 0, 0.15)';
+        this.style.borderColor = 'rgba(255, 120, 0, 0.5)';
       });
 
       btn.addEventListener('mouseleave', function() {
-        this.style.background = 'rgba(0, 0, 0, 0.7)';
-        this.style.borderColor = 'rgba(255, 120, 0, 0.4)';
-        this.style.boxShadow = 'none';
-        this.style.transform = 'translateY(0) scale(1)';
-        this.style.filter = 'hue-rotate(20deg) saturate(1.5)';
+        this.style.background = 'rgba(0, 0, 0, 0.5)';
+        this.style.borderColor = 'rgba(255, 120, 0, 0.3)';
       });
     }
   }
