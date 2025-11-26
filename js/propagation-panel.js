@@ -237,14 +237,25 @@
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
     const config = window.SPACE_WEATHER_CONFIG;
 
+    const contentEl = panel.querySelector('.panel-content');
+    if (!contentEl) return;
+
     if (!data || !config) {
-      panel.querySelector('.panel-content').innerHTML = `
+      contentEl.innerHTML = `
         <div style="text-align: center; padding: 2rem; opacity: 0.7;">
           Loading space weather data...
         </div>
       `;
       return;
     }
+
+    const gridEl = panel.querySelector('#prop-status-grid');
+    const bandListEl = panel.querySelector('#prop-band-list');
+    const forecastEl = panel.querySelector('#prop-forecast');
+    const lastUpdateEl = panel.querySelector('#prop-last-update');
+
+    // If elements don't exist yet, skip update
+    if (!gridEl || !bandListEl || !forecastEl) return;
 
     // Status grid
     const gridHtml = `
@@ -261,7 +272,7 @@
         <div class="status-card-value" style="color: ${getScaleColor(data.scales.G)}">G${data.scales.G}</div>
       </div>
     `;
-    panel.querySelector('#prop-status-grid').innerHTML = gridHtml;
+    gridEl.innerHTML = gridHtml;
 
     // Band list
     let bandHtml = '';
@@ -282,7 +293,7 @@
         </div>
       `;
     }
-    panel.querySelector('#prop-band-list').innerHTML = bandHtml;
+    bandListEl.innerHTML = bandHtml;
 
     // Forecast section
     const kp = data.kpIndex;
@@ -309,13 +320,13 @@
       </div>
     `;
 
-    panel.querySelector('#prop-forecast').innerHTML = forecastHtml;
+    forecastEl.innerHTML = forecastHtml;
 
     // Last update
     const lastUpdate = window.RussellTV?.SpaceWeather?.getLastUpdate();
-    if (lastUpdate) {
+    if (lastUpdate && lastUpdateEl) {
       const ago = formatTimeAgo(lastUpdate);
-      panel.querySelector('#prop-last-update').textContent = ` • Updated ${ago}`;
+      lastUpdateEl.textContent = ` • Updated ${ago}`;
     }
   }
 
