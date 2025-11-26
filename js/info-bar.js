@@ -131,10 +131,128 @@
     .info-block.has-tooltip:hover::before { opacity: 1; }
 
     /* Weather tooltips disabled state */
-    body.weather-tooltips-disabled .info-block.has-tooltip::after,
-    body.weather-tooltips-disabled .info-block.has-tooltip::before {
-      display: none !important;
+    body.weather-tooltips-disabled .info-block.has-weather-tooltip:hover {
+      cursor: default;
     }
+
+    /* Weather tooltip panel (matches space weather tooltip style) */
+    #weather-tooltip {
+      position: fixed;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(20, 20, 30, 0.98));
+      color: white;
+      padding: 1rem 1.25rem;
+      border-radius: 16px;
+      font-size: 0.85rem;
+      z-index: 10001;
+      pointer-events: auto;
+      border: 2px solid rgba(100, 150, 255, 0.5);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 20px rgba(100, 150, 255, 0.2);
+      min-width: 280px;
+      max-width: 340px;
+      backdrop-filter: blur(10px);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    #weather-tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #weather-tooltip .wx-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding-bottom: 0.75rem;
+      margin-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(100, 150, 255, 0.3);
+    }
+
+    #weather-tooltip .wx-header-icon {
+      font-size: 2.5rem;
+      line-height: 1;
+    }
+
+    #weather-tooltip .wx-header-info {
+      flex: 1;
+    }
+
+    #weather-tooltip .wx-location {
+      font-weight: bold;
+      font-size: 1rem;
+      margin-bottom: 0.2rem;
+    }
+
+    #weather-tooltip .wx-condition {
+      font-size: 0.85rem;
+      opacity: 0.9;
+      text-transform: capitalize;
+    }
+
+    #weather-tooltip .wx-temp-main {
+      font-size: 2rem;
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    #weather-tooltip .wx-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    #weather-tooltip .wx-grid-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #weather-tooltip .wx-grid-icon {
+      font-size: 1.1rem;
+      width: 1.5rem;
+      text-align: center;
+    }
+
+    #weather-tooltip .wx-grid-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      opacity: 0.6;
+    }
+
+    #weather-tooltip .wx-grid-value {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    #weather-tooltip .wx-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 0.6rem;
+      margin-top: 0.6rem;
+      border-top: 1px solid rgba(100, 150, 255, 0.2);
+      font-size: 0.7rem;
+      opacity: 0.6;
+    }
+
+    #weather-tooltip .wx-link {
+      color: rgba(100, 180, 255, 0.9);
+      text-decoration: none;
+      font-size: 0.75rem;
+    }
+
+    #weather-tooltip .wx-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Temperature color classes for tooltip border */
+    #weather-tooltip.temp-freezing { border-color: rgba(135, 206, 250, 0.7); box-shadow: 0 8px 24px rgba(0,0,0,0.8), 0 0 20px rgba(135,206,250,0.3); }
+    #weather-tooltip.temp-cold { border-color: rgba(100, 149, 237, 0.7); box-shadow: 0 8px 24px rgba(0,0,0,0.8), 0 0 20px rgba(100,149,237,0.3); }
+    #weather-tooltip.temp-mild { border-color: rgba(144, 238, 144, 0.7); box-shadow: 0 8px 24px rgba(0,0,0,0.8), 0 0 20px rgba(144,238,144,0.3); }
+    #weather-tooltip.temp-warm { border-color: rgba(255, 165, 0, 0.7); box-shadow: 0 8px 24px rgba(0,0,0,0.8), 0 0 20px rgba(255,165,0,0.3); }
+    #weather-tooltip.temp-hot { border-color: rgba(220, 20, 60, 0.7); box-shadow: 0 8px 24px rgba(0,0,0,0.8), 0 0 20px rgba(220,20,60,0.3); }
 
     /* Weather icons */
     .wx-icon-wrap {
@@ -269,6 +387,12 @@
   let tooltipLocked = false;
   let hideTooltipTimer = null;
 
+  // Weather tooltip state
+  let wxTooltip = null;
+  let currentWxLocation = null;
+  let wxTooltipLocked = false;
+  let hideWxTooltipTimer = null;
+
   // Feature states (synced with feature-toggles.js)
   let featureStates = {
     'space-weather-indicators': true,
@@ -328,10 +452,9 @@
 
       let cls = 'info-block temp-neutral';
       let content = `<strong>${loc.label}</strong> ${time}`;
-      let tooltip = null;
 
       if (!isZulu && w) {
-        cls = 'info-block ' + tempClass(w.temp) + ' has-tooltip';
+        cls = 'info-block ' + tempClass(w.temp) + ' has-weather-tooltip';
 
         const key = iconKeyFor(w.main, w.desc);
         const iconHtml = `
@@ -341,24 +464,40 @@
         `.trim();
 
         content += ` ${iconHtml} ${w.hi}°/${w.lo}°`;
-
-        tooltip = `${loc.label}\nTime: ${time}\nConditions: ${w.main} (${w.desc})\nCurrent: ${w.temp}°F\nHigh/Low: ${w.hi}°F / ${w.lo}°F` +
-          (w.humidity != null ? `\nHumidity: ${w.humidity}%` : '') +
-          (w.wind != null ? `\nWind: ${w.wind} mph` : '');
       }
 
       const div = document.createElement('div');
       div.className = cls;
       div.innerHTML = content;
 
-      if (tooltip) {
-        div.setAttribute('data-tooltip', tooltip);
-      }
-
-      const wuUrl = window.WU_LINKS?.[loc.label];
-      if (wuUrl && !isZulu) {
+      // Weather tooltip events (similar to space weather indicators)
+      if (!isZulu && w) {
         div.style.cursor = 'pointer';
-        div.addEventListener('click', () => window.open(wuUrl, '_blank', 'noopener'));
+        
+        div.addEventListener('mouseenter', () => {
+          if (!wxTooltipLocked) {
+            showWxTooltip(div, loc.label, false);
+          }
+        });
+
+        div.addEventListener('mouseleave', () => {
+          if (!wxTooltipLocked) {
+            scheduleHideWxTooltip();
+          }
+        });
+
+        div.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (wxTooltipLocked && currentWxLocation === loc.label) {
+            // Unlock and hide
+            wxTooltipLocked = false;
+            hideWxTooltip();
+          } else {
+            // Lock to this location
+            wxTooltipLocked = true;
+            showWxTooltip(div, loc.label, true);
+          }
+        });
       }
 
       bar.appendChild(div);
@@ -623,6 +762,235 @@
     }
   }
 
+  // ============ WEATHER TOOLTIP ============
+
+  function createWxTooltipElement() {
+    if (wxTooltip) return;
+
+    wxTooltip = document.createElement('div');
+    wxTooltip.id = 'weather-tooltip';
+    document.body.appendChild(wxTooltip);
+
+    wxTooltip.addEventListener('mouseenter', () => {
+      cancelHideWxTooltip();
+    });
+
+    wxTooltip.addEventListener('mouseleave', () => {
+      if (!wxTooltipLocked) {
+        scheduleHideWxTooltip();
+      }
+    });
+  }
+
+  function getWeatherEmoji(main, desc) {
+    const w = `${main} ${desc}`.toLowerCase();
+    if (w.includes('thunder') || w.includes('storm')) return '⛈️';
+    if (w.includes('heavy rain')) return '🌧️';
+    if (w.includes('rain') || w.includes('drizzle')) return '🌦️';
+    if (w.includes('snow') || w.includes('sleet')) return '🌨️';
+    if (w.includes('wind')) return '💨';
+    if (w.includes('overcast') || w.includes('cloud')) return '☁️';
+    if (w.includes('partly') || w.includes('few clouds') || w.includes('scattered')) return '⛅';
+    if (w.includes('fog') || w.includes('mist') || w.includes('haze')) return '🌫️';
+    if (w.includes('clear') || w.includes('sun')) return '☀️';
+    return '🌤️';
+  }
+
+  function getWindDirection(deg) {
+    if (deg == null) return '';
+    const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    return dirs[Math.round(deg / 22.5) % 16];
+  }
+
+  function getUVDescription(uv) {
+    if (uv == null) return { level: 'N/A', color: '#888' };
+    if (uv <= 2) return { level: 'Low', color: '#3ea72d' };
+    if (uv <= 5) return { level: 'Moderate', color: '#fff300' };
+    if (uv <= 7) return { level: 'High', color: '#f18b00' };
+    if (uv <= 10) return { level: 'Very High', color: '#e53210' };
+    return { level: 'Extreme', color: '#b567a4' };
+  }
+
+  function showWxTooltip(element, locLabel, locked) {
+    if (!featureStates['weather-tooltips']) return;
+    
+    cancelHideWxTooltip();
+    currentWxLocation = locLabel;
+
+    const w = weatherMap[locLabel];
+    if (!w) return;
+
+    createWxTooltipElement();
+
+    const rect = element.getBoundingClientRect();
+    wxTooltip.style.left = `${rect.left + rect.width / 2}px`;
+    wxTooltip.style.bottom = `${window.innerHeight - rect.top + 12}px`;
+    wxTooltip.style.transform = 'translateX(-50%)';
+
+    // Get location data for time
+    const loc = window.TIME_ZONES?.find(l => l.label === locLabel);
+    const time = loc ? new Date().toLocaleString('en-US', {
+      timeZone: loc.tz,
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    }) : '--:--';
+
+    const emoji = getWeatherEmoji(w.main, w.desc);
+    const tempColorClass = tempClass(w.temp);
+    
+    // Wind info
+    const windDir = w.windDeg ? getWindDirection(w.windDeg) : '';
+    const windInfo = w.wind ? `${w.wind} mph${windDir ? ' ' + windDir : ''}` : 'Calm';
+    
+    // Visibility
+    const visibility = w.visibility ? `${(w.visibility / 1609.34).toFixed(1)} mi` : '10+ mi';
+
+    // Feels like
+    const feelsLike = w.feelsLike != null ? `${w.feelsLike}°` : `${w.temp}°`;
+
+    // Cloud cover
+    const cloudCover = w.clouds != null ? `${w.clouds}%` : 'N/A';
+
+    // Sunrise/Sunset in local time
+    let sunriseStr = 'N/A', sunsetStr = 'N/A';
+    if (loc && w.sunrise) {
+      try {
+        sunriseStr = w.sunrise.toLocaleTimeString('en-US', { 
+          timeZone: loc.tz, hour: '2-digit', minute: '2-digit', hour12: false 
+        });
+      } catch { sunriseStr = 'N/A'; }
+    }
+    if (loc && w.sunset) {
+      try {
+        sunsetStr = w.sunset.toLocaleTimeString('en-US', { 
+          timeZone: loc.tz, hour: '2-digit', minute: '2-digit', hour12: false 
+        });
+      } catch { sunsetStr = 'N/A'; }
+    }
+
+    // WU Link
+    const wuLink = window.WU_LINKS?.[locLabel] || '#';
+
+    // Set temperature-based border color
+    wxTooltip.className = tempColorClass;
+
+    wxTooltip.innerHTML = `
+      <div class="wx-header">
+        <span class="wx-header-icon">${emoji}</span>
+        <div class="wx-header-info">
+          <div class="wx-location">${locLabel}</div>
+          <div class="wx-condition">${w.desc || w.main}</div>
+        </div>
+        <div class="wx-temp-main">${w.temp}°</div>
+      </div>
+      
+      <div class="wx-grid">
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">🌡️</span>
+          <div>
+            <div class="wx-grid-label">Feels Like</div>
+            <div class="wx-grid-value">${feelsLike}</div>
+          </div>
+        </div>
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">📊</span>
+          <div>
+            <div class="wx-grid-label">High / Low</div>
+            <div class="wx-grid-value">${w.hi}° / ${w.lo}°</div>
+          </div>
+        </div>
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">💧</span>
+          <div>
+            <div class="wx-grid-label">Humidity</div>
+            <div class="wx-grid-value">${w.humidity != null ? w.humidity + '%' : 'N/A'}</div>
+          </div>
+        </div>
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">💨</span>
+          <div>
+            <div class="wx-grid-label">Wind</div>
+            <div class="wx-grid-value">${windInfo}</div>
+          </div>
+        </div>
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">👁️</span>
+          <div>
+            <div class="wx-grid-label">Visibility</div>
+            <div class="wx-grid-value">${visibility}</div>
+          </div>
+        </div>
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">☁️</span>
+          <div>
+            <div class="wx-grid-label">Cloud Cover</div>
+            <div class="wx-grid-value">${cloudCover}</div>
+          </div>
+        </div>
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">🌅</span>
+          <div>
+            <div class="wx-grid-label">Sunrise</div>
+            <div class="wx-grid-value">${sunriseStr}</div>
+          </div>
+        </div>
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">🌇</span>
+          <div>
+            <div class="wx-grid-label">Sunset</div>
+            <div class="wx-grid-value">${sunsetStr}</div>
+          </div>
+        </div>
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">🔻</span>
+          <div>
+            <div class="wx-grid-label">Pressure</div>
+            <div class="wx-grid-value">${w.pressure ? w.pressure + ' hPa' : 'N/A'}</div>
+          </div>
+        </div>
+        <div class="wx-grid-item">
+          <span class="wx-grid-icon">🕐</span>
+          <div>
+            <div class="wx-grid-label">Local Time</div>
+            <div class="wx-grid-value">${time}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wx-footer">
+        <span>${locked ? '🔒 Click to unlock' : '💡 Click to lock'}</span>
+        <a href="${wuLink}" target="_blank" class="wx-link">Weather Underground →</a>
+      </div>
+    `;
+
+    wxTooltip.classList.add('visible');
+  }
+
+  function hideWxTooltip() {
+    cancelHideWxTooltip();
+    if (wxTooltip) {
+      wxTooltip.classList.remove('visible');
+    }
+    currentWxLocation = null;
+  }
+
+  function scheduleHideWxTooltip() {
+    cancelHideWxTooltip();
+    hideWxTooltipTimer = setTimeout(() => {
+      if (!wxTooltipLocked) {
+        hideWxTooltip();
+      }
+    }, 300);
+  }
+
+  function cancelHideWxTooltip() {
+    if (hideWxTooltipTimer) {
+      clearTimeout(hideWxTooltipTimer);
+      hideWxTooltipTimer = null;
+    }
+  }
+
   // ============ INDICATOR COLORS ============
 
   function updateIndicatorColors() {
@@ -683,7 +1051,14 @@
           hi: Math.round(d.main.temp_max),
           lo: Math.round(d.main.temp_min),
           humidity: Math.round(d.main.humidity),
-          wind: d.wind?.speed ? Math.round(d.wind.speed) : null
+          wind: d.wind?.speed ? Math.round(d.wind.speed) : null,
+          windDeg: d.wind?.deg || null,
+          pressure: d.main?.pressure || null,
+          visibility: d.visibility || null,
+          feelsLike: d.main?.feels_like ? Math.round(d.main.feels_like) : null,
+          clouds: d.clouds?.all || null,
+          sunrise: d.sys?.sunrise ? new Date(d.sys.sunrise * 1000) : null,
+          sunset: d.sys?.sunset ? new Date(d.sys.sunset * 1000) : null
         };
       } catch {
         newMap[label] = null;
@@ -739,9 +1114,15 @@
 
     // Close tooltip on outside click
     document.addEventListener('click', (e) => {
+      // Space weather tooltip
       if (!e.target.closest('.sw-indicator') && !e.target.closest('#sw-tooltip')) {
         tooltipLocked = false;
         hideSwTooltip();
+      }
+      // Weather tooltip
+      if (!e.target.closest('.has-weather-tooltip') && !e.target.closest('#weather-tooltip')) {
+        wxTooltipLocked = false;
+        hideWxTooltip();
       }
     });
 
