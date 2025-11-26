@@ -25,46 +25,41 @@
         addIndicators();
         startMaintenance();
         
-        // Listen for feature toggle events
-        window.addEventListener('feature:toggle', (e) => {
-          const { feature, enabled } = e.detail;
-          if (feature === 'space-weather-indicators') {
-            const container = document.getElementById('space-weather-indicators');
-            if (container) {
-              container.style.display = enabled ? 'inline-flex' : 'none';
-            }
-          }
-          if (feature === 'propagation-panel') {
-            const btn = document.getElementById('propagation-panel-btn');
-            if (btn) {
-              btn.style.display = enabled ? 'inline-block' : 'none';
-            }
-            if (!enabled) {
-              const panel = document.getElementById('propagation-panel');
-              if (panel) panel.style.display = 'none';
-            }
-          }
-        });
-        
         // Apply initial state from feature toggles if available
         if (hasFeatures) {
           const indicatorsEnabled = hasFeatures.isEnabled('space-weather-indicators');
           const propPanelEnabled = hasFeatures.isEnabled('propagation-panel');
           
-          setTimeout(() => {
-            const container = document.getElementById('space-weather-indicators');
-            if (container && !indicatorsEnabled) {
-              container.style.display = 'none';
-            }
-            
-            const btn = document.getElementById('propagation-panel-btn');
-            if (btn && !propPanelEnabled) {
-              btn.style.display = 'none';
-            }
-          }, 100);
+          // Apply immediately, no delay
+          applyFeatureVisibility(indicatorsEnabled, propPanelEnabled);
         }
       }
     }, 500);
+  }
+  
+  // Helper function to apply feature visibility
+  function applyFeatureVisibility(indicatorsEnabled, propPanelEnabled) {
+    const hf = document.getElementById('sw-indicator-hf');
+    const gps = document.getElementById('sw-indicator-gps');
+    const sat = document.getElementById('sw-indicator-satcom');
+    const propBtn = document.getElementById('propagation-panel-btn');
+    const container = document.getElementById('space-weather-indicators');
+    
+    if (hf) hf.style.display = indicatorsEnabled ? 'inline-flex' : 'none';
+    if (gps) gps.style.display = indicatorsEnabled ? 'inline-flex' : 'none';
+    if (sat) sat.style.display = indicatorsEnabled ? 'inline-flex' : 'none';
+    if (propBtn) propBtn.style.display = propPanelEnabled ? 'inline-block' : 'none';
+    
+    // Update container styling but never hide it completely
+    if (container) {
+      if (indicatorsEnabled || propPanelEnabled) {
+        container.style.paddingLeft = '1rem';
+        container.style.borderLeft = '1px solid rgba(255, 255, 255, 0.2)';
+      } else {
+        container.style.paddingLeft = '0';
+        container.style.borderLeft = 'none';
+      }
+    }
   }
 
   function addIndicators() {
