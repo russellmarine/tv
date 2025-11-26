@@ -104,15 +104,16 @@ window.RussellTV.Features = (function() {
     btn.innerHTML = '⚙️';
     btn.title = 'Display Settings';
     btn.style.cssText = `
-      background: rgba(0, 0, 0, 0.6);
-      border: 1px solid rgba(255, 120, 0, 0.3);
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 120, 0, 0.4);
       border-radius: 6px;
-      padding: 0.3rem 0.5rem;
+      padding: 0.2rem 0.5rem;
       font-size: 1rem;
       cursor: pointer;
       z-index: 10002;
       line-height: 1;
-      margin-left: 0.5rem;
+      pointer-events: auto;
+      flex-shrink: 0;
     `;
 
     btn.onmouseenter = () => {
@@ -122,14 +123,21 @@ window.RussellTV.Features = (function() {
     };
 
     btn.onmouseleave = () => {
-      btn.style.background = 'rgba(0, 0, 0, 0.6)';
-      btn.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+      btn.style.background = 'rgba(0, 0, 0, 0.7)';
+      btn.style.borderColor = 'rgba(255, 120, 0, 0.4)';
       btn.style.boxShadow = 'none';
     };
 
     btn.onclick = (e) => {
       e.stopPropagation();
+      e.preventDefault();
+      console.log('⚙️ Gear button clicked');
       toggleSettingsPanel();
+    };
+    
+    // Also use mousedown for more reliable clicking
+    btn.onmousedown = (e) => {
+      e.stopPropagation();
     };
     
     return btn;
