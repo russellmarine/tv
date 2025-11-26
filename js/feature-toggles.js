@@ -53,9 +53,11 @@ window.RussellTV.Features = (function() {
     loadSettings();
     createSettingsPanel();
     
-    // Apply states once DOM elements exist
-    setTimeout(applyAllStates, 500);
-    setTimeout(applyAllStates, 1500);
+    // Apply states as soon as possible, then retry
+    applyAllStates();
+    setTimeout(applyAllStates, 100);
+    setTimeout(applyAllStates, 300);
+    setTimeout(applyAllStates, 600);
     
     console.log('⚙️ Feature toggles initialized:', featureStates);
   }
