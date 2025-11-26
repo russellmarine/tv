@@ -470,8 +470,9 @@
       div.className = cls;
       div.innerHTML = content;
 
-      // Weather tooltip events (similar to space weather indicators)
+      // Weather tooltip events
       if (!isZulu && w) {
+        const wuUrl = window.WU_LINKS?.[loc.label];
         div.style.cursor = 'pointer';
         
         div.addEventListener('mouseenter', () => {
@@ -486,14 +487,21 @@
           }
         });
 
+        // Single click opens Weather Underground
         div.addEventListener('click', (e) => {
+          if (wuUrl) {
+            window.open(wuUrl, '_blank', 'noopener');
+          }
+        });
+
+        // Double-click to lock/unlock tooltip
+        div.addEventListener('dblclick', (e) => {
           e.stopPropagation();
+          e.preventDefault();
           if (wxTooltipLocked && currentWxLocation === loc.label) {
-            // Unlock and hide
             wxTooltipLocked = false;
             hideWxTooltip();
           } else {
-            // Lock to this location
             wxTooltipLocked = true;
             showWxTooltip(div, loc.label, true);
           }
@@ -730,8 +738,14 @@
           R${data.scales.R} (Radio) · S${data.scales.S} (Solar) · G${data.scales.G} (Geomag) · Kp ${kp.toFixed(1)}
         </span>
       </div>
-      <div style="text-align: center; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 120, 0, 0.2); font-size: 0.65rem; opacity: 0.5;">
-        ${locked ? '🔒 Click to unlock' : '💡 Click to lock'} · Updated ${formatTime(data.timestamp)}
+      <div style="margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 120, 0, 0.2); font-size: 0.65rem;">
+        <div style="display: flex; justify-content: space-between; opacity: 0.6;">
+          <span>Data: <a href="https://www.swpc.noaa.gov/" target="_blank" style="color: rgba(255, 150, 0, 0.8);">NOAA SWPC</a></span>
+          <span>Updated ${formatTime(data.timestamp)}</span>
+        </div>
+        <div style="text-align: center; margin-top: 0.3rem; opacity: 0.5;">
+          ${locked ? '🔒 Click to unlock' : '💡 Click to lock'}
+        </div>
       </div>
     `;
 
@@ -959,8 +973,16 @@
       </div>
 
       <div class="wx-footer">
-        <span>${locked ? '🔒 Click to unlock' : '💡 Click to lock'}</span>
-        <a href="${wuLink}" target="_blank" class="wx-link">Weather Underground →</a>
+        <div style="display: flex; flex-direction: column; gap: 0.3rem; width: 100%;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="opacity: 0.6;">Data: <a href="https://openweathermap.org/" target="_blank" class="wx-link">OpenWeather</a></span>
+            <a href="${wuLink}" target="_blank" class="wx-link">Weather Underground →</a>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.65rem;">
+            <span>${locked ? '🔒 Double-click to unlock' : '💡 Double-click to lock'}</span>
+            <span style="opacity: 0.5;">Click pill → WU</span>
+          </div>
+        </div>
       </div>
     `;
 
