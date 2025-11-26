@@ -621,12 +621,15 @@
   }
 
   // Get SATCOM assessment
-  function getSatcomAssessment(lat, lon, data) {
+  function getSatcomAssessment(lat, lon, data, locationLabel) {
     const kp = data?.kpIndex || 0;
     const gScale = data?.scales?.G || 0;
     const sScale = data?.scales?.S || 0;
     const geomagLat = getGeomagLat(lat, lon);
     const absGeomagLat = Math.abs(geomagLat);
+    
+    // Get weather data for this location
+    const weather = window.RussellTV?.InfoBar?.getWeather?.(locationLabel);
     
     let assessment = {
       ehfBand: { status: 'green', label: 'Normal', notes: '' },
@@ -634,22 +637,75 @@
       xBand: { status: 'green', label: 'Normal', notes: '' },
       cBand: { status: 'green', label: 'Normal', notes: '' },
       scintillation: 'Low',
-      ionosphericDelay: 'Minimal'
+      ionosphericDelay: 'Minimal',
+      weather: weather
     };
     
     // EHF (V/W band, 30-300 GHz) - most affected by weather/atmosphere
-    // Note: We don't have live weather data, so provide general guidance
-    assessment.ehfBand = { 
-      status: 'yellow', 
-      label: 'Weather Dependent', 
-      notes: 'Rain fade & atmospheric absorption significant. Check local weather.' 
-    };
+    if (weather) {
+      const condition = weather.main?.toLowerCase() || '';
+      const desc = weather.desc?.toLowerCase() || '';
+      const humidity = weather.humidity || 0;
+      
+      if (condition.includes('rain') || condition.includes('thunder') || desc.includes('rain') || desc.includes('storm')) {
+        assessment.ehfBand = { 
+          status: 'red', 
+          label: 'Rain Fade', 
+          notes: `Active precipitation detected (${weather.desc}). Expect 10-20+ dB attenuation. Consider Ku/X-band fallback.`
+        };
+      } else if (condition.includes('drizzle') || desc.includes('drizzle')) {
+        assessment.ehfBand = { 
+          status: 'orange', 
+          label: 'Light Rain', 
+          notes: `Light precipitation (${weather.desc}). 3-10 dB attenuation possible. Monitor link margins.`
+        };
+      } else if (condition.includes('snow') || desc.includes('snow')) {
+        assessment.ehfBand = { 
+          status: 'orange', 
+          label: 'Snow', 
+          notes: `Snow conditions (${weather.desc}). Wet snow causes more attenuation than dry. Monitor antenna.`
+        };
+      } else if (condition.includes('cloud') || desc.includes('cloud') || desc.includes('overcast')) {
+        if (humidity > 80) {
+          assessment.ehfBand = { 
+            status: 'yellow', 
+            label: 'Humid/Cloudy', 
+            notes: `Dense clouds, ${humidity}% humidity. Minor absorption possible. Watch for developing precip.`
+          };
+        } else {
+          assessment.ehfBand = { 
+            status: 'green', 
+            label: 'Cloudy', 
+            notes: `Cloud cover present but dry (${humidity}% humidity). Minimal impact expected.`
+          };
+        }
+      } else if (condition.includes('fog') || condition.includes('mist') || desc.includes('fog')) {
+        assessment.ehfBand = { 
+          status: 'yellow', 
+          label: 'Fog/Mist', 
+          notes: `Visibility reduced (${weather.desc}). Water vapor absorption affecting link. 2-5 dB attenuation.`
+        };
+      } else {
+        // Clear conditions
+        assessment.ehfBand = { 
+          status: 'green', 
+          label: 'Clear', 
+          notes: `Clear skies, ${humidity}% humidity. Optimal EHF conditions.`
+        };
+      }
+    } else {
+      // No weather data available
+      assessment.ehfBand = { 
+        status: 'yellow', 
+        label: 'Unknown', 
+        notes: 'Weather data unavailable. EHF highly susceptible to rain fade - verify local conditions.'
+      };
+    }
     
     // Scintillation risk (higher at equatorial and auroral zones)
     if (absGeomagLat < 20) {
       assessment.scintillation = 'Moderate (equatorial)';
       assessment.kuBand.notes = 'Equatorial scintillation possible post-sunset';
-      assessment.ehfBand.notes += ' Equatorial effects possible.';
     } else if (absGeomagLat > 60) {
       assessment.scintillation = kp >= 5 ? 'High (auroral)' : 'Moderate (polar)';
       if (kp >= 5) {
@@ -669,7 +725,9 @@
     if (sScale >= 3) {
       assessment.xBand = { status: 'orange', label: 'Caution', notes: 'Solar particle event - monitor for anomalies' };
       assessment.kuBand.notes += ' Satellite charging possible.';
-      assessment.ehfBand.status = 'orange';
+      if (assessment.ehfBand.status === 'green') {
+        assessment.ehfBand.status = 'yellow';
+      }
     }
     
     // X-band is generally more robust
@@ -949,7 +1007,7 @@
       const muf = estimateMUF(loc.lat, loc.lon, data);
       const recommendedBands = getRecommendedBands(muf, dayNight);
       const geomagLat = getGeomagLat(loc.lat, loc.lon);
-      const satcom = getSatcomAssessment(loc.lat, loc.lon, data);
+      const satcom = getSatcomAssessment(loc.lat, loc.lon, data, loc.label);
       const nvis = getNvisAssessment(loc.lat, data);
 
       // Build band pills HTML
@@ -1009,6 +1067,14 @@
           <!-- SATCOM Section -->
           <div class="comms-section">
             <div class="comms-section-title">📡 SATCOM Assessment</div>
+            ${satcom.weather ? `
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(0,0,0,0.3); border-radius: 6px;">
+              <span style="font-size: 1.1rem;">${getWeatherIcon(satcom.weather.main)}</span>
+              <span style="font-size: 0.85rem; flex: 1;">${satcom.weather.desc || satcom.weather.main}</span>
+              <span style="font-size: 0.85rem; opacity: 0.8;">${satcom.weather.temp}°F</span>
+              <span style="font-size: 0.75rem; opacity: 0.6;">${satcom.weather.humidity}% RH</span>
+            </div>
+            ` : ''}
             <div class="satcom-grid" style="grid-template-columns: repeat(4, 1fr);">
               <div class="satcom-item">
                 <div class="band-label">EHF</div>
@@ -1037,8 +1103,10 @@
                 <span class="value">${satcom.ionosphericDelay}</span>
               </div>
             </div>
-            ${satcom.ehfBand.notes ? `<div style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.35rem; padding: 0.4rem; background: rgba(255,200,0,0.1); border-radius: 4px;">⚠️ EHF: ${satcom.ehfBand.notes}</div>` : ''}
-            ${satcom.kuBand.notes ? `<div style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.35rem; font-style: italic;">${satcom.kuBand.notes}</div>` : ''}
+            ${satcom.ehfBand.notes ? `<div style="font-size: 0.75rem; opacity: 0.9; margin-top: 0.5rem; padding: 0.5rem; background: rgba(${satcom.ehfBand.status === 'red' ? '255,80,80' : satcom.ehfBand.status === 'orange' ? '255,150,0' : satcom.ehfBand.status === 'yellow' ? '255,220,0' : '100,255,100'},0.15); border-radius: 6px; border-left: 3px solid ${satcom.ehfBand.status === 'red' ? '#ff4444' : satcom.ehfBand.status === 'orange' ? '#ff9900' : satcom.ehfBand.status === 'yellow' ? '#ffcc00' : '#44ff44'};">
+              <strong>EHF:</strong> ${satcom.ehfBand.notes}
+            </div>` : ''}
+            ${satcom.kuBand.notes && satcom.kuBand.notes !== satcom.ehfBand.notes ? `<div style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.35rem; font-style: italic;">${satcom.kuBand.notes}</div>` : ''}
           </div>
         </div>
       `;
@@ -1177,6 +1245,19 @@
   }
 
   // ============ HELPERS ============
+
+  function getWeatherIcon(main) {
+    if (!main) return '🌡️';
+    const m = main.toLowerCase();
+    if (m.includes('thunder') || m.includes('storm')) return '⛈️';
+    if (m.includes('rain')) return '🌧️';
+    if (m.includes('drizzle')) return '🌦️';
+    if (m.includes('snow')) return '🌨️';
+    if (m.includes('cloud')) return '☁️';
+    if (m.includes('fog') || m.includes('mist') || m.includes('haze')) return '🌫️';
+    if (m.includes('clear') || m.includes('sun')) return '☀️';
+    return '🌤️';
+  }
 
   function getScaleColor(scale) {
     if (scale >= 4) return '#ff4444';
