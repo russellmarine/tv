@@ -54,7 +54,7 @@
   };
 
   const CATEGORIES = {
-    'space-comms': { label: 'Space Comms Suite', icon: '📡' },
+    'space-comms': { label: 'Comm Planner Tools', icon: '📡' },
     'weather': { label: 'Weather Features', icon: '🌤️' }
   };
 
@@ -156,6 +156,19 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      cursor: move;
+      user-select: none;
+    }
+
+    #feature-settings-panel .panel-header:active {
+      cursor: grabbing;
+    }
+
+    #feature-settings-panel .panel-header .drag-hint {
+      font-size: 0.6rem;
+      opacity: 0.5;
+      font-weight: normal;
+      margin-left: 0.5rem;
     }
 
     #feature-settings-panel .panel-close {
@@ -285,6 +298,38 @@
     }
   `;
 
+  // ============ DRAG FUNCTIONALITY ============
+
+  let isDragging = false;
+  let dragOffset = { x: 0, y: 0 };
+
+  function initPanelDrag(panelEl, headerEl) {
+    headerEl.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('panel-close')) return;
+      isDragging = true;
+      const rect = panelEl.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
+      panelEl.style.transition = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const x = e.clientX - dragOffset.x;
+      const y = e.clientY - dragOffset.y;
+      panelEl.style.left = `${Math.max(0, Math.min(window.innerWidth - panelEl.offsetWidth, x))}px`;
+      panelEl.style.top = `${Math.max(0, Math.min(window.innerHeight - panelEl.offsetHeight, y))}px`;
+      panelEl.style.right = 'auto';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        panelEl.style.transition = '';
+      }
+    });
+  }
+
   function createPanel() {
     if (document.getElementById('feature-settings-panel')) return;
 
@@ -296,7 +341,7 @@
     panel.id = 'feature-settings-panel';
     panel.innerHTML = `
       <div class="panel-header">
-        <span style="font-weight: 600;">⚙️ Display Settings</span>
+        <span style="font-weight: 600;">⚙️ Comm Planner Tools<span class="drag-hint">(drag to move)</span></span>
         <button class="panel-close">&times;</button>
       </div>
       <div class="toggle-all-row">
@@ -308,6 +353,9 @@
     `;
 
     document.body.appendChild(panel);
+
+    // Initialize drag functionality
+    initPanelDrag(panel, panel.querySelector('.panel-header'));
 
     // Event listeners
     panel.querySelector('.panel-close').addEventListener('click', hidePanel);
