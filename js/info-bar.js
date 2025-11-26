@@ -41,7 +41,7 @@
       font-size: 0.78rem;
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 0.4rem 0.5rem;
       z-index: 9999;
       box-sizing: border-box;
       justify-content: center;
@@ -49,6 +49,7 @@
       backdrop-filter: blur(4px);
       border-top: 1px solid rgba(255,255,255,0.1);
       overflow: visible !important;
+      row-gap: 0.4rem;
     }
 
     /* Time/Weather blocks */
@@ -193,25 +194,27 @@
     #space-weather-section {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding-left: 0.75rem;
-      margin-left: 0.25rem;
+      gap: 0.4rem;
+      padding-left: 0.6rem;
+      margin-left: 0.2rem;
       border-left: 1px solid rgba(255, 255, 255, 0.2);
       flex-shrink: 0;
+      flex-wrap: nowrap;
     }
 
     .sw-indicator {
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
+      gap: 0.3rem;
       cursor: pointer;
-      padding: 0.3rem 0.6rem;
+      padding: 0.25rem 0.5rem;
       border-radius: 999px;
       transition: all 0.2s ease;
       background: rgba(0, 0, 0, 0.5);
       border: 1px solid rgba(255, 120, 0, 0.3);
       flex-shrink: 0;
       white-space: nowrap;
+      min-width: fit-content;
     }
 
     .sw-indicator:hover {
@@ -397,6 +400,9 @@
 
     // Update colors after rendering
     updateIndicatorColors();
+    
+    // Signal that space weather indicators are ready
+    Events.emit('spaceweather:ready', null, { sticky: true });
   }
 
   function createIndicator(bandKey) {
@@ -654,6 +660,7 @@
   // ============ FEATURE TOGGLE HANDLING ============
 
   function handleFeatureToggle({ feature, enabled }) {
+    console.log(`[InfoBar] Received toggle: ${feature} = ${enabled}`);
     featureStates[feature] = enabled;
 
     // Re-render to apply changes instantly
@@ -663,6 +670,8 @@
     if (feature === 'weather-tooltips') {
       document.body.classList.toggle('weather-tooltips-disabled', !enabled);
     }
+    
+    console.log(`[InfoBar] Re-rendered after toggle`);
   }
 
   // ============ INITIALIZATION ============
