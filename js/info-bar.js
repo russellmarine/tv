@@ -420,6 +420,20 @@
 
     const dot = document.createElement('span');
     dot.className = 'sw-status-dot';
+    
+    // Set initial color based on current data if available
+    const data = window.RussellTV?.SpaceWeather?.getCurrentData();
+    const status = data?.status?.[bandKey];
+    const statusInfo = config?.statusLevels?.[status];
+    if (statusInfo) {
+      dot.style.background = statusInfo.color;
+      if (status === 'red' || status === 'orange') {
+        dot.style.boxShadow = `0 0 8px ${statusInfo.color}`;
+      }
+    } else {
+      // Default to green if no data yet
+      dot.style.background = '#00ff00';
+    }
 
     span.appendChild(label);
     span.appendChild(dot);
@@ -601,21 +615,27 @@
     const data = window.RussellTV?.SpaceWeather?.getCurrentData();
     const config = window.SPACE_WEATHER_CONFIG;
 
-    if (!data || !config) return;
+    if (!config) return;
 
     ['hf', 'gps', 'satcom'].forEach(bandKey => {
       const indicator = document.getElementById(`sw-indicator-${bandKey}`);
       if (!indicator) return;
 
       const dot = indicator.querySelector('.sw-status-dot');
-      const status = data.status[bandKey];
+      if (!dot) return;
+      
+      const status = data?.status?.[bandKey] || 'green';
       const statusInfo = config.statusLevels?.[status];
 
-      if (dot && statusInfo) {
+      if (statusInfo) {
         dot.style.background = statusInfo.color;
         dot.style.boxShadow = (status === 'red' || status === 'orange')
           ? `0 0 8px ${statusInfo.color}`
           : 'none';
+      } else {
+        // Default to green
+        dot.style.background = '#00ff00';
+        dot.style.boxShadow = 'none';
       }
     });
   }
