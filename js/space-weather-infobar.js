@@ -32,6 +32,8 @@
       padding-left: 1rem;
       border-left: 1px solid rgba(255, 255, 255, 0.2);
       pointer-events: auto;
+      z-index: 100;
+      flex-shrink: 0;
     }
 
     .sw-indicator {
@@ -45,6 +47,8 @@
       background: rgba(0, 0, 0, 0.5);
       border: 1px solid rgba(255, 120, 0, 0.3);
       pointer-events: auto;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     .sw-indicator:hover {
@@ -65,6 +69,7 @@
       border-radius: 50%;
       background: #888;
       display: inline-block;
+      flex-shrink: 0;
     }
 
     #space-weather-tooltip {
@@ -88,6 +93,18 @@
       background: transparent;
       z-index: 10000;
       pointer-events: auto;
+    }
+
+    /* Responsive: stack indicators when window is narrow */
+    @media (max-width: 900px) {
+      #space-weather-indicators {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        border-left: none;
+        padding-left: 0;
+        margin-left: auto;
+      }
     }
   `;
 
@@ -368,20 +385,32 @@
 
     // Listen for feature toggles
     Events.on('feature:toggle', ({ feature, enabled }) => {
+      console.log(`[SpaceWeather] Feature toggle: ${feature} = ${enabled}`);
       if (feature === 'space-weather-indicators') {
         ['hf', 'gps', 'satcom'].forEach(key => {
           const el = document.getElementById(`sw-indicator-${key}`);
-          if (el) el.style.display = enabled ? 'inline-flex' : 'none';
+          if (el) {
+            el.style.display = enabled ? 'inline-flex' : 'none';
+            console.log(`[SpaceWeather] Set ${key} display to ${enabled ? 'inline-flex' : 'none'}`);
+          }
         });
       }
       if (feature === 'propagation-panel') {
         const btn = document.getElementById('propagation-panel-btn');
-        if (btn) btn.style.display = enabled ? 'inline-flex' : 'none';
+        if (btn) {
+          btn.style.display = enabled ? 'inline-flex' : 'none';
+          console.log(`[SpaceWeather] Set prop button display to ${enabled ? 'inline-flex' : 'none'}`);
+        }
         if (!enabled) {
           const panel = document.getElementById('propagation-panel');
           if (panel) panel.style.display = 'none';
         }
       }
+    });
+
+    // Listen for data updates to refresh colors
+    Events.on('spaceweather:data-updated', () => {
+      updateColors();
     });
 
     // Signal ready
