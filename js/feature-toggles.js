@@ -13,7 +13,7 @@ window.RussellTV.Features = (function() {
 
   const STORAGE_KEY = 'russelltv.featureToggles';  // Matches storage.js naming convention
   
-  // Feature definitions with defaults
+  // Feature definitions with defaults - ALL ON by default
   const FEATURE_DEFINITIONS = {
     'space-weather-indicators': {
       label: 'HF/GPS/SAT Indicators',
@@ -34,7 +34,7 @@ window.RussellTV.Features = (function() {
       description: 'GEO satellite visibility calculator',
       icon: '🛰️',
       category: 'space-comms',
-      default: false
+      default: true
     },
     'weather-tooltips': {
       label: 'Weather Tooltips',
@@ -132,15 +132,14 @@ window.RussellTV.Features = (function() {
         // Check if button already exists
         if (document.getElementById('feature-settings-btn')) return;
         
+        // Find the space-weather-indicators container to position relative to it
+        const swIndicators = document.getElementById('space-weather-indicators');
+        
         const btn = document.createElement('button');
         btn.id = 'feature-settings-btn';
         btn.innerHTML = '⚙️';
         btn.title = 'Display Settings';
         btn.style.cssText = `
-          position: absolute;
-          right: 12px;
-          top: 50%;
-          transform: translateY(-50%);
           background: rgba(0, 0, 0, 0.6);
           border: 1px solid rgba(255, 120, 0, 0.3);
           border-radius: 6px;
@@ -150,20 +149,22 @@ window.RussellTV.Features = (function() {
           transition: all 0.25s ease;
           z-index: 10002;
           line-height: 1;
+          margin-left: 0.5rem;
+          flex-shrink: 0;
         `;
         
         btn.addEventListener('mouseenter', () => {
           btn.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
           btn.style.borderColor = 'rgba(255,120,0,0.8)';
           btn.style.boxShadow = '0 0 12px rgba(255,100,0,0.6)';
-          btn.style.transform = 'translateY(-50%) scale(1.1)';
+          btn.style.transform = 'scale(1.1)';
         });
         
         btn.addEventListener('mouseleave', () => {
           btn.style.background = 'rgba(0, 0, 0, 0.6)';
           btn.style.borderColor = 'rgba(255, 120, 0, 0.3)';
           btn.style.boxShadow = 'none';
-          btn.style.transform = 'translateY(-50%) scale(1)';
+          btn.style.transform = 'scale(1)';
         });
         
         btn.addEventListener('click', (e) => {
@@ -171,7 +172,31 @@ window.RussellTV.Features = (function() {
           toggleSettingsPanel();
         });
         
-        infoBar.appendChild(btn);
+        // Append to the space-weather-indicators container if it exists, otherwise to info bar
+        if (swIndicators) {
+          swIndicators.appendChild(btn);
+        } else {
+          // If indicators don't exist yet, wait and retry
+          const retryInterval = setInterval(() => {
+            const indicators = document.getElementById('space-weather-indicators');
+            if (indicators && !document.getElementById('feature-settings-btn')) {
+              indicators.appendChild(btn);
+              clearInterval(retryInterval);
+            }
+          }, 500);
+          
+          // Fallback: add directly to info bar after 5 seconds if indicators never appear
+          setTimeout(() => {
+            clearInterval(retryInterval);
+            if (!document.getElementById('feature-settings-btn')) {
+              btn.style.position = 'absolute';
+              btn.style.right = '12px';
+              btn.style.top = '50%';
+              btn.style.transform = 'translateY(-50%)';
+              infoBar.appendChild(btn);
+            }
+          }, 5000);
+        }
       }
     }, 500);
   }
@@ -209,14 +234,8 @@ window.RussellTV.Features = (function() {
     document.body.appendChild(panel);
     updateSettingsPanelContent();
     
-    // Close when clicking outside
-    document.addEventListener('click', (e) => {
-      if (settingsPanelVisible && 
-          !panel.contains(e.target) && 
-          !e.target.closest('#feature-settings-btn')) {
-        hideSettingsPanel();
-      }
-    });
+    // NOTE: Settings panel only closes via the X button, not by clicking outside
+    // This keeps the panel open until user explicitly closes it
   }
 
   /**
@@ -496,14 +515,26 @@ window.RussellTV.Features = (function() {
       case 'space-weather-indicators':
         const indicators = document.getElementById('space-weather-indicators');
         if (indicators) {
-          indicators.style.display = enabled ? 'inline-flex' : 'none';
+          // Hide/show the indicator pills (HF, GPS, SAT) but NOT the gear button
+          const pills = indicators.querySelectorAll('.sw-indicator');
+          pills.forEach(pill => {
+            pill.style.display = enabled ? 'inline-flex' : 'none';
+          });
+          // Also hide/show the propagation button based on its own toggle
+          const propBtn = document.getElementById('propagation-panel-btn');
+          if (propBtn) {
+            const propEnabled = featureStates['propagation-panel'];
+            propBtn.style.display = (enabled && propEnabled) ? 'inline-block' : 'none';
+          }
         }
         break;
         
       case 'propagation-panel':
         const propBtn = document.getElementById('propagation-panel-btn');
         if (propBtn) {
-          propBtn.style.display = enabled ? 'inline-block' : 'none';
+          // Only show if both this feature AND indicators are enabled
+          const indicatorsEnabled = featureStates['space-weather-indicators'];
+          propBtn.style.display = (enabled && indicatorsEnabled) ? 'inline-block' : 'none';
         }
         // Also hide the panel if open
         if (!enabled) {
@@ -528,6 +559,12 @@ window.RussellTV.Features = (function() {
         // Toggle weather tooltip visibility via CSS class
         document.body.classList.toggle('weather-tooltips-disabled', !enabled);
         break;
+    }
+    
+    // Always ensure gear button remains visible
+    const gearBtn = document.getElementById('feature-settings-btn');
+    if (gearBtn) {
+      gearBtn.style.display = 'inline-block';
     }
   }
 
