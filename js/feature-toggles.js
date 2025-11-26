@@ -122,6 +122,7 @@ window.RussellTV.Features = (function() {
 
   /**
    * Create the settings gear button in the info bar
+   * Positioned AFTER the space-weather-indicators container, not inside it
    */
   function createSettingsButton() {
     const checkReady = setInterval(() => {
@@ -132,14 +133,14 @@ window.RussellTV.Features = (function() {
         // Check if button already exists
         if (document.getElementById('feature-settings-btn')) return;
         
-        // Find the space-weather-indicators container to position relative to it
-        const swIndicators = document.getElementById('space-weather-indicators');
-        
         const btn = document.createElement('button');
         btn.id = 'feature-settings-btn';
         btn.innerHTML = '⚙️';
         btn.title = 'Display Settings';
         btn.style.cssText = `
+          position: absolute;
+          right: 12px;
+          bottom: 6px;
           background: rgba(0, 0, 0, 0.6);
           border: 1px solid rgba(255, 120, 0, 0.3);
           border-radius: 6px;
@@ -149,8 +150,6 @@ window.RussellTV.Features = (function() {
           transition: all 0.25s ease;
           z-index: 10002;
           line-height: 1;
-          margin-left: 0.5rem;
-          flex-shrink: 0;
         `;
         
         btn.addEventListener('mouseenter', () => {
@@ -172,33 +171,37 @@ window.RussellTV.Features = (function() {
           toggleSettingsPanel();
         });
         
-        // Append to the space-weather-indicators container if it exists, otherwise to info bar
-        if (swIndicators) {
-          swIndicators.appendChild(btn);
-        } else {
-          // If indicators don't exist yet, wait and retry
-          const retryInterval = setInterval(() => {
-            const indicators = document.getElementById('space-weather-indicators');
-            if (indicators && !document.getElementById('feature-settings-btn')) {
-              indicators.appendChild(btn);
-              clearInterval(retryInterval);
-            }
-          }, 500);
-          
-          // Fallback: add directly to info bar after 5 seconds if indicators never appear
-          setTimeout(() => {
-            clearInterval(retryInterval);
-            if (!document.getElementById('feature-settings-btn')) {
-              btn.style.position = 'absolute';
-              btn.style.right = '12px';
-              btn.style.top = '50%';
-              btn.style.transform = 'translateY(-50%)';
-              infoBar.appendChild(btn);
-            }
-          }, 5000);
-        }
+        // Add directly to info bar (not inside space-weather-indicators)
+        infoBar.appendChild(btn);
+        
+        // Adjust position when space-weather-indicators exists
+        updateGearPosition();
       }
     }, 500);
+  }
+  
+  /**
+   * Update gear button position based on space-weather-indicators width
+   */
+  function updateGearPosition() {
+    const btn = document.getElementById('feature-settings-btn');
+    const indicators = document.getElementById('space-weather-indicators');
+    
+    if (!btn) return;
+    
+    if (indicators && indicators.style.display !== 'none') {
+      // Position to the right of the indicators
+      const indicatorsRect = indicators.getBoundingClientRect();
+      const infoBar = document.getElementById('info-bar');
+      const infoBarRect = infoBar.getBoundingClientRect();
+      
+      // Calculate right position
+      const rightOffset = infoBarRect.right - indicatorsRect.right + 12;
+      btn.style.right = Math.max(12, rightOffset - 40) + 'px';
+    } else {
+      // Default position when indicators hidden
+      btn.style.right = '12px';
+    }
   }
 
   /**
@@ -513,18 +516,24 @@ window.RussellTV.Features = (function() {
   function applyFeatureState(featureKey, enabled) {
     switch (featureKey) {
       case 'space-weather-indicators':
+        // Hide/show the indicator pills (HF, GPS, SAT) individually
+        const hfIndicator = document.getElementById('sw-indicator-hf');
+        const gpsIndicator = document.getElementById('sw-indicator-gps');
+        const satIndicator = document.getElementById('sw-indicator-satcom');
+        
+        if (hfIndicator) hfIndicator.style.display = enabled ? 'inline-flex' : 'none';
+        if (gpsIndicator) gpsIndicator.style.display = enabled ? 'inline-flex' : 'none';
+        if (satIndicator) satIndicator.style.display = enabled ? 'inline-flex' : 'none';
+        
+        // Also update the border/padding on container when empty
         const indicators = document.getElementById('space-weather-indicators');
         if (indicators) {
-          // Hide/show the indicator pills (HF, GPS, SAT) but NOT the gear button
-          const pills = indicators.querySelectorAll('.sw-indicator');
-          pills.forEach(pill => {
-            pill.style.display = enabled ? 'inline-flex' : 'none';
-          });
-          // Also hide/show the propagation button based on its own toggle
-          const propBtn = document.getElementById('propagation-panel-btn');
-          if (propBtn) {
-            const propEnabled = featureStates['propagation-panel'];
-            propBtn.style.display = (enabled && propEnabled) ? 'inline-block' : 'none';
+          if (enabled) {
+            indicators.style.paddingLeft = '1rem';
+            indicators.style.borderLeft = '1px solid rgba(255, 255, 255, 0.2)';
+          } else {
+            indicators.style.paddingLeft = '0';
+            indicators.style.borderLeft = 'none';
           }
         }
         break;
@@ -532,9 +541,7 @@ window.RussellTV.Features = (function() {
       case 'propagation-panel':
         const propBtn = document.getElementById('propagation-panel-btn');
         if (propBtn) {
-          // Only show if both this feature AND indicators are enabled
-          const indicatorsEnabled = featureStates['space-weather-indicators'];
-          propBtn.style.display = (enabled && indicatorsEnabled) ? 'inline-block' : 'none';
+          propBtn.style.display = enabled ? 'inline-block' : 'none';
         }
         // Also hide the panel if open
         if (!enabled) {
@@ -559,12 +566,6 @@ window.RussellTV.Features = (function() {
         // Toggle weather tooltip visibility via CSS class
         document.body.classList.toggle('weather-tooltips-disabled', !enabled);
         break;
-    }
-    
-    // Always ensure gear button remains visible
-    const gearBtn = document.getElementById('feature-settings-btn');
-    if (gearBtn) {
-      gearBtn.style.display = 'inline-block';
     }
   }
 
