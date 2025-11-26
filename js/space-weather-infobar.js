@@ -18,11 +18,51 @@
       const infoBar = document.getElementById('info-bar');
       const hasConfig = window.SPACE_WEATHER_CONFIG;
       const hasData = window.RussellTV?.SpaceWeather;
+      const hasFeatures = window.RussellTV?.Features;
 
       if (infoBar && hasConfig && hasData) {
         clearInterval(checkReady);
         addIndicators();
         startMaintenance();
+        
+        // Listen for feature toggle events
+        window.addEventListener('feature:toggle', (e) => {
+          const { feature, enabled } = e.detail;
+          if (feature === 'space-weather-indicators') {
+            const container = document.getElementById('space-weather-indicators');
+            if (container) {
+              container.style.display = enabled ? 'inline-flex' : 'none';
+            }
+          }
+          if (feature === 'propagation-panel') {
+            const btn = document.getElementById('propagation-panel-btn');
+            if (btn) {
+              btn.style.display = enabled ? 'inline-block' : 'none';
+            }
+            if (!enabled) {
+              const panel = document.getElementById('propagation-panel');
+              if (panel) panel.style.display = 'none';
+            }
+          }
+        });
+        
+        // Apply initial state from feature toggles if available
+        if (hasFeatures) {
+          const indicatorsEnabled = hasFeatures.isEnabled('space-weather-indicators');
+          const propPanelEnabled = hasFeatures.isEnabled('propagation-panel');
+          
+          setTimeout(() => {
+            const container = document.getElementById('space-weather-indicators');
+            if (container && !indicatorsEnabled) {
+              container.style.display = 'none';
+            }
+            
+            const btn = document.getElementById('propagation-panel-btn');
+            if (btn && !propPanelEnabled) {
+              btn.style.display = 'none';
+            }
+          }, 100);
+        }
       }
     }, 500);
   }
