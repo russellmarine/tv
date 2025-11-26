@@ -472,7 +472,6 @@
 
       // Weather tooltip events
       if (!isZulu && w) {
-        const wuUrl = window.WU_LINKS?.[loc.label];
         div.style.cursor = 'pointer';
         
         div.addEventListener('mouseenter', () => {
@@ -487,17 +486,9 @@
           }
         });
 
-        // Single click opens Weather Underground
+        // Single click to lock/unlock tooltip
         div.addEventListener('click', (e) => {
-          if (wuUrl) {
-            window.open(wuUrl, '_blank', 'noopener');
-          }
-        });
-
-        // Double-click to lock/unlock tooltip
-        div.addEventListener('dblclick', (e) => {
           e.stopPropagation();
-          e.preventDefault();
           if (wxTooltipLocked && currentWxLocation === loc.label) {
             wxTooltipLocked = false;
             hideWxTooltip();
@@ -978,9 +969,8 @@
             <span style="opacity: 0.6;">Data: <a href="https://openweathermap.org/" target="_blank" class="wx-link">OpenWeather</a></span>
             <a href="${wuLink}" target="_blank" class="wx-link">Weather Underground →</a>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.65rem;">
-            <span>${locked ? '🔒 Double-click to unlock' : '💡 Double-click to lock'}</span>
-            <span style="opacity: 0.5;">Click pill → WU</span>
+          <div style="text-align: center; font-size: 0.65rem; opacity: 0.5;">
+            ${locked ? '🔒 Click to unlock' : '💡 Click to lock'}
           </div>
         </div>
       </div>
