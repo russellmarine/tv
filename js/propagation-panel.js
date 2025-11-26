@@ -966,8 +966,10 @@
         <div id="prop-content"></div>
       </div>
       <div class="panel-footer">
-        Data: <a href="${LINKS.noaaScales}" target="_blank">NOAA SWPC</a>
-        <span id="prop-last-update"></span>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <span>Space Wx: <a href="${LINKS.noaaScales}" target="_blank">NOAA SWPC</a> · Weather: <a href="https://openweathermap.org/" target="_blank">OpenWeather</a></span>
+          <span id="prop-last-update" style="opacity: 0.7;"></span>
+        </div>
       </div>
     `;
 
