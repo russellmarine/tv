@@ -436,14 +436,10 @@
     loadStates();
     createPanel();
 
-    // Apply states when spaceweather indicators are ready
-    Events.whenReady('spaceweather:ready', () => {
-      applyAllStates();
-    });
-
-    // Also apply on infobar ready (for weather tooltips)
+    // Apply all states when infobar is ready
     Events.whenReady('infobar:ready', () => {
-      applyState('weather-tooltips');
+      console.log('[Features] infobar:ready received, applying all states');
+      applyAllStates();
     });
 
     Events.emit('features:ready', null, { sticky: true });
