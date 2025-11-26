@@ -1,15 +1,31 @@
-// RussellTV Combined Time + Weather Footer (with SVG icons, tooltips & temp color)
-// Uses: window.TIME_ZONES, window.WEATHER_QUERIES, window.fetchWeather, optional window.WU_LINKS
+/**
+ * info-bar.js - Bottom info bar with time and weather
+ * 
+ * Events Emitted:
+ * - 'infobar:ready' (sticky) - Bar element exists in DOM
+ * - 'infobar:rendered' - Weather/time blocks have been updated
+ * 
+ * Events Listened:
+ * - 'core:ready' - Start initialization
+ */
 
 (function() {
+  'use strict';
+
   if (!window.TIME_ZONES) {
-    console.warn("TIME_ZONES missing; footer not initialized.");
+    console.warn('[InfoBar] TIME_ZONES missing; not initialized.');
     return;
   }
 
-  // ---------- Styles ----------
-  const style = document.createElement("style");
-  style.textContent = `
+  const Events = window.RussellTV?.Events;
+  if (!Events) {
+    console.error('[InfoBar] RussellTV.Events not found. Load russelltv-core.js first.');
+    return;
+  }
+
+  // ============ STYLES ============
+
+  const styles = `
     #info-bar {
       position: fixed;
       bottom: 0;
@@ -27,7 +43,11 @@
       justify-content: center;
       backdrop-filter: blur(4px);
       border-top: 1px solid rgba(255,255,255,0.1);
-      overflow: visible !important; /* allow tooltip beyond the bar */
+      overflow: visible !important;
+    }
+
+    #info-bar-content {
+      display: contents;
     }
 
     .info-block {
@@ -44,36 +64,17 @@
       gap: 0.35rem;
     }
 
-    .info-block strong {
-      font-weight: 600;
-    }
+    .info-block strong { font-weight: 600; }
 
-    /* Temperature color bands */
+    /* Temperature bands */
     .temp-neutral { background: rgba(255,255,255,0.05); }
+    .temp-freezing { background: rgba(135,206,250,0.30); border-color: rgba(135,206,250,0.9); }
+    .temp-cold { background: rgba(100,149,237,0.30); border-color: rgba(100,149,237,0.9); }
+    .temp-mild { background: rgba(144,238,144,0.30); border-color: rgba(144,238,144,0.9); }
+    .temp-warm { background: rgba(255,165,0,0.28); border-color: rgba(255,165,0,0.9); }
+    .temp-hot { background: rgba(220,20,60,0.30); border-color: rgba(220,20,60,0.9); }
 
-    .temp-freezing {
-      background: rgba(135,206,250,0.30);
-      border-color: rgba(135,206,250,0.9);
-    }
-    .temp-cold {
-      background: rgba(100,149,237,0.30);
-      border-color: rgba(100,149,237,0.9);
-    }
-    .temp-mild {
-      background: rgba(144,238,144,0.30);
-      border-color: rgba(144,238,144,0.9);
-    }
-    .temp-warm {
-      background: rgba(255,165,0,0.28);
-      border-color: rgba(255,165,0,0.9);
-    }
-    .temp-hot {
-      background: rgba(220,20,60,0.30);
-      border-color: rgba(220,20,60,0.9);
-    }
-
-    /* ======== TOOLTIP SYSTEM ======== */
-
+    /* Tooltips */
     .info-block.has-tooltip::after {
       content: attr(data-tooltip);
       position: absolute;
@@ -92,7 +93,7 @@
       pointer-events: none;
       z-index: 10000;
       box-shadow: 0 0 10px rgba(0,0,0,0.9);
-      transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+      transition: opacity 0.12s ease-out;
     }
 
     .info-block.has-tooltip::before {
@@ -110,61 +111,28 @@
       transition: opacity 0.12s ease-out;
     }
 
-    .temp-freezing.has-tooltip::after {
-      background: rgba(135,206,250,1.0);
-      border-color: rgba(135,206,250,1.0);
-    }
-    .temp-freezing.has-tooltip::before {
-      border-color: rgba(135,206,250,1.0) transparent transparent transparent;
-    }
-
-    .temp-cold.has-tooltip::after {
-      background: rgba(100,149,237,1.0);
-      border-color: rgba(100,149,237,1.0);
-    }
-    .temp-cold.has-tooltip::before {
-      border-color: rgba(100,149,237,1.0) transparent transparent transparent;
-    }
-
-    .temp-mild.has-tooltip::after {
-      background: rgba(144,238,144,1.0);
-      border-color: rgba(144,238,144,1.0);
-    }
-    .temp-mild.has-tooltip::before {
-      border-color: rgba(144,238,144,1.0) transparent transparent transparent;
-    }
-
-    .temp-warm.has-tooltip::after {
-      background: rgba(255,165,0,1.0);
-      border-color: rgba(255,165,0,1.0);
-    }
-    .temp-warm.has-tooltip::before {
-      border-color: rgba(255,165,0,1.0) transparent transparent transparent;
-    }
-
-    .temp-hot.has-tooltip::after {
-      background: rgba(220,20,60,1.0);
-      border-color: rgba(220,20,60,1.0);
-    }
-    .temp-hot.has-tooltip::before {
-      border-color: rgba(220,20,60,1.0) transparent transparent transparent;
-    }
+    /* Tooltip colors by temp */
+    .temp-freezing.has-tooltip::after { background: rgba(135,206,250,1.0); border-color: rgba(135,206,250,1.0); }
+    .temp-freezing.has-tooltip::before { border-color: rgba(135,206,250,1.0) transparent transparent transparent; }
+    .temp-cold.has-tooltip::after { background: rgba(100,149,237,1.0); border-color: rgba(100,149,237,1.0); }
+    .temp-cold.has-tooltip::before { border-color: rgba(100,149,237,1.0) transparent transparent transparent; }
+    .temp-mild.has-tooltip::after { background: rgba(144,238,144,1.0); border-color: rgba(144,238,144,1.0); }
+    .temp-mild.has-tooltip::before { border-color: rgba(144,238,144,1.0) transparent transparent transparent; }
+    .temp-warm.has-tooltip::after { background: rgba(255,165,0,1.0); border-color: rgba(255,165,0,1.0); }
+    .temp-warm.has-tooltip::before { border-color: rgba(255,165,0,1.0) transparent transparent transparent; }
+    .temp-hot.has-tooltip::after { background: rgba(220,20,60,1.0); border-color: rgba(220,20,60,1.0); }
+    .temp-hot.has-tooltip::before { border-color: rgba(220,20,60,1.0) transparent transparent transparent; }
 
     .info-block.has-tooltip:hover::after,
-    .info-block.has-tooltip:hover::before {
-      opacity: 1;
-    }
+    .info-block.has-tooltip:hover::before { opacity: 1; }
 
-    /* ======== WEATHER TOOLTIPS DISABLED STATE ======== */
-    /* When body has this class, weather tooltips are hidden */
+    /* Weather tooltips disabled state */
     body.weather-tooltips-disabled .info-block.has-tooltip::after,
     body.weather-tooltips-disabled .info-block.has-tooltip::before {
       display: none !important;
-      opacity: 0 !important;
     }
 
-    /* ======== WEATHER ICONS ======== */
-
+    /* Weather icons */
     .wx-icon-wrap {
       display: inline-flex;
       align-items: center;
@@ -180,93 +148,141 @@
       transform-origin: center center;
     }
 
-    .wx-sunny  { animation: wx-sun-pulse   3s ease-in-out infinite; }
+    .wx-sunny  { animation: wx-sun-pulse 3s ease-in-out infinite; }
     .wx-cloudy { animation: wx-cloud-drift 5s ease-in-out infinite; }
-    .wx-rain   { animation: wx-rain-bob    1.6s ease-in-out infinite; }
+    .wx-rain   { animation: wx-rain-bob 1.6s ease-in-out infinite; }
     .wx-storm  { animation: wx-storm-flash 2.3s ease-in-out infinite; }
-    .wx-snow   { animation: wx-snow-float  3.2s ease-in-out infinite; }
-    .wx-wind   { animation: wx-wind-sway   3s ease-in-out infinite; }
+    .wx-snow   { animation: wx-snow-float 3.2s ease-in-out infinite; }
+    .wx-wind   { animation: wx-wind-sway 3s ease-in-out infinite; }
     .wx-fog    { animation: wx-fog-breathe 4.5s ease-in-out infinite; }
 
     @keyframes wx-sun-pulse {
-      0%, 100% { transform: scale(1);    filter: brightness(1) saturate(1); }
-      50%      { transform: scale(1.12); filter: brightness(1.3) saturate(1.1); }
+      0%, 100% { transform: scale(1); filter: brightness(1); }
+      50% { transform: scale(1.12); filter: brightness(1.3); }
     }
-
     @keyframes wx-cloud-drift {
-      0%, 100% { transform: translateX(0);   filter: brightness(1); }
-      50%      { transform: translateX(4px); filter: brightness(1.1); }
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(4px); }
     }
-
     @keyframes wx-rain-bob {
-      0%, 100% { transform: translateY(0);   filter: brightness(1); }
-      50%      { transform: translateY(3px); filter: brightness(1.15); }
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(3px); }
     }
-
     @keyframes wx-storm-flash {
-      0%, 100% { filter: brightness(1);   transform: translateY(0); }
-      40%      { filter: brightness(1);   transform: translateY(0); }
-      50%      { filter: brightness(1.7); transform: translateY(1px); }
-      60%      { filter: brightness(1);   transform: translateY(0); }
+      0%, 40%, 60%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.7); }
     }
-
     @keyframes wx-snow-float {
-      0%, 100% { transform: translateY(0);    filter: brightness(1); }
-      50%      { transform: translateY(-3px); filter: brightness(1.1); }
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
     }
-
     @keyframes wx-wind-sway {
-      0%, 100% { transform: translateX(0);    filter: brightness(1); }
-      50%      { transform: translateX(-4px); filter: brightness(1.1); }
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(-4px); }
     }
-
     @keyframes wx-fog-breathe {
-      0%, 100% { opacity: 1;   filter: brightness(1); }
-      50%      { opacity: 0.6; filter: brightness(0.9); }
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
     }
   `;
-  document.head.appendChild(style);
 
-  // ---------- Create bar ----------
-  const bar = document.createElement("div");
-  bar.id = "info-bar";
-  document.body.appendChild(bar);
+  // ============ STATE ============
 
-  // Weather cache
   let weatherMap = {};
+  let bar = null;
+  let contentContainer = null;
+
+  // ============ HELPERS ============
 
   function tempClass(temp) {
-    if (temp == null || isNaN(temp)) return "temp-neutral";
-    if (temp <= 32) return "temp-freezing";
-    if (temp <= 50) return "temp-cold";
-    if (temp <= 70) return "temp-mild";
-    if (temp <= 85) return "temp-warm";
-    return "temp-hot";
+    if (temp == null || isNaN(temp)) return 'temp-neutral';
+    if (temp <= 32) return 'temp-freezing';
+    if (temp <= 50) return 'temp-cold';
+    if (temp <= 70) return 'temp-mild';
+    if (temp <= 85) return 'temp-warm';
+    return 'temp-hot';
   }
 
   function iconKeyFor(main, desc) {
     const w = `${main} ${desc}`.toLowerCase();
-    if (w.includes("thunder")) return "storm";
-    if (w.includes("storm"))   return "storm";
-    if (w.includes("rain") || w.includes("drizzle")) return "rain";
-    if (w.includes("snow") || w.includes("sleet"))   return "snow";
-    if (w.includes("wind"))    return "wind";
-    if (w.includes("cloud"))   return "cloudy";
-    if (w.includes("fog") || w.includes("mist") || w.includes("haze") || w.includes("smoke")) return "fog";
-    return "sunny";
+    if (w.includes('thunder') || w.includes('storm')) return 'storm';
+    if (w.includes('rain') || w.includes('drizzle')) return 'rain';
+    if (w.includes('snow') || w.includes('sleet')) return 'snow';
+    if (w.includes('wind')) return 'wind';
+    if (w.includes('cloud')) return 'cloudy';
+    if (w.includes('fog') || w.includes('mist') || w.includes('haze') || w.includes('smoke')) return 'fog';
+    return 'sunny';
   }
 
-  async function updateWeather() {
-    if (!window.WEATHER_QUERIES || typeof window.fetchWeather !== "function") {
+  // ============ RENDERING ============
+
+  function renderTimeWeatherBlocks() {
+    if (!contentContainer) return;
+
+    // Clear only the content container, not the whole bar
+    contentContainer.innerHTML = '';
+
+    window.TIME_ZONES.forEach(loc => {
+      const time = new Date().toLocaleString('en-US', {
+        timeZone: loc.tz,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const isZulu = /zulu/i.test(loc.label);
+      const w = weatherMap[loc.label];
+
+      let cls = 'info-block temp-neutral';
+      let content = `<strong>${loc.label}</strong> ${time}`;
+      let tooltip = null;
+
+      if (!isZulu && w) {
+        cls = 'info-block ' + tempClass(w.temp) + ' has-tooltip';
+
+        const key = iconKeyFor(w.main, w.desc);
+        const iconHtml = `
+          <span class="wx-icon-wrap">
+            <img class="wx-icon wx-${key}" src="/icons/weather/${key}.svg" alt="${w.main}">
+          </span>
+        `.trim();
+
+        content += ` ${iconHtml} ${w.hi}°/${w.lo}°`;
+
+        tooltip = `${loc.label}\nTime: ${time}\nConditions: ${w.main} (${w.desc})\nCurrent: ${w.temp}°F\nHigh/Low: ${w.hi}°F / ${w.lo}°F` +
+          (w.humidity != null ? `\nHumidity: ${w.humidity}%` : '') +
+          (w.wind != null ? `\nWind: ${w.wind} mph` : '');
+      }
+
+      const div = document.createElement('div');
+      div.className = cls;
+      div.innerHTML = content;
+
+      if (tooltip) {
+        div.setAttribute('data-tooltip', tooltip);
+      }
+
+      const wuUrl = window.WU_LINKS?.[loc.label];
+      if (wuUrl && !isZulu) {
+        div.style.cursor = 'pointer';
+        div.addEventListener('click', () => window.open(wuUrl, '_blank', 'noopener'));
+      }
+
+      contentContainer.appendChild(div);
+    });
+
+    Events.emit('infobar:rendered');
+  }
+
+  async function fetchWeather() {
+    if (!window.WEATHER_QUERIES || typeof window.fetchWeather !== 'function') {
       weatherMap = {};
-      render();
       return;
     }
 
     const newMap = {};
     for (const [label, query] of Object.entries(window.WEATHER_QUERIES)) {
-      const isZulu = /zulu/i.test(label);
-      if (isZulu) {
+      if (/zulu/i.test(label)) {
         newMap[label] = null;
         continue;
       }
@@ -278,97 +294,66 @@
           continue;
         }
 
-        const main = d.weather?.[0]?.main || "";
-        const desc = d.weather?.[0]?.description || "";
-        const temp = Math.round(d.main.temp);
-        const hi   = Math.round(d.main.temp_max);
-        const lo   = Math.round(d.main.temp_min);
-        const humidity = Math.round(d.main.humidity);
-        const wind = d.wind?.speed ? Math.round(d.wind.speed) : null;
-
-        newMap[label] = { main, desc, temp, hi, lo, humidity, wind };
+        newMap[label] = {
+          main: d.weather?.[0]?.main || '',
+          desc: d.weather?.[0]?.description || '',
+          temp: Math.round(d.main.temp),
+          hi: Math.round(d.main.temp_max),
+          lo: Math.round(d.main.temp_min),
+          humidity: Math.round(d.main.humidity),
+          wind: d.wind?.speed ? Math.round(d.wind.speed) : null
+        };
       } catch {
         newMap[label] = null;
       }
     }
 
     weatherMap = newMap;
-    render();
   }
 
-  function render() {
-    // Save the space-weather node if it already exists
-    const spaceWeather = document.getElementById('space-weather-indicators');
+  // ============ INITIALIZATION ============
 
-    bar.innerHTML = "";
+  function init() {
+    // Add styles
+    const styleEl = document.createElement('style');
+    styleEl.textContent = styles;
+    document.head.appendChild(styleEl);
 
-    window.TIME_ZONES.forEach(loc => {
-      const time = new Date().toLocaleString("en-US", {
-        timeZone: loc.tz,
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit"
-      });
+    // Create bar structure
+    bar = document.createElement('div');
+    bar.id = 'info-bar';
 
-      const isZulu = /zulu/i.test(loc.label);
-      const w = weatherMap[loc.label];
+    // Content container for time/weather blocks (will be re-rendered)
+    contentContainer = document.createElement('div');
+    contentContainer.id = 'info-bar-content';
+    bar.appendChild(contentContainer);
 
-      let cls = "info-block temp-neutral";
-      let content = `<strong>${loc.label}</strong> ${time}`;
-      let tooltip = null;
+    document.body.appendChild(bar);
 
-      if (!isZulu && w) {
-        cls = "info-block " + tempClass(w.temp) + " has-tooltip";
+    // Signal that bar is ready
+    Events.emit('infobar:ready', { bar }, { sticky: true });
 
-        const key = iconKeyFor(w.main, w.desc);
-        const iconUrl = `/icons/weather/${key}.svg`;
-        const iconClass = `wx-icon wx-${key}`;
+    // Initial render
+    renderTimeWeatherBlocks();
 
-        const iconHtml = `
-          <span class="wx-icon-wrap">
-            <img class="${iconClass}" src="${iconUrl}" alt="${w.main || "Weather"} icon">
-          </span>
-        `.trim();
-
-        content += ` ${iconHtml} ${w.hi}°/${w.lo}°`;
-
-        tooltip =
-          `${loc.label}\n` +
-          `Time: ${time}\n` +
-          `Conditions: ${w.main} (${w.desc})\n` +
-          `Current: ${w.temp}°F\n` +
-          `High/Low: ${w.hi}°F / ${w.lo}°F` +
-          (w.humidity != null ? `\nHumidity: ${w.humidity}%` : "") +
-          (w.wind != null ? `\nWind: ${w.wind} mph` : "");
-      }
-
-      const div = document.createElement("div");
-      div.className = cls;
-      div.innerHTML = content;
-
-      if (tooltip) {
-        div.setAttribute("data-tooltip", tooltip);
-      }
-
-      const wuUrl = window.WU_LINKS && window.WU_LINKS[loc.label];
-      if (wuUrl && !isZulu) {
-        div.style.cursor = "pointer";
-        div.addEventListener("click", () => {
-          window.open(wuUrl, "_blank", "noopener");
-        });
-      }
-
-      bar.appendChild(div);
+    // Fetch weather and re-render
+    fetchWeather().then(() => {
+      renderTimeWeatherBlocks();
     });
 
-    // Re-attach space-weather indicators at the end if they already exist
-    if (spaceWeather) {
-      bar.appendChild(spaceWeather);
-    }
+    // Update time every 10 seconds
+    setInterval(renderTimeWeatherBlocks, 10000);
+
+    // Update weather every 10 minutes
+    setInterval(async () => {
+      await fetchWeather();
+      renderTimeWeatherBlocks();
+    }, 600000);
+
+    console.log('✅ [InfoBar] Initialized');
   }
 
-  render();
-  updateWeather();
-  setInterval(render, 10 * 1000);
-  setInterval(updateWeather, 10 * 60 * 1000);
+  // Wait for core to be ready
+  Events.whenReady('core:ready', init);
+
 })();
