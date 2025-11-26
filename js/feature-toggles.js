@@ -58,44 +58,49 @@ window.RussellTV.Features = (function() {
   }
 
   function waitForInfoBar() {
-    // Check frequently and continuously
-    setInterval(() => {
+    // Initial setup - wait for container to exist
+    const initialCheck = setInterval(() => {
       const container = document.getElementById('space-weather-indicators');
       const infoBar = document.getElementById('info-bar');
       
-      // Ensure gear button exists and is visible
-      let btn = document.getElementById('feature-settings-btn');
-      
-      if (container) {
-        // Preferred: put inside the container for correct spacing
-        if (!btn) {
-          btn = createGearButtonElement();
-          container.appendChild(btn);
-        } else if (!container.contains(btn)) {
-          // Move it into container if it's elsewhere
-          container.appendChild(btn);
-        }
-      } else if (infoBar) {
-        // Fallback: put in info bar if container doesn't exist
-        if (!btn) {
-          btn = createGearButtonElement();
-          btn.style.position = 'absolute';
-          btn.style.right = '12px';
-          btn.style.bottom = '6px';
-          infoBar.appendChild(btn);
-        }
+      if (container || infoBar) {
+        clearInterval(initialCheck);
+        ensureGearButton();
+        // Apply states once after elements exist
+        setTimeout(applyAllStates, 100);
+        setTimeout(applyAllStates, 500);
+        
+        // Then just check for gear button periodically (not apply states)
+        setInterval(ensureGearButton, 2000);
       }
-      
-      // Always ensure it's visible
-      if (btn) {
-        btn.style.display = 'inline-block';
-        btn.style.visibility = 'visible';
-        btn.style.opacity = '1';
+    }, 200);
+  }
+  
+  function ensureGearButton() {
+    const container = document.getElementById('space-weather-indicators');
+    const infoBar = document.getElementById('info-bar');
+    let btn = document.getElementById('feature-settings-btn');
+    
+    if (container) {
+      if (!btn) {
+        btn = createGearButtonElement();
+        container.appendChild(btn);
+      } else if (!container.contains(btn)) {
+        container.appendChild(btn);
       }
-      
-      // Apply states
-      applyAllStates();
-    }, 500);
+    } else if (infoBar && !btn) {
+      btn = createGearButtonElement();
+      btn.style.position = 'absolute';
+      btn.style.right = '12px';
+      btn.style.bottom = '6px';
+      infoBar.appendChild(btn);
+    }
+    
+    if (btn) {
+      btn.style.display = 'inline-block';
+      btn.style.visibility = 'visible';
+      btn.style.opacity = '1';
+    }
   }
   
   function createGearButtonElement() {
@@ -345,32 +350,50 @@ window.RussellTV.Features = (function() {
   function toggle(key) {
     if (!FEATURE_DEFINITIONS[key]) return;
     
+    console.log(`⚙️ Toggle ${key} START`);
+    const start = performance.now();
+    
     featureStates[key] = !featureStates[key];
     applyState(key);  // INSTANT - apply first
-    saveSettings();   // Then save
+    console.log(`⚙️ applyState took ${performance.now() - start}ms`);
+    
     updateToggleUI(key);  // Update just the toggle switch
     updateAllOnOffButtons();
+    saveSettings();   // Save last (async-ish)
     
     // Dispatch event for other components
     window.dispatchEvent(new CustomEvent('feature:toggle', {
       detail: { feature: key, enabled: featureStates[key] }
     }));
+    
+    console.log(`⚙️ Toggle ${key} COMPLETE in ${performance.now() - start}ms`);
   }
 
   function setAll(enabled) {
+    console.log(`⚙️ SetAll(${enabled}) START`);
+    const start = performance.now();
+    
     // Apply all states FIRST (instant visual feedback)
     for (const key of Object.keys(FEATURE_DEFINITIONS)) {
       featureStates[key] = enabled;
       applyState(key);
     }
+    console.log(`⚙️ All applyState took ${performance.now() - start}ms`);
     
-    // Then save and update UI
+    // Update UI without full re-render
+    for (const key of Object.keys(FEATURE_DEFINITIONS)) {
+      updateToggleUI(key);
+    }
+    updateAllOnOffButtons();
+    console.log(`⚙️ UI updates took ${performance.now() - start}ms`);
+    
     saveSettings();
-    renderPanelContent();
     
     window.dispatchEvent(new CustomEvent('features:changed', {
       detail: { states: { ...featureStates } }
     }));
+    
+    console.log(`⚙️ SetAll COMPLETE in ${performance.now() - start}ms`);
   }
 
   // Update just one toggle switch without re-rendering everything
