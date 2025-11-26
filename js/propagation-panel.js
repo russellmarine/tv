@@ -705,23 +705,25 @@
           status: 'yellow', label: 'Monitor', freq: '26.5-40 GHz',
           notes: `Wet snow may cause fade.`
         };
-      } else if ((condition.includes('cloud') || desc.includes('overcast')) && humidity > 80) {
-        assessment.ehf = { 
-          status: 'yellow', label: 'Humid', freq: '30-300 GHz',
-          notes: `High humidity (${humidity}%). Watch for precip.`
-        };
       } else if (condition.includes('fog') || condition.includes('mist')) {
         assessment.ehf = { 
           status: 'yellow', label: 'Fog', freq: '30-300 GHz',
-          notes: `Water vapor absorption (2-5 dB).`
+          notes: `Suspended water droplets cause 2-5 dB absorption.`
+        };
+      } else if (humidity > 85) {
+        // Very high humidity without precip - minor concern
+        assessment.ehf = { 
+          status: 'yellow', label: 'High RH', freq: '30-300 GHz',
+          notes: `High humidity (${humidity}%). Water vapor absorption possible. Watch for fog/precip.`
         };
       } else {
+        // Clouds/overcast alone don't affect EHF significantly
         assessment.ehf = { 
-          status: 'green', label: 'Clear', freq: '30-300 GHz',
-          notes: `Optimal conditions (${humidity}% RH).`
+          status: 'green', label: 'Normal', freq: '30-300 GHz',
+          notes: `${condition.includes('cloud') || desc.includes('cloud') ? 'Clouds minimal impact. ' : ''}${humidity}% RH.`
         };
         assessment.ka = { 
-          status: 'green', label: 'Clear', freq: '26.5-40 GHz',
+          status: 'green', label: 'Normal', freq: '26.5-40 GHz',
           notes: `Good conditions.`
         };
       }
