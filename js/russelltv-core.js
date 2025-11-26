@@ -116,6 +116,21 @@ window.RussellTV = window.RussellTV || {};
     console.log(`🔧 [RTV] Debug mode ${enabled ? 'ON' : 'OFF'}`);
   }
 
+  // ============ SANITIZATION ============
+
+  /**
+   * Sanitize a string for safe innerHTML insertion
+   * Prevents XSS from external data sources (API responses, etc.)
+   * @param {any} str - String to sanitize
+   * @returns {string} - Safe string with HTML entities escaped
+   */
+  function sanitize(str) {
+    if (str == null) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
+
   // ============ STORAGE UTILITIES ============
 
   const STORAGE_PREFIX = 'russelltv.';
@@ -192,6 +207,8 @@ window.RussellTV = window.RussellTV || {};
   window.RussellTV.DOM = {
     getOrCreate
   };
+
+  window.RussellTV.sanitize = sanitize;
 
   // ============ INITIALIZATION ============
 
