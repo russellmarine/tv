@@ -459,7 +459,7 @@
         const key = iconKeyFor(w.main, w.desc);
         const iconHtml = `
           <span class="wx-icon-wrap">
-            <img class="wx-icon wx-${key}" src="/icons/weather/${key}.svg" alt="${w.main}">
+            <img class="wx-icon wx-${key}" src="/icons/weather/${key}.svg" alt="${window.RussellTV.sanitize(w.main)}">
           </span>
         `.trim();
 
@@ -731,7 +731,7 @@
       </div>
       <div style="margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 120, 0, 0.2); font-size: 0.65rem;">
         <div style="display: flex; justify-content: space-between; opacity: 0.6;">
-          <span>Data: <a href="https://www.swpc.noaa.gov/" target="_blank" style="color: rgba(255, 150, 0, 0.8);">NOAA SWPC</a></span>
+          <span>Data: <a href="https://www.swpc.noaa.gov/" target="_blank" rel="noopener noreferrer" style="color: rgba(255, 150, 0, 0.8);">NOAA SWPC</a></span>
           <span>Updated ${formatTime(data.timestamp)}</span>
         </div>
         <div style="text-align: center; margin-top: 0.3rem; opacity: 0.5;">
@@ -885,9 +885,9 @@
         <span class="wx-header-icon">${emoji}</span>
         <div class="wx-header-info">
           <div class="wx-location">${locLabel}</div>
-          <div class="wx-condition">${w.desc || w.main}</div>
+          <div class="wx-condition">${window.RussellTV.sanitize(w.desc || w.main)}</div>
         </div>
-        <div class="wx-temp-main">${w.temp}°</div>
+        <div class="wx-temp-main">${window.RussellTV.sanitize(w.temp)}°</div>
       </div>
       
       <div class="wx-grid">
@@ -966,8 +966,8 @@
       <div class="wx-footer">
         <div style="display: flex; flex-direction: column; gap: 0.3rem; width: 100%;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="opacity: 0.6;">Data: <a href="https://openweathermap.org/" target="_blank" class="wx-link">OpenWeather</a></span>
-            <a href="${wuLink}" target="_blank" class="wx-link">Weather Underground →</a>
+            <span style="opacity: 0.6;">Data: <a href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer" class="wx-link">OpenWeather</a></span>
+            <a href="${wuLink}" target="_blank" rel="noopener noreferrer" class="wx-link">Weather Underground →</a>
           </div>
           <div style="text-align: center; font-size: 0.65rem; opacity: 0.5;">
             ${locked ? '🔒 Click to unlock' : '💡 Click to lock'}
@@ -1148,7 +1148,7 @@
     fetchWeather().then(() => render());
 
     // Update time every 10 seconds
-    setInterval(render, 10000);
+    setInterval(render, 30000);  // Update time/weather display every 30s
 
     // Update weather every 10 minutes
     setInterval(async () => {
