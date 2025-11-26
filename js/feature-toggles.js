@@ -86,13 +86,18 @@
 
   function applyState(key) {
     const enabled = featureStates[key];
+    console.log(`[Features] Applying state: ${key} = ${enabled}`);
 
     switch (key) {
       case 'space-weather-indicators':
         ['sw-indicator-hf', 'sw-indicator-gps', 'sw-indicator-satcom'].forEach(id => {
           const el = document.getElementById(id);
-          if (el) el.style.display = enabled ? 'inline-flex' : 'none';
+          if (el) {
+            el.style.display = enabled ? 'inline-flex' : 'none';
+          }
         });
+        // Also emit event for any listeners
+        Events.emit('feature:toggle', { feature: key, enabled });
         break;
 
       case 'propagation-panel':
@@ -102,6 +107,7 @@
           const panel = document.getElementById('propagation-panel');
           if (panel) panel.style.display = 'none';
         }
+        Events.emit('feature:toggle', { feature: key, enabled });
         break;
 
       case 'satellite-planner':
@@ -111,10 +117,12 @@
           const panel = document.getElementById('satellite-planner-panel');
           if (panel) panel.style.display = 'none';
         }
+        Events.emit('feature:toggle', { feature: key, enabled });
         break;
 
       case 'weather-tooltips':
         document.body.classList.toggle('weather-tooltips-disabled', !enabled);
+        Events.emit('feature:toggle', { feature: key, enabled });
         break;
     }
   }
@@ -131,18 +139,15 @@
     if (!FEATURES[key]) return;
 
     featureStates[key] = !featureStates[key];
-    applyState(key);
+    applyState(key);  // This now emits the event
     saveStates();
     updatePanelUI();
-
-    Events.emit('feature:toggle', { feature: key, enabled: featureStates[key] });
   }
 
   function setAll(enabled) {
     for (const key of Object.keys(FEATURES)) {
       featureStates[key] = enabled;
-      applyState(key);
-      Events.emit('feature:toggle', { feature: key, enabled });
+      applyState(key);  // This now emits the event
     }
     saveStates();
     updatePanelUI();
