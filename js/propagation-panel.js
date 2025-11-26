@@ -629,6 +629,7 @@
     const absGeomagLat = Math.abs(geomagLat);
     
     let assessment = {
+      ehfBand: { status: 'green', label: 'Normal', notes: '' },
       kuBand: { status: 'green', label: 'Normal', notes: '' },
       xBand: { status: 'green', label: 'Normal', notes: '' },
       cBand: { status: 'green', label: 'Normal', notes: '' },
@@ -636,12 +637,24 @@
       ionosphericDelay: 'Minimal'
     };
     
+    // EHF (V/W band, 30-300 GHz) - most affected by weather/atmosphere
+    // Note: We don't have live weather data, so provide general guidance
+    assessment.ehfBand = { 
+      status: 'yellow', 
+      label: 'Weather Dependent', 
+      notes: 'Rain fade & atmospheric absorption significant. Check local weather.' 
+    };
+    
     // Scintillation risk (higher at equatorial and auroral zones)
     if (absGeomagLat < 20) {
       assessment.scintillation = 'Moderate (equatorial)';
       assessment.kuBand.notes = 'Equatorial scintillation possible post-sunset';
+      assessment.ehfBand.notes += ' Equatorial effects possible.';
     } else if (absGeomagLat > 60) {
       assessment.scintillation = kp >= 5 ? 'High (auroral)' : 'Moderate (polar)';
+      if (kp >= 5) {
+        assessment.ehfBand.notes += ' Polar cap absorption risk.';
+      }
     }
     
     // Geomagnetic storm effects
@@ -656,6 +669,7 @@
     if (sScale >= 3) {
       assessment.xBand = { status: 'orange', label: 'Caution', notes: 'Solar particle event - monitor for anomalies' };
       assessment.kuBand.notes += ' Satellite charging possible.';
+      assessment.ehfBand.status = 'orange';
     }
     
     // X-band is generally more robust
@@ -663,13 +677,66 @@
       assessment.xBand = { status: 'green', label: 'Normal', notes: 'Mil-band nominal' };
     }
     
-    // C-band is most robust
+    // C-band is most robust to space weather
     assessment.cBand = { status: 'green', label: 'Normal', notes: 'Most resilient to space weather' };
     if (sScale >= 4) {
       assessment.cBand = { status: 'yellow', label: 'Monitor', notes: 'Extreme event - monitor all bands' };
     }
     
     return assessment;
+  }
+
+  // Get detailed impact description for each band
+  function getBandImpactDescription(bandKey, status, data) {
+    const rScale = data?.scales?.R || 0;
+    const sScale = data?.scales?.S || 0;
+    const gScale = data?.scales?.G || 0;
+    const kp = data?.kpIndex || 0;
+    
+    switch(bandKey) {
+      case 'hf':
+        if (status === 'red') {
+          return `⚠️ HF blackout on sunlit side. D-layer absorption blocking signals below ~${Math.max(5, 30 - rScale * 5)} MHz. Use SATCOM or wait for night path.`;
+        } else if (status === 'orange') {
+          return `Significant absorption on daylit paths. Lower frequencies (80m/40m) most affected. Consider higher bands or wait 1-2 hours.`;
+        } else if (status === 'yellow') {
+          return `Minor degradation possible. May notice weaker signals on lower bands. Long-distance paths may be affected.`;
+        }
+        return `Normal propagation. MUF tracking expected levels. All amateur and commercial HF services operational.`;
+        
+      case 'gps':
+        if (status === 'red') {
+          return `⚠️ GPS accuracy severely degraded. Position errors of 10-100m possible. Use backup navigation. Timing services affected.`;
+        } else if (status === 'orange') {
+          return `GPS precision reduced. Survey-grade applications impacted. Augmentation systems (WAAS/EGNOS) may show alerts.`;
+        } else if (status === 'yellow') {
+          return `Minor accuracy variations. Consumer GPS unaffected. Precision applications may see slight degradation.`;
+        }
+        return `Full accuracy available. Dual-frequency receivers optimal. Survey and timing applications nominal.`;
+        
+      case 'satcom':
+        if (status === 'red') {
+          return `⚠️ Significant signal degradation. Link margins reduced. Low-elevation passes may drop. Increase antenna gain or data rate reduction.`;
+        } else if (status === 'orange') {
+          return `Elevated scintillation and signal fading. GEO links generally stable but LEO handoffs may be affected.`;
+        } else if (status === 'yellow') {
+          return `Minor variations possible. Monitor link quality. High-latitude ground stations may see effects first.`;
+        }
+        return `Nominal operations. All frequency bands stable. Standard link budgets apply.`;
+        
+      case 'vhf':
+        if (status === 'red') {
+          return `⚠️ Unusual propagation possible. Sporadic-E or auroral effects may cause interference or unexpected range extension.`;
+        } else if (status === 'orange') {
+          return `Enhanced propagation possible. May receive distant stations. Some interference on shared frequencies.`;
+        } else if (status === 'yellow') {
+          return `Slight propagation enhancement possible. Monitor for unexpected signals. Generally normal operations.`;
+        }
+        return `Line-of-sight propagation normal. No unusual skip or interference expected. Standard range applies.`;
+        
+      default:
+        return `Status: ${status}`;
+    }
   }
 
   // Get NVIS (Near Vertical Incidence Skywave) assessment for regional HF
@@ -942,7 +1009,11 @@
           <!-- SATCOM Section -->
           <div class="comms-section">
             <div class="comms-section-title">📡 SATCOM Assessment</div>
-            <div class="satcom-grid">
+            <div class="satcom-grid" style="grid-template-columns: repeat(4, 1fr);">
+              <div class="satcom-item">
+                <div class="band-label">EHF</div>
+                <div class="band-status ${satcom.ehfBand.status}">${satcom.ehfBand.label}</div>
+              </div>
               <div class="satcom-item">
                 <div class="band-label">X-Band</div>
                 <div class="band-status ${satcom.xBand.status}">${satcom.xBand.label}</div>
@@ -965,8 +1036,9 @@
                 <span class="label">Ionospheric Delay</span>
                 <span class="value">${satcom.ionosphericDelay}</span>
               </div>
-              ${satcom.kuBand.notes ? `<div style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.35rem; font-style: italic;">${satcom.kuBand.notes}</div>` : ''}
             </div>
+            ${satcom.ehfBand.notes ? `<div style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.35rem; padding: 0.4rem; background: rgba(255,200,0,0.1); border-radius: 4px;">⚠️ EHF: ${satcom.ehfBand.notes}</div>` : ''}
+            ${satcom.kuBand.notes ? `<div style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.35rem; font-style: italic;">${satcom.kuBand.notes}</div>` : ''}
           </div>
         </div>
       `;
@@ -1018,21 +1090,28 @@
     `;
     gridEl.innerHTML = gridHtml;
 
-    // Band list
+    // Band list with detailed impact info
     let bandHtml = '';
     for (const [key, band] of Object.entries(config.bands)) {
       const status = data.status[key];
       const statusInfo = config.statusLevels[status];
+      const impact = getBandImpactDescription(key, status, data);
       
       bandHtml += `
-        <div class="band-row">
-          <div class="band-info">
-            <span class="band-icon">${band.icon}</span>
-            <span class="band-name">${band.label}</span>
+        <div class="band-row" style="flex-direction: column; align-items: stretch;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="band-info">
+              <span class="band-icon">${band.icon}</span>
+              <span class="band-name">${band.label}</span>
+              <span style="font-size: 0.7rem; opacity: 0.6; margin-left: 0.5rem;">${band.frequencies}</span>
+            </div>
+            <div class="band-status">
+              <span class="status-dot" style="background: ${statusInfo?.color || '#888'}; box-shadow: 0 0 6px ${statusInfo?.color || '#888'};"></span>
+              <span style="color: ${statusInfo?.color || '#888'}">${statusInfo?.label || 'Unknown'}</span>
+            </div>
           </div>
-          <div class="band-status">
-            <span class="status-dot" style="background: ${statusInfo?.color || '#888'}; box-shadow: 0 0 6px ${statusInfo?.color || '#888'};"></span>
-            <span style="color: ${statusInfo?.color || '#888'}">${statusInfo?.label || 'Unknown'}</span>
+          <div style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.35rem; padding-left: 1.6rem; line-height: 1.3;">
+            ${impact}
           </div>
         </div>
       `;
