@@ -88,42 +88,18 @@
     const enabled = featureStates[key];
     console.log(`[Features] Applying state: ${key} = ${enabled}`);
 
-    switch (key) {
-      case 'space-weather-indicators':
-        ['sw-indicator-hf', 'sw-indicator-gps', 'sw-indicator-satcom'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) {
-            el.style.display = enabled ? 'inline-flex' : 'none';
-          }
-        });
-        // Also emit event for any listeners
-        Events.emit('feature:toggle', { feature: key, enabled });
-        break;
+    // Emit event - info-bar.js will handle the actual DOM changes
+    Events.emit('feature:toggle', { feature: key, enabled });
 
-      case 'propagation-panel':
-        const propBtn = document.getElementById('propagation-panel-btn');
-        if (propBtn) propBtn.style.display = enabled ? 'inline-flex' : 'none';
-        if (!enabled) {
-          const panel = document.getElementById('propagation-panel');
-          if (panel) panel.style.display = 'none';
-        }
-        Events.emit('feature:toggle', { feature: key, enabled });
-        break;
+    // Special case for weather tooltips (CSS class on body)
+    if (key === 'weather-tooltips') {
+      document.body.classList.toggle('weather-tooltips-disabled', !enabled);
+    }
 
-      case 'satellite-planner':
-        const satBtn = document.getElementById('satellite-planner-btn');
-        if (satBtn) satBtn.style.display = enabled ? 'inline-flex' : 'none';
-        if (!enabled) {
-          const panel = document.getElementById('satellite-planner-panel');
-          if (panel) panel.style.display = 'none';
-        }
-        Events.emit('feature:toggle', { feature: key, enabled });
-        break;
-
-      case 'weather-tooltips':
-        document.body.classList.toggle('weather-tooltips-disabled', !enabled);
-        Events.emit('feature:toggle', { feature: key, enabled });
-        break;
+    // Close propagation panel if disabled
+    if (key === 'propagation-panel' && !enabled) {
+      const panel = document.getElementById('propagation-panel');
+      if (panel) panel.style.display = 'none';
     }
   }
 
