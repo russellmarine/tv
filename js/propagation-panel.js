@@ -967,7 +967,7 @@
       </div>
       <div class="panel-footer">
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-          <span>Space Wx: <a href="${LINKS.noaaScales}" target="_blank">NOAA SWPC</a> · Weather: <a href="https://openweathermap.org/" target="_blank">OpenWeather</a></span>
+          <span>Space Wx: <a href="${LINKS.noaaScales}" target="_blank" rel="noopener noreferrer">NOAA SWPC</a> · Weather: <a href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeather</a></span>
           <span id="prop-last-update" style="opacity: 0.7;"></span>
         </div>
       </div>
@@ -1041,24 +1041,24 @@
       <div class="section">
         <div class="section-header">
           <span class="section-title">🌡️ Space Weather Overview</span>
-          <a href="${LINKS.noaaScales}" target="_blank" class="section-link">NOAA Scales →</a>
+          <a href="${LINKS.noaaScales}" target="_blank" rel="noopener noreferrer" class="section-link">NOAA Scales →</a>
         </div>
         <div class="scale-grid">
-          <a href="${LINKS.radioBlackouts}" target="_blank" style="text-decoration: none; color: inherit;">
+          <a href="${LINKS.radioBlackouts}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
             <div class="scale-card">
               <div class="scale-card-label">Radio</div>
               <div class="scale-card-value" style="color: ${getScaleColor(data.scales.R)}">R${data.scales.R}</div>
               <div class="scale-card-desc">${getScaleDescription('R', data.scales.R)}</div>
             </div>
           </a>
-          <a href="${LINKS.solarRadiation}" target="_blank" style="text-decoration: none; color: inherit;">
+          <a href="${LINKS.solarRadiation}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
             <div class="scale-card">
               <div class="scale-card-label">Solar</div>
               <div class="scale-card-value" style="color: ${getScaleColor(data.scales.S)}">S${data.scales.S}</div>
               <div class="scale-card-desc">${getScaleDescription('S', data.scales.S)}</div>
             </div>
           </a>
-          <a href="${LINKS.geomagStorms}" target="_blank" style="text-decoration: none; color: inherit;">
+          <a href="${LINKS.geomagStorms}" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
             <div class="scale-card">
               <div class="scale-card-label">Geomag</div>
               <div class="scale-card-value" style="color: ${getScaleColor(data.scales.G)}">G${data.scales.G}</div>
@@ -1068,7 +1068,7 @@
         </div>
         <div class="info-grid">
           <div class="info-item">
-            <span class="label"><a href="${LINKS.kpIndex}" target="_blank" class="inline-link">Kp Index</a></span>
+            <span class="label"><a href="${LINKS.kpIndex}" target="_blank" rel="noopener noreferrer" class="inline-link">Kp Index</a></span>
             <span class="value" style="color: ${data.kpIndex >= 5 ? '#ff8800' : '#44cc44'}">${data.kpIndex.toFixed(1)}</span>
           </div>
           <div class="info-item">
@@ -1109,7 +1109,7 @@
               <span class="value">${loc.lat.toFixed(2)}°, ${loc.lon.toFixed(2)}°</span>
             </div>
             <div class="info-item">
-              <span class="label"><a href="${LINKS.aurora}" target="_blank" class="inline-link">Geomag Lat</a></span>
+              <span class="label"><a href="${LINKS.aurora}" target="_blank" rel="noopener noreferrer" class="inline-link">Geomag Lat</a></span>
               <span class="value">${geomagLat.toFixed(1)}°</span>
             </div>
             <div class="info-item">
@@ -1126,7 +1126,7 @@
 
       // ===== SECTION 3: HF COMMUNICATIONS =====
       const bandPills = bands.map(b => 
-        `<a href="${LINKS.voacap}" target="_blank" style="text-decoration: none;">
+        `<a href="${LINKS.voacap}" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
           <span class="band-pill ${b.quality}" title="${b.freq}">${b.band}</span>
         </a>`
       ).join('');
@@ -1135,19 +1135,19 @@
         <div class="section">
           <div class="section-header">
             <span class="section-title">📻 HF Communications</span>
-            <a href="${LINKS.hfPropagation}" target="_blank" class="section-link">SWPC HF →</a>
+            <a href="${LINKS.hfPropagation}" target="_blank" rel="noopener noreferrer" class="section-link">SWPC HF →</a>
           </div>
           <div class="muf-row">
             <div>
               <div class="muf-value">${muf} MHz</div>
-              <div class="muf-label"><a href="${LINKS.muf}" target="_blank" class="inline-link">Est. MUF</a></div>
+              <div class="muf-label"><a href="${LINKS.muf}" target="_blank" rel="noopener noreferrer" class="inline-link">Est. MUF</a></div>
             </div>
             <div style="flex: 1; font-size: 0.75rem; opacity: 0.85; line-height: 1.35;">
               ${hfAssessment}
             </div>
           </div>
           <div style="font-size: 0.7rem; opacity: 0.7; margin-bottom: 0.3rem;">
-            Recommended Bands <a href="${LINKS.voacap}" target="_blank" class="inline-link" style="font-size: 0.65rem;">(VOACAP)</a>
+            Recommended Bands <a href="${LINKS.voacap}" target="_blank" rel="noopener noreferrer" class="inline-link" style="font-size: 0.65rem;">(VOACAP)</a>
           </div>
           <div class="band-pills">${bandPills}</div>
           <div class="nvis-box">
@@ -1157,7 +1157,7 @@
           ${data.scales.R >= 2 ? `
             <div class="alert-box orange">
               <strong>⚠️ D-RAP Alert:</strong> D-layer absorption elevated. 
-              <a href="${LINKS.drap}" target="_blank" class="inline-link">View absorption map →</a>
+              <a href="${LINKS.drap}" target="_blank" rel="noopener noreferrer" class="inline-link">View absorption map →</a>
             </div>
           ` : ''}
         </div>
@@ -1168,7 +1168,7 @@
         <div class="section">
           <div class="section-header">
             <span class="section-title">📡 SATCOM & GPS</span>
-            <a href="${LINKS.satcom}" target="_blank" class="section-link">SWPC →</a>
+            <a href="${LINKS.satcom}" target="_blank" rel="noopener noreferrer" class="section-link">SWPC →</a>
           </div>
           ${satcom.weather ? `
             <div class="weather-row">
@@ -1198,11 +1198,11 @@
             </div>
             ${satcom.gps.notes ? `<div style="font-size: 0.75rem; opacity: 0.85; margin-bottom: 0.4rem;">${satcom.gps.notes}</div>` : ''}
             <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.7rem;">
-              <a href="${LINKS.gpsJam}" target="_blank" class="inline-link">GPSJam Map</a>
+              <a href="${LINKS.gpsJam}" target="_blank" rel="noopener noreferrer" class="inline-link">GPSJam Map</a>
               <span style="opacity: 0.4;">·</span>
-              <a href="${LINKS.flightradarGps}" target="_blank" class="inline-link">FR24 Interference</a>
+              <a href="${LINKS.flightradarGps}" target="_blank" rel="noopener noreferrer" class="inline-link">FR24 Interference</a>
               <span style="opacity: 0.4;">·</span>
-              <a href="${LINKS.navcenGuide}" target="_blank" class="inline-link">NAVCEN GUIDE</a>
+              <a href="${LINKS.navcenGuide}" target="_blank" rel="noopener noreferrer" class="inline-link">NAVCEN GUIDE</a>
             </div>
           </div>
 
