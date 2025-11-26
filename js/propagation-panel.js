@@ -200,6 +200,150 @@
       margin-bottom: 0.25rem;
     }
 
+    #propagation-panel .comms-section {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 120, 0, 0.25);
+      border-radius: 10px;
+      padding: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    #propagation-panel .comms-section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(255, 150, 0, 0.9);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    #propagation-panel .muf-display {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    #propagation-panel .muf-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #00ff88;
+    }
+
+    #propagation-panel .muf-label {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      text-transform: uppercase;
+    }
+
+    #propagation-panel .band-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+    }
+
+    #propagation-panel .band-pill {
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border: 1px solid;
+    }
+
+    #propagation-panel .band-pill.excellent {
+      background: rgba(0, 255, 100, 0.2);
+      border-color: rgba(0, 255, 100, 0.5);
+      color: #00ff88;
+    }
+
+    #propagation-panel .band-pill.good {
+      background: rgba(100, 200, 255, 0.2);
+      border-color: rgba(100, 200, 255, 0.5);
+      color: #88ccff;
+    }
+
+    #propagation-panel .band-pill.fair {
+      background: rgba(255, 200, 100, 0.2);
+      border-color: rgba(255, 200, 100, 0.5);
+      color: #ffcc88;
+    }
+
+    #propagation-panel .band-pill.poor {
+      background: rgba(255, 100, 100, 0.15);
+      border-color: rgba(255, 100, 100, 0.4);
+      color: #ff8888;
+    }
+
+    #propagation-panel .satcom-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    #propagation-panel .satcom-item {
+      text-align: center;
+      padding: 0.4rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 6px;
+    }
+
+    #propagation-panel .satcom-item .band-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 0.15rem;
+    }
+
+    #propagation-panel .satcom-item .band-status {
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    #propagation-panel .satcom-item .band-status.green { color: #00ff88; }
+    #propagation-panel .satcom-item .band-status.yellow { color: #ffcc00; }
+    #propagation-panel .satcom-item .band-status.orange { color: #ff8800; }
+    #propagation-panel .satcom-item .band-status.red { color: #ff4444; }
+
+    #propagation-panel .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    #propagation-panel .info-row:last-child {
+      border-bottom: none;
+    }
+
+    #propagation-panel .info-row .label {
+      opacity: 0.7;
+    }
+
+    #propagation-panel .info-row .value {
+      font-weight: 500;
+    }
+
+    #propagation-panel .nvis-box {
+      background: rgba(100, 150, 255, 0.1);
+      border: 1px solid rgba(100, 150, 255, 0.3);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    #propagation-panel .nvis-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: rgba(150, 200, 255, 0.9);
+      margin-bottom: 0.25rem;
+    }
+
     #propagation-panel .status-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -381,6 +525,176 @@
     }
     
     return { status: 'night', label: 'Nighttime', icon: '🌙', sunTimes };
+  }
+
+  // ============ MUF & PROPAGATION CALCULATIONS ============
+
+  // Estimate MUF based on time of day, season, solar activity, and latitude
+  function estimateMUF(lat, lon, data) {
+    const dayNight = getDayNightStatus(lat, lon);
+    const now = new Date();
+    const month = now.getMonth(); // 0-11
+    const absLat = Math.abs(lat);
+    
+    // Base MUF varies by time of day
+    let baseMUF;
+    if (dayNight.status === 'day') {
+      baseMUF = 21; // Daytime base ~21 MHz
+    } else if (dayNight.status === 'greyline') {
+      baseMUF = 18; // Greyline transitional
+    } else {
+      baseMUF = 10; // Nighttime base ~10 MHz
+    }
+    
+    // Seasonal adjustment (higher in summer for that hemisphere)
+    const isNorthernHemisphere = lat >= 0;
+    const isSummer = (isNorthernHemisphere && month >= 4 && month <= 8) ||
+                     (!isNorthernHemisphere && (month >= 10 || month <= 2));
+    if (isSummer && dayNight.status === 'day') {
+      baseMUF += 4;
+    }
+    
+    // Latitude adjustment (lower MUF at high latitudes)
+    if (absLat > 60) {
+      baseMUF -= 5;
+    } else if (absLat > 45) {
+      baseMUF -= 2;
+    }
+    
+    // Solar activity adjustment based on Kp
+    const kp = data?.kpIndex || 0;
+    if (kp >= 6) {
+      baseMUF -= 4; // Storm depression
+    } else if (kp >= 4) {
+      baseMUF -= 2;
+    }
+    
+    // R-scale (radio blackout) adjustment
+    const rScale = data?.scales?.R || 0;
+    if (rScale >= 3) {
+      baseMUF -= 6; // Significant absorption
+    } else if (rScale >= 2) {
+      baseMUF -= 3;
+    }
+    
+    // Clamp to reasonable range
+    return Math.max(5, Math.min(35, Math.round(baseMUF)));
+  }
+
+  // Get recommended HF bands based on MUF
+  function getRecommendedBands(muf, dayNight) {
+    const bands = [];
+    
+    if (muf >= 28) bands.push({ band: '10m', freq: '28-29.7 MHz', quality: 'excellent' });
+    if (muf >= 21) bands.push({ band: '15m', freq: '21-21.45 MHz', quality: muf >= 24 ? 'excellent' : 'good' });
+    if (muf >= 14) bands.push({ band: '20m', freq: '14-14.35 MHz', quality: 'excellent' });
+    if (muf >= 10) bands.push({ band: '30m', freq: '10.1-10.15 MHz', quality: 'good' });
+    if (muf >= 7) bands.push({ band: '40m', freq: '7-7.3 MHz', quality: dayNight.status === 'night' ? 'excellent' : 'good' });
+    
+    // Lower bands always available but better at night
+    bands.push({ band: '80m', freq: '3.5-4 MHz', quality: dayNight.status === 'night' ? 'excellent' : 'fair' });
+    bands.push({ band: '160m', freq: '1.8-2 MHz', quality: dayNight.status === 'night' ? 'good' : 'poor' });
+    
+    return bands.slice(0, 5); // Top 5
+  }
+
+  // Calculate geomagnetic latitude (affects aurora and polar absorption)
+  function getGeomagLat(lat, lon) {
+    // Simplified geomagnetic latitude calculation
+    // Geomagnetic north pole is approximately at 80.5°N, 72.6°W
+    const geomagPoleLat = 80.5;
+    const geomagPoleLon = -72.6;
+    
+    const rad = Math.PI / 180;
+    const latRad = lat * rad;
+    const lonRad = lon * rad;
+    const poleLatRad = geomagPoleLat * rad;
+    const poleLonRad = geomagPoleLon * rad;
+    
+    // Spherical law of cosines for geomagnetic latitude
+    const geomagLat = Math.asin(
+      Math.sin(latRad) * Math.sin(poleLatRad) +
+      Math.cos(latRad) * Math.cos(poleLatRad) * Math.cos(lonRad - poleLonRad)
+    ) / rad;
+    
+    return Math.round(geomagLat * 10) / 10;
+  }
+
+  // Get SATCOM assessment
+  function getSatcomAssessment(lat, lon, data) {
+    const kp = data?.kpIndex || 0;
+    const gScale = data?.scales?.G || 0;
+    const sScale = data?.scales?.S || 0;
+    const geomagLat = getGeomagLat(lat, lon);
+    const absGeomagLat = Math.abs(geomagLat);
+    
+    let assessment = {
+      kuBand: { status: 'green', label: 'Normal', notes: '' },
+      xBand: { status: 'green', label: 'Normal', notes: '' },
+      cBand: { status: 'green', label: 'Normal', notes: '' },
+      scintillation: 'Low',
+      ionosphericDelay: 'Minimal'
+    };
+    
+    // Scintillation risk (higher at equatorial and auroral zones)
+    if (absGeomagLat < 20) {
+      assessment.scintillation = 'Moderate (equatorial)';
+      assessment.kuBand.notes = 'Equatorial scintillation possible post-sunset';
+    } else if (absGeomagLat > 60) {
+      assessment.scintillation = kp >= 5 ? 'High (auroral)' : 'Moderate (polar)';
+    }
+    
+    // Geomagnetic storm effects
+    if (gScale >= 3) {
+      assessment.kuBand = { status: 'orange', label: 'Degraded', notes: 'Signal fluctuations likely' };
+      assessment.ionosphericDelay = 'Elevated';
+    } else if (gScale >= 2) {
+      assessment.kuBand = { status: 'yellow', label: 'Minor Impact', notes: 'Possible signal variations' };
+    }
+    
+    // Solar radiation effects on satellite hardware
+    if (sScale >= 3) {
+      assessment.xBand = { status: 'orange', label: 'Caution', notes: 'Solar particle event - monitor for anomalies' };
+      assessment.kuBand.notes += ' Satellite charging possible.';
+    }
+    
+    // X-band is generally more robust
+    if (gScale < 4 && sScale < 4) {
+      assessment.xBand = { status: 'green', label: 'Normal', notes: 'Mil-band nominal' };
+    }
+    
+    // C-band is most robust
+    assessment.cBand = { status: 'green', label: 'Normal', notes: 'Most resilient to space weather' };
+    if (sScale >= 4) {
+      assessment.cBand = { status: 'yellow', label: 'Monitor', notes: 'Extreme event - monitor all bands' };
+    }
+    
+    return assessment;
+  }
+
+  // Get NVIS (Near Vertical Incidence Skywave) assessment for regional HF
+  function getNvisAssessment(lat, data) {
+    const muf = estimateMUF(lat, 0, data); // lon doesn't matter much for NVIS
+    const dayNight = getDayNightStatus(lat, 0);
+    
+    // NVIS works best on 40m and 80m during day, 80m and 160m at night
+    let recommended = '';
+    let quality = '';
+    
+    if (dayNight.status === 'day') {
+      if (muf >= 7) {
+        recommended = '40m (7 MHz)';
+        quality = 'Good';
+      } else {
+        recommended = '80m (3.5 MHz)';
+        quality = 'Fair';
+      }
+    } else {
+      recommended = '80m (3.5 MHz) or 160m (1.8 MHz)';
+      quality = 'Good';
+    }
+    
+    return { recommended, quality, range: '0-400 km' };
   }
 
   // Get HF propagation assessment for location
@@ -565,6 +879,16 @@
       const dayNight = getDayNightStatus(loc.lat, loc.lon);
       const sunTimes = dayNight.sunTimes || calculateSunTimes(loc.lat, loc.lon);
       const hfAssessment = getHfAssessment(loc.lat, loc.lon, data);
+      const muf = estimateMUF(loc.lat, loc.lon, data);
+      const recommendedBands = getRecommendedBands(muf, dayNight);
+      const geomagLat = getGeomagLat(loc.lat, loc.lon);
+      const satcom = getSatcomAssessment(loc.lat, loc.lon, data);
+      const nvis = getNvisAssessment(loc.lat, data);
+
+      // Build band pills HTML
+      const bandPillsHtml = recommendedBands.map(b => 
+        `<span class="band-pill ${b.quality}">${b.band}</span>`
+      ).join('');
 
       locationInfoHtml = `
         <div class="location-info">
@@ -574,25 +898,75 @@
           </div>
           <div class="location-info-grid">
             <div class="location-info-item">
-              <span class="item-label">Latitude</span>
-              <span class="item-value">${loc.lat.toFixed(2)}°</span>
+              <span class="item-label">Geographic</span>
+              <span class="item-value">${loc.lat.toFixed(2)}°, ${loc.lon.toFixed(2)}°</span>
             </div>
             <div class="location-info-item">
-              <span class="item-label">Longitude</span>
-              <span class="item-value">${loc.lon.toFixed(2)}°</span>
+              <span class="item-label">Geomag Lat</span>
+              <span class="item-value">${geomagLat.toFixed(1)}°</span>
             </div>
             <div class="location-info-item">
               <span class="item-label">Sunrise</span>
-              <span class="item-value">${sunTimes.sunrise ? formatTimeInTz(sunTimes.sunrise, loc.tz) : '--:--'} local</span>
+              <span class="item-value">${sunTimes.sunrise ? formatTimeInTz(sunTimes.sunrise, loc.tz) : '--:--'} L</span>
             </div>
             <div class="location-info-item">
               <span class="item-label">Sunset</span>
-              <span class="item-value">${sunTimes.sunset ? formatTimeInTz(sunTimes.sunset, loc.tz) : '--:--'} local</span>
+              <span class="item-value">${sunTimes.sunset ? formatTimeInTz(sunTimes.sunset, loc.tz) : '--:--'} L</span>
             </div>
           </div>
-          <div class="hf-assessment">
-            <div class="hf-assessment-title">📻 HF Propagation Assessment</div>
-            ${hfAssessment}
+
+          <!-- HF Section -->
+          <div class="comms-section">
+            <div class="comms-section-title">📻 HF Communications</div>
+            <div class="muf-display">
+              <div>
+                <div class="muf-value">${muf} MHz</div>
+                <div class="muf-label">Est. MUF</div>
+              </div>
+              <div style="flex: 1; font-size: 0.8rem; opacity: 0.9;">
+                ${hfAssessment}
+              </div>
+            </div>
+            <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 0.35rem;">Recommended Bands:</div>
+            <div class="band-pills">
+              ${bandPillsHtml}
+            </div>
+            <div class="nvis-box">
+              <div class="nvis-title">NVIS (Regional 0-400km)</div>
+              <div style="font-size: 0.8rem;">
+                <strong>${nvis.recommended}</strong> — ${nvis.quality}
+              </div>
+            </div>
+          </div>
+
+          <!-- SATCOM Section -->
+          <div class="comms-section">
+            <div class="comms-section-title">📡 SATCOM Assessment</div>
+            <div class="satcom-grid">
+              <div class="satcom-item">
+                <div class="band-label">X-Band</div>
+                <div class="band-status ${satcom.xBand.status}">${satcom.xBand.label}</div>
+              </div>
+              <div class="satcom-item">
+                <div class="band-label">Ku-Band</div>
+                <div class="band-status ${satcom.kuBand.status}">${satcom.kuBand.label}</div>
+              </div>
+              <div class="satcom-item">
+                <div class="band-label">C-Band</div>
+                <div class="band-status ${satcom.cBand.status}">${satcom.cBand.label}</div>
+              </div>
+            </div>
+            <div style="margin-top: 0.5rem;">
+              <div class="info-row">
+                <span class="label">Scintillation Risk</span>
+                <span class="value">${satcom.scintillation}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Ionospheric Delay</span>
+                <span class="value">${satcom.ionosphericDelay}</span>
+              </div>
+              ${satcom.kuBand.notes ? `<div style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.35rem; font-style: italic;">${satcom.kuBand.notes}</div>` : ''}
+            </div>
           </div>
         </div>
       `;
