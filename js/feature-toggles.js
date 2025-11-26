@@ -122,7 +122,7 @@ window.RussellTV.Features = (function() {
 
   /**
    * Create the settings gear button in the info bar
-   * Positioned AFTER the space-weather-indicators container, not inside it
+   * Always positioned at far right, never hidden
    */
   function createSettingsButton() {
     const checkReady = setInterval(() => {
@@ -171,37 +171,10 @@ window.RussellTV.Features = (function() {
           toggleSettingsPanel();
         });
         
-        // Add directly to info bar (not inside space-weather-indicators)
+        // Add directly to info bar
         infoBar.appendChild(btn);
-        
-        // Adjust position when space-weather-indicators exists
-        updateGearPosition();
       }
     }, 500);
-  }
-  
-  /**
-   * Update gear button position based on space-weather-indicators width
-   */
-  function updateGearPosition() {
-    const btn = document.getElementById('feature-settings-btn');
-    const indicators = document.getElementById('space-weather-indicators');
-    
-    if (!btn) return;
-    
-    if (indicators && indicators.style.display !== 'none') {
-      // Position to the right of the indicators
-      const indicatorsRect = indicators.getBoundingClientRect();
-      const infoBar = document.getElementById('info-bar');
-      const infoBarRect = infoBar.getBoundingClientRect();
-      
-      // Calculate right position
-      const rightOffset = infoBarRect.right - indicatorsRect.right + 12;
-      btn.style.right = Math.max(12, rightOffset - 40) + 'px';
-    } else {
-      // Default position when indicators hidden
-      btn.style.right = '12px';
-    }
   }
 
   /**
@@ -528,7 +501,8 @@ window.RussellTV.Features = (function() {
         // Also update the border/padding on container when empty
         const indicators = document.getElementById('space-weather-indicators');
         if (indicators) {
-          if (enabled) {
+          const propEnabled = featureStates['propagation-panel'];
+          if (enabled || propEnabled) {
             indicators.style.paddingLeft = '1rem';
             indicators.style.borderLeft = '1px solid rgba(255, 255, 255, 0.2)';
           } else {
@@ -547,6 +521,18 @@ window.RussellTV.Features = (function() {
         if (!enabled) {
           const panel = document.getElementById('propagation-panel');
           if (panel) panel.style.display = 'none';
+        }
+        // Update container styling
+        const indicatorsContainer = document.getElementById('space-weather-indicators');
+        if (indicatorsContainer) {
+          const indicatorsEnabled = featureStates['space-weather-indicators'];
+          if (enabled || indicatorsEnabled) {
+            indicatorsContainer.style.paddingLeft = '1rem';
+            indicatorsContainer.style.borderLeft = '1px solid rgba(255, 255, 255, 0.2)';
+          } else {
+            indicatorsContainer.style.paddingLeft = '0';
+            indicatorsContainer.style.borderLeft = 'none';
+          }
         }
         break;
         
@@ -567,6 +553,65 @@ window.RussellTV.Features = (function() {
         document.body.classList.toggle('weather-tooltips-disabled', !enabled);
         break;
     }
+    
+    // ALWAYS ensure gear button exists and is visible after any state change
+    ensureGearButtonVisible();
+  }
+  
+  /**
+   * Ensure the gear button is always visible
+   */
+  function ensureGearButtonVisible() {
+    let btn = document.getElementById('feature-settings-btn');
+    const infoBar = document.getElementById('info-bar');
+    
+    if (!infoBar) return;
+    
+    // If button doesn't exist, recreate it
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'feature-settings-btn';
+      btn.innerHTML = '⚙️';
+      btn.title = 'Display Settings';
+      btn.style.cssText = `
+        position: absolute;
+        right: 12px;
+        bottom: 6px;
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 120, 0, 0.3);
+        border-radius: 6px;
+        padding: 0.3rem 0.5rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        z-index: 10002;
+        line-height: 1;
+      `;
+      
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = 'linear-gradient(135deg, rgba(255,60,0,0.3), rgba(255,140,0,0.25))';
+        btn.style.borderColor = 'rgba(255,120,0,0.8)';
+        btn.style.boxShadow = '0 0 12px rgba(255,100,0,0.6)';
+        btn.style.transform = 'scale(1.1)';
+      });
+      
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = 'rgba(0, 0, 0, 0.6)';
+        btn.style.borderColor = 'rgba(255, 120, 0, 0.3)';
+        btn.style.boxShadow = 'none';
+        btn.style.transform = 'scale(1)';
+      });
+      
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSettingsPanel();
+      });
+      
+      infoBar.appendChild(btn);
+    }
+    
+    // Always ensure it's visible
+    btn.style.display = 'inline-block';
   }
 
   /**
@@ -579,15 +624,16 @@ window.RussellTV.Features = (function() {
   }
 
   /**
-   * Apply initial states after a short delay (wait for other components to load)
+   * Apply initial states - runs multiple times to catch late-loading components
    */
   function applyInitialStates() {
-    // Apply immediately for anything already in DOM
+    // Apply immediately
     applyAllFeatureStates();
     
-    // Also apply after a delay for components that load later
-    setTimeout(applyAllFeatureStates, 1000);
-    setTimeout(applyAllFeatureStates, 3000);
+    // Also apply after components load (but no long delays)
+    setTimeout(applyAllFeatureStates, 100);
+    setTimeout(applyAllFeatureStates, 500);
+    setTimeout(applyAllFeatureStates, 1500);
   }
 
   /**
