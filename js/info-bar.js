@@ -416,7 +416,7 @@
 
     const label = document.createElement('span');
     label.className = 'sw-indicator-label';
-    label.textContent = bandKey === 'hf' ? 'HF' : bandKey === 'gps' ? 'GPS' : 'SAT';
+    label.textContent = bandKey === 'hf' ? 'HF' : bandKey === 'gps' ? 'GPS' : 'SAT/EHF';
 
     const dot = document.createElement('span');
     dot.className = 'sw-status-dot';
