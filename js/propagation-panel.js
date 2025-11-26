@@ -41,7 +41,13 @@
     satcom: 'https://www.swpc.noaa.gov/communities/satellite-operators',
     solarWind: 'https://www.swpc.noaa.gov/products/real-time-solar-wind',
     aurora: 'https://www.swpc.noaa.gov/products/aurora-30-minute-forecast',
-    forecast3day: 'https://www.swpc.noaa.gov/products/3-day-forecast'
+    forecast3day: 'https://www.swpc.noaa.gov/products/3-day-forecast',
+    // GPS Interference sources
+    gpsJam: 'https://gpsjam.org/',
+    gpsWise: 'https://gpswise.aero/',
+    navcenGuide: 'https://www.navcen.uscg.gov/guide-tool',
+    navcenReports: 'https://www.navcen.uscg.gov/gps-problem-report-status',
+    flightradarGps: 'https://www.flightradar24.com/data/gps-jamming'
   };
 
   // ============ STYLES ============
@@ -648,90 +654,172 @@
     const weather = window.RussellTV?.InfoBar?.getWeather?.(locationLabel);
     
     let assessment = {
-      ehfBand: { status: 'green', label: 'Normal', notes: '' },
-      xBand: { status: 'green', label: 'Normal', notes: '' },
-      kuBand: { status: 'green', label: 'Normal', notes: '' },
-      cBand: { status: 'green', label: 'Normal', notes: '' },
+      // Bands ordered by frequency (high to low)
+      ehf: { status: 'green', label: 'Normal', freq: '30-300 GHz', notes: '' },
+      ka: { status: 'green', label: 'Normal', freq: '26.5-40 GHz', notes: '' },
+      ku: { status: 'green', label: 'Normal', freq: '12-18 GHz', notes: '' },
+      x: { status: 'green', label: 'Normal', freq: '8-12 GHz', notes: '' },
+      c: { status: 'green', label: 'Normal', freq: '4-8 GHz', notes: '' },
+      uhf: { status: 'green', label: 'Normal', freq: '300-3000 MHz', notes: '' },
+      gps: { status: 'green', label: 'Normal', freq: 'L1/L2/L5', notes: '' },
       scintillation: 'Low',
       ionosphericDelay: 'Minimal',
       weather: weather
     };
     
-    // EHF assessment based on weather
+    // Weather-based assessment for high frequency bands
     if (weather) {
       const condition = (weather.main || '').toLowerCase();
       const desc = (weather.desc || '').toLowerCase();
       const humidity = weather.humidity || 0;
       
+      // Rain/precipitation - affects EHF most, then Ka, then Ku
       if (condition.includes('rain') || condition.includes('thunder') || desc.includes('rain') || desc.includes('storm')) {
-        assessment.ehfBand = { 
-          status: 'red', 
-          label: 'Rain Fade', 
-          notes: `Active precipitation (${weather.desc}). 10-20+ dB attenuation. Use lower frequency bands.`
+        assessment.ehf = { 
+          status: 'red', label: 'Rain Fade', freq: '30-300 GHz',
+          notes: `Heavy attenuation (10-20+ dB). ${weather.desc}.`
+        };
+        assessment.ka = { 
+          status: 'orange', label: 'Degraded', freq: '26.5-40 GHz',
+          notes: `Significant rain fade (5-15 dB). Monitor link margins.`
+        };
+        assessment.ku = { 
+          status: 'yellow', label: 'Minor', freq: '12-18 GHz',
+          notes: `Some rain attenuation possible (2-5 dB).`
         };
       } else if (condition.includes('drizzle')) {
-        assessment.ehfBand = { 
-          status: 'orange', 
-          label: 'Light Rain', 
-          notes: `Light precipitation. 3-10 dB attenuation possible.`
+        assessment.ehf = { 
+          status: 'orange', label: 'Light Rain', freq: '30-300 GHz',
+          notes: `Moderate attenuation (3-10 dB).`
+        };
+        assessment.ka = { 
+          status: 'yellow', label: 'Minor', freq: '26.5-40 GHz',
+          notes: `Light rain fade possible.`
         };
       } else if (condition.includes('snow')) {
-        assessment.ehfBand = { 
-          status: 'orange', 
-          label: 'Snow', 
-          notes: `Snow conditions. Wet snow causes higher attenuation.`
+        assessment.ehf = { 
+          status: 'orange', label: 'Snow', freq: '30-300 GHz',
+          notes: `Wet snow causes higher attenuation. Check antenna.`
+        };
+        assessment.ka = { 
+          status: 'yellow', label: 'Monitor', freq: '26.5-40 GHz',
+          notes: `Wet snow may cause fade.`
         };
       } else if ((condition.includes('cloud') || desc.includes('overcast')) && humidity > 80) {
-        assessment.ehfBand = { 
-          status: 'yellow', 
-          label: 'Humid', 
-          notes: `High humidity (${humidity}%). Monitor for developing precipitation.`
+        assessment.ehf = { 
+          status: 'yellow', label: 'Humid', freq: '30-300 GHz',
+          notes: `High humidity (${humidity}%). Watch for precip.`
         };
       } else if (condition.includes('fog') || condition.includes('mist')) {
-        assessment.ehfBand = { 
-          status: 'yellow', 
-          label: 'Fog', 
-          notes: `Visibility reduced. 2-5 dB water vapor absorption.`
+        assessment.ehf = { 
+          status: 'yellow', label: 'Fog', freq: '30-300 GHz',
+          notes: `Water vapor absorption (2-5 dB).`
         };
       } else {
-        assessment.ehfBand = { 
-          status: 'green', 
-          label: 'Clear', 
-          notes: `Clear conditions (${humidity}% RH). Optimal for EHF.`
+        assessment.ehf = { 
+          status: 'green', label: 'Clear', freq: '30-300 GHz',
+          notes: `Optimal conditions (${humidity}% RH).`
+        };
+        assessment.ka = { 
+          status: 'green', label: 'Clear', freq: '26.5-40 GHz',
+          notes: `Good conditions.`
         };
       }
     } else {
-      assessment.ehfBand = { 
-        status: 'yellow', 
-        label: 'No Wx Data', 
-        notes: 'Weather data unavailable. EHF susceptible to rain fade - verify local conditions.'
+      assessment.ehf = { 
+        status: 'yellow', label: 'No Wx', freq: '30-300 GHz',
+        notes: 'Weather data unavailable. Verify local conditions.'
       };
     }
     
-    // Scintillation
+    // Scintillation - affects UHF, L-band (GPS) more at equatorial/auroral zones
     if (absGeomagLat < 20) {
       assessment.scintillation = 'Moderate (equatorial)';
-      if (!assessment.kuBand.notes) assessment.kuBand.notes = 'Post-sunset scintillation possible';
+      assessment.uhf = { 
+        status: 'yellow', label: 'Scint Risk', freq: '300-3000 MHz',
+        notes: 'Equatorial scintillation, esp. post-sunset.'
+      };
+      assessment.gps = {
+        status: 'yellow', label: 'Scint Risk', freq: 'L1/L2/L5',
+        notes: 'Equatorial scintillation may affect accuracy.'
+      };
     } else if (absGeomagLat > 60) {
       assessment.scintillation = kp >= 5 ? 'High (auroral)' : 'Moderate (polar)';
+      if (kp >= 5) {
+        assessment.uhf = { 
+          status: 'orange', label: 'Auroral', freq: '300-3000 MHz',
+          notes: 'Auroral scintillation active. Expect fading.'
+        };
+      }
     }
     
-    // Geomagnetic effects
+    // Geomagnetic storm effects
     if (gScale >= 3) {
-      assessment.kuBand = { status: 'orange', label: 'Degraded', notes: 'Signal fluctuations likely' };
+      assessment.ku = { 
+        status: 'orange', label: 'Degraded', freq: '12-18 GHz',
+        notes: 'Signal fluctuations likely.'
+      };
       assessment.ionosphericDelay = 'Elevated';
+      assessment.gps = {
+        status: 'orange', label: 'Degraded', freq: 'L1/L2/L5',
+        notes: 'Accuracy reduced. Use dual-freq if available.'
+      };
     } else if (gScale >= 2) {
-      assessment.kuBand = { status: 'yellow', label: 'Minor', notes: 'Possible variations' };
+      assessment.ku = { 
+        status: 'yellow', label: 'Minor', freq: '12-18 GHz',
+        notes: 'Possible signal variations.'
+      };
     }
     
-    // Solar radiation
+    // Solar radiation storm effects
     if (sScale >= 3) {
-      assessment.xBand = { status: 'orange', label: 'Caution', notes: 'Solar particle event' };
+      assessment.x = { 
+        status: 'orange', label: 'Caution', freq: '8-12 GHz',
+        notes: 'Solar particle event. Monitor for anomalies.'
+      };
+      assessment.gps = {
+        status: 'orange', label: 'Degraded', freq: 'L1/L2/L5',
+        notes: 'Solar radiation affecting GPS accuracy.'
+      };
     }
     
-    // C-band most robust
+    // GPS space weather effects
+    if (sScale >= 2 || gScale >= 2) {
+      if (assessment.gps.status === 'green') {
+        assessment.gps = {
+          status: 'yellow', label: 'Monitor', freq: 'L1/L2/L5',
+          notes: 'Minor degradation possible.'
+        };
+      }
+    }
+    
+    // C-band most robust to weather and space weather
     if (sScale >= 4) {
-      assessment.cBand = { status: 'yellow', label: 'Monitor', notes: 'Extreme event' };
+      assessment.c = { 
+        status: 'yellow', label: 'Monitor', freq: '4-8 GHz',
+        notes: 'Extreme event. Monitor all bands.'
+      };
+    } else {
+      assessment.c = { 
+        status: 'green', label: 'Nominal', freq: '4-8 GHz',
+        notes: 'Most resilient band.'
+      };
+    }
+    
+    // X-band generally robust
+    if (assessment.x.status === 'green') {
+      assessment.x = { 
+        status: 'green', label: 'Nominal', freq: '8-12 GHz',
+        notes: 'Mil-spec SATCOM operating normally.'
+      };
+    }
+    
+    // UHF default
+    if (assessment.uhf.status === 'green') {
+      assessment.uhf = { 
+        status: 'green', label: 'Nominal', freq: '300-3000 MHz',
+        notes: 'MUOS/Legacy UHF operating normally.'
+      };
     }
     
     return assessment;
@@ -785,6 +873,32 @@
     if (diff < 60) return 'just now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     return `${Math.floor(diff / 3600)}h ago`;
+  }
+
+  function renderBandRow(name, band) {
+    const statusColors = {
+      green: '#00ff88',
+      yellow: '#ffcc00',
+      orange: '#ff8800',
+      red: '#ff4444'
+    };
+    const bgColors = {
+      green: 'rgba(0,255,100,0.08)',
+      yellow: 'rgba(255,200,0,0.08)',
+      orange: 'rgba(255,150,0,0.1)',
+      red: 'rgba(255,80,80,0.12)'
+    };
+    const color = statusColors[band.status] || '#888';
+    const bg = bgColors[band.status] || 'transparent';
+    
+    return `
+      <div style="display: flex; align-items: center; padding: 0.4rem 0.6rem; background: ${bg}; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <span style="width: 45px; font-weight: 600; font-size: 0.8rem;">${name}</span>
+        <span style="width: 55px; font-size: 0.65rem; opacity: 0.6;">${band.freq}</span>
+        <span style="width: 65px; color: ${color}; font-weight: 600; font-size: 0.75rem;">${band.label}</span>
+        <span style="flex: 1; font-size: 0.7rem; opacity: 0.85;">${band.notes}</span>
+      </div>
+    `;
   }
 
   // ============ DRAG FUNCTIONALITY ============
@@ -1045,12 +1159,12 @@
         </div>
       `;
 
-      // ===== SECTION 4: SATCOM =====
+      // ===== SECTION 4: SATCOM & GPS =====
       html += `
         <div class="section">
           <div class="section-header">
-            <span class="section-title">📡 SATCOM</span>
-            <a href="${LINKS.satcom}" target="_blank" class="section-link">SWPC Satellite →</a>
+            <span class="section-title">📡 SATCOM & GPS</span>
+            <a href="${LINKS.satcom}" target="_blank" class="section-link">SWPC →</a>
           </div>
           ${satcom.weather ? `
             <div class="weather-row">
@@ -1060,39 +1174,44 @@
               <span style="opacity: 0.7; font-size: 0.8rem;">${satcom.weather.humidity}%</span>
             </div>
           ` : ''}
-          <div class="satcom-grid">
-            <div class="satcom-item" title="EHF: 30-300 GHz. Weather-sensitive.">
-              <div class="band-label">EHF</div>
-              <div class="band-status ${satcom.ehfBand.status}">${satcom.ehfBand.label}</div>
+          
+          <!-- Band Status Table -->
+          <div style="font-size: 0.7rem; opacity: 0.6; margin-bottom: 0.3rem; text-transform: uppercase;">Band Status & Remarks</div>
+          <div style="background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden;">
+            ${renderBandRow('EHF', satcom.ehf)}
+            ${renderBandRow('Ka', satcom.ka)}
+            ${renderBandRow('Ku', satcom.ku)}
+            ${renderBandRow('X', satcom.x)}
+            ${renderBandRow('C', satcom.c)}
+            ${renderBandRow('UHF', satcom.uhf)}
+          </div>
+
+          <!-- GPS Section -->
+          <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,120,0,0.2);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+              <span style="font-size: 0.75rem; font-weight: 600;">🛰️ GPS/GNSS</span>
+              <span class="band-status ${satcom.gps.status}" style="font-size: 0.8rem;">${satcom.gps.label}</span>
             </div>
-            <div class="satcom-item" title="X-Band: 8-12 GHz. Military SATCOM.">
-              <div class="band-label">X-Band</div>
-              <div class="band-status ${satcom.xBand.status}">${satcom.xBand.label}</div>
-            </div>
-            <div class="satcom-item" title="Ku-Band: 12-18 GHz. Commercial VSAT.">
-              <div class="band-label">Ku</div>
-              <div class="band-status ${satcom.kuBand.status}">${satcom.kuBand.label}</div>
-            </div>
-            <div class="satcom-item" title="C-Band: 4-8 GHz. Most resilient.">
-              <div class="band-label">C-Band</div>
-              <div class="band-status ${satcom.cBand.status}">${satcom.cBand.label}</div>
+            ${satcom.gps.notes ? `<div style="font-size: 0.75rem; opacity: 0.85; margin-bottom: 0.4rem;">${satcom.gps.notes}</div>` : ''}
+            <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.7rem;">
+              <a href="${LINKS.gpsJam}" target="_blank" class="inline-link">GPSJam Map</a>
+              <span style="opacity: 0.4;">·</span>
+              <a href="${LINKS.flightradarGps}" target="_blank" class="inline-link">FR24 Interference</a>
+              <span style="opacity: 0.4;">·</span>
+              <a href="${LINKS.navcenGuide}" target="_blank" class="inline-link">NAVCEN GUIDE</a>
             </div>
           </div>
+
           <div class="info-grid" style="margin-top: 0.5rem;">
             <div class="info-item">
               <span class="label">Scintillation</span>
               <span class="value">${satcom.scintillation}</span>
             </div>
             <div class="info-item">
-              <span class="label"><a href="${LINKS.gps}" target="_blank" class="inline-link">Iono Delay</a></span>
+              <span class="label">Iono Delay</span>
               <span class="value">${satcom.ionosphericDelay}</span>
             </div>
           </div>
-          ${satcom.ehfBand.notes ? `
-            <div class="alert-box ${satcom.ehfBand.status}">
-              <strong>EHF:</strong> ${satcom.ehfBand.notes}
-            </div>
-          ` : ''}
         </div>
       `;
     } else {
