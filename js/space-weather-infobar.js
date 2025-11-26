@@ -87,7 +87,7 @@
     container.id = 'space-weather-indicators';
     container.style.cssText = `
       position: absolute;
-      right: 12px;
+      right: 50px;
       bottom: 6px;
       display: inline-flex;
       align-items: center;
