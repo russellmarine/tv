@@ -13,6 +13,13 @@
   let typingEl = null;
   let isOpen = false;
 
+  // Drag state
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let panelStartLeft = 0;
+  let panelStartTop = 0;
+
   // ---------- Styles ----------
   function injectStyles() {
     if (document.getElementById('gunny-chat-styles')) return;
@@ -51,6 +58,8 @@
           rgba(255,120,0,0.4),
           rgba(0,0,0,0.95));
         border-bottom: 1px solid rgba(255,120,0,0.4);
+        cursor: move; /* makes it obvious you can drag */
+        user-select: none;
       }
       .gunny-chat-title {
         font-weight: 600;
@@ -70,6 +79,7 @@
         display: flex;
         flex-direction: column;
         gap: 0.35rem;
+        overscroll-behavior: contain; /* keep wheel inside panel */
       }
       .gunny-chat-msg {
         padding: 0.35rem 0.5rem;
@@ -298,6 +308,65 @@
     }
   }
 
+  // ---------- Drag helpers ----------
+  function ensurePanelPositionForDrag() {
+    // Convert bottom/right anchored position to explicit top/left for dragging
+    const rect = panelEl.getBoundingClientRect();
+    panelEl.style.left = rect.left + 'px';
+    panelEl.style.top = rect.top + 'px';
+    panelEl.style.right = 'auto';
+    panelEl.style.bottom = 'auto';
+  }
+
+  function onHeaderMouseDown(e) {
+    if (e.button !== 0) return; // left button only
+    if (!panelEl) return;
+
+    e.preventDefault();
+    ensurePanelPositionForDrag();
+
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+
+    const rect = panelEl.getBoundingClientRect();
+    panelStartLeft = rect.left;
+    panelStartTop = rect.top;
+
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+  }
+
+  function onDragMove(e) {
+    if (!isDragging || !panelEl) return;
+
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+
+    let newLeft = panelStartLeft + dx;
+    let newTop = panelStartTop + dy;
+
+    const maxLeft = window.innerWidth - panelEl.offsetWidth;
+    const maxTop = window.innerHeight - panelEl.offsetHeight;
+
+    if (!isNaN(maxLeft)) {
+      newLeft = Math.min(Math.max(0, newLeft), Math.max(0, maxLeft));
+    }
+    if (!isNaN(maxTop)) {
+      newTop = Math.min(Math.max(0, newTop), Math.max(0, maxTop));
+    }
+
+    panelEl.style.left = newLeft + 'px';
+    panelEl.style.top = newTop + 'px';
+  }
+
+  function onDragEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragEnd);
+  }
+
   // ---------- Panel ----------
   function ensurePanel() {
     if (panelEl) return;
@@ -337,16 +406,34 @@
     statusEl   = panelEl.querySelector('.gunny-chat-status');
     typingEl   = panelEl.querySelector('.gunny-chat-typing');
 
-    const closeBtn = panelEl.querySelector('.gunny-chat-close');
+    const closeBtn  = panelEl.querySelector('.gunny-chat-close');
+    const headerEl  = panelEl.querySelector('.gunny-chat-header');
+
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
         closePanel();
       });
     }
 
+    if (headerEl) {
+      headerEl.addEventListener('mousedown', onHeaderMouseDown);
+    }
+
     if (formEl) {
       formEl.addEventListener('submit', onSend);
     }
+
+    // Make mouse wheel over the panel always scroll the messages,
+    // instead of bleeding through to the page first.
+    panelEl.addEventListener('wheel', function(e) {
+      if (!messagesEl) return;
+      if (!panelEl.contains(e.target)) return;
+
+      // Apply wheel delta to the messages container
+      messagesEl.scrollTop += e.deltaY;
+      e.preventDefault();
+      e.stopPropagation();
+    }, { passive: false });
 
     console.log('✅ [GunnyChat] panel initialized');
   }
