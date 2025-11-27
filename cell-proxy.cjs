@@ -38,6 +38,118 @@ const US_CARRIERS = {
   '312-250': { name: 'Cellular One', bands: ['B4', 'B12'] }
 };
 
+// International carriers with typical bands
+const INTL_CARRIERS = {
+  // Russia (MCC 250)
+  '250-1': { name: 'MTS Russia', bands: ['B3', 'B7', 'B20', 'B38', 'n79'] },
+  '250-2': { name: 'MegaFon', bands: ['B1', 'B3', 'B7', 'B20', 'B38', 'n79'] },
+  '250-99': { name: 'Beeline Russia', bands: ['B3', 'B7', 'B20', 'B38'] },
+  '250-20': { name: 'Tele2 Russia', bands: ['B3', 'B7', 'B38'] },
+  '250-11': { name: 'Yota', bands: ['B7', 'B38'] },
+  '250-19': { name: 'Tattelecom', bands: ['B7', 'B38'] },
+  
+  // UK (MCC 234)
+  '234-10': { name: 'O2 UK', bands: ['B1', 'B3', 'B8', 'B20', 'B40', 'n78'] },
+  '234-15': { name: 'Vodafone UK', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '234-20': { name: 'Three UK', bands: ['B1', 'B3', 'B20', 'n78'] },
+  '234-30': { name: 'EE UK', bands: ['B1', 'B3', 'B7', 'B20', 'B38', 'n78'] },
+  '234-33': { name: 'EE UK', bands: ['B1', 'B3', 'B7', 'B20', 'B38', 'n78'] },
+  
+  // Germany (MCC 262)
+  '262-1': { name: 'Telekom DE', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B28', 'n78'] },
+  '262-2': { name: 'Vodafone DE', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '262-3': { name: 'O2 Germany', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '262-7': { name: 'O2 Germany', bands: ['B1', 'B3', 'B7', 'B8', 'B20'] },
+  
+  // France (MCC 208)
+  '208-1': { name: 'Orange FR', bands: ['B1', 'B3', 'B7', 'B20', 'B28', 'n78'] },
+  '208-10': { name: 'SFR', bands: ['B1', 'B3', 'B7', 'B20', 'B28', 'n78'] },
+  '208-15': { name: 'Free Mobile', bands: ['B3', 'B7', 'B28', 'n700'] },
+  '208-20': { name: 'Bouygues', bands: ['B1', 'B3', 'B7', 'B20', 'B28', 'n78'] },
+  
+  // Japan (MCC 440)
+  '440-10': { name: 'NTT Docomo', bands: ['B1', 'B3', 'B19', 'B21', 'B28', 'B42', 'n78', 'n79', 'n257'] },
+  '440-20': { name: 'SoftBank JP', bands: ['B1', 'B3', 'B8', 'B11', 'B28', 'B42', 'n77'] },
+  '440-50': { name: 'au KDDI', bands: ['B1', 'B11', 'B18', 'B26', 'B28', 'B42', 'n77', 'n78'] },
+  '440-51': { name: 'au KDDI', bands: ['B1', 'B18', 'B26', 'B28', 'B42'] },
+  '441-0': { name: 'Rakuten Mobile', bands: ['B3', 'B18', 'n77'] },
+  
+  // South Korea (MCC 450)
+  '450-5': { name: 'SK Telecom', bands: ['B1', 'B3', 'B5', 'B8', 'B26', 'n78', 'n257'] },
+  '450-8': { name: 'KT Korea', bands: ['B1', 'B3', 'B5', 'B8', 'n78', 'n257'] },
+  '450-6': { name: 'LG U+', bands: ['B1', 'B3', 'B5', 'B7', 'n78', 'n257'] },
+  
+  // Australia (MCC 505)
+  '505-1': { name: 'Telstra', bands: ['B1', 'B3', 'B5', 'B7', 'B28', 'B40', 'n78'] },
+  '505-2': { name: 'Optus', bands: ['B1', 'B3', 'B7', 'B28', 'B40', 'n78'] },
+  '505-3': { name: 'Vodafone AU', bands: ['B1', 'B3', 'B5', 'B8', 'B28', 'n78'] },
+  
+  // Canada (MCC 302)
+  '302-220': { name: 'Telus', bands: ['B2', 'B4', 'B5', 'B7', 'B12', 'B13', 'B17', 'B29', 'n78'] },
+  '302-221': { name: 'Telus', bands: ['B2', 'B4', 'B5', 'B7', 'B12'] },
+  '302-370': { name: 'Rogers', bands: ['B2', 'B4', 'B5', 'B7', 'B12', 'B17', 'B29', 'B66', 'n78'] },
+  '302-720': { name: 'Rogers', bands: ['B2', 'B4', 'B7', 'B12', 'B17', 'B29'] },
+  '302-610': { name: 'Bell Canada', bands: ['B2', 'B4', 'B5', 'B7', 'B12', 'B13', 'B17', 'B29', 'n78'] },
+  
+  // Mexico (MCC 334)
+  '334-20': { name: 'Telcel', bands: ['B2', 'B4', 'B5', 'B7', 'B28', 'B66'] },
+  '334-30': { name: 'Movistar MX', bands: ['B2', 'B4', 'B5', 'B7', 'B28'] },
+  '334-50': { name: 'AT&T Mexico', bands: ['B2', 'B4', 'B5', 'B7', 'B66'] },
+  
+  // UAE (MCC 424)
+  '424-2': { name: 'Etisalat', bands: ['B1', 'B3', 'B7', 'B20', 'B38', 'B40', 'n78'] },
+  '424-3': { name: 'du UAE', bands: ['B1', 'B3', 'B7', 'B38', 'B40', 'n78'] },
+  
+  // Saudi Arabia (MCC 420)
+  '420-1': { name: 'STC', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B38', 'B40', 'n78'] },
+  '420-3': { name: 'Mobily', bands: ['B1', 'B3', 'B7', 'B38', 'B40', 'n78'] },
+  '420-4': { name: 'Zain SA', bands: ['B1', 'B3', 'B8', 'B38', 'B40'] },
+  
+  // Philippines (MCC 515)
+  '515-2': { name: 'Globe PH', bands: ['B1', 'B3', 'B5', 'B7', 'B8', 'B28', 'B40'] },
+  '515-3': { name: 'Smart PH', bands: ['B1', 'B3', 'B5', 'B7', 'B28', 'B40'] },
+  '515-18': { name: 'DITO PH', bands: ['B1', 'B3', 'B5', 'B28', 'n78'] },
+  
+  // Thailand (MCC 520)
+  '520-1': { name: 'AIS Thailand', bands: ['B1', 'B3', 'B8', 'B26', 'B40', 'n28', 'n78'] },
+  '520-3': { name: 'AIS Thailand', bands: ['B1', 'B3', 'B8', 'B40'] },
+  '520-4': { name: 'TrueMove', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
+  '520-5': { name: 'dtac', bands: ['B1', 'B3', 'B28', 'n28'] },
+  
+  // Italy (MCC 222)
+  '222-1': { name: 'TIM Italy', bands: ['B1', 'B3', 'B7', 'B20', 'B32', 'n78'] },
+  '222-10': { name: 'Vodafone IT', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  '222-50': { name: 'Iliad IT', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  '222-88': { name: 'Wind Tre', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  
+  // Spain (MCC 214)
+  '214-1': { name: 'Vodafone ES', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '214-3': { name: 'Orange ES', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  '214-4': { name: 'Yoigo', bands: ['B1', 'B3', 'B7', 'B20'] },
+  '214-7': { name: 'Movistar ES', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  
+  // Poland (MCC 260)
+  '260-1': { name: 'Plus PL', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B38', 'n78'] },
+  '260-2': { name: 'T-Mobile PL', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '260-3': { name: 'Orange PL', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  '260-6': { name: 'Play PL', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  
+  // India (MCC 404, 405)
+  '404-10': { name: 'Airtel IN', bands: ['B1', 'B3', 'B5', 'B8', 'B40', 'B41', 'n78'] },
+  '404-45': { name: 'Airtel IN', bands: ['B1', 'B3', 'B5', 'B8', 'B40', 'B41'] },
+  '404-86': { name: 'Vodafone-Idea', bands: ['B1', 'B3', 'B5', 'B8', 'B40', 'B41'] },
+  '405-857': { name: 'Jio', bands: ['B3', 'B5', 'B40', 'n78', 'n258'] },
+  '405-858': { name: 'Jio', bands: ['B3', 'B5', 'B40', 'n78'] },
+  
+  // China (MCC 460)
+  '460-0': { name: 'China Mobile', bands: ['B1', 'B3', 'B8', 'B34', 'B39', 'B40', 'B41', 'n41', 'n78', 'n79'] },
+  '460-1': { name: 'China Unicom', bands: ['B1', 'B3', 'B8', 'B40', 'B41', 'n78'] },
+  '460-11': { name: 'China Telecom', bands: ['B1', 'B3', 'B5', 'B41', 'n78'] }
+};
+
+// Merge all carriers
+const ALL_CARRIERS = { ...US_CARRIERS, ...INTL_CARRIERS };
+
 // Additional MCC mappings for countries
 const MCC_COUNTRIES = {
   '310': 'US', '311': 'US', '312': 'US', '313': 'US', '316': 'US',
@@ -49,10 +161,10 @@ const MCC_COUNTRIES = {
 
 function getCarrierInfo(mcc, mnc) {
   const key = `${mcc}-${mnc}`;
-  if (US_CARRIERS[key]) {
-    return US_CARRIERS[key];
+  if (ALL_CARRIERS[key]) {
+    return ALL_CARRIERS[key];
   }
-  // Return generic info
+  // Return generic info with country
   return {
     name: `MCC ${mcc} / MNC ${mnc}`,
     country: MCC_COUNTRIES[String(mcc)] || 'Unknown',
@@ -71,7 +183,7 @@ async function fetchFromOpenCelliD(lat, lon, range) {
   return new Promise((resolve, reject) => {
     // OpenCelliD limits BBOX to 4,000,000 sq meters (4 km²)
     // Max safe box is about 2km x 2km, so cap range at 1000m (creates 2km x 2km box)
-    const maxRange = 500; // 1km radius = 2km x 2km box = 4 km²
+    const maxRange = 1000; // 1km radius = 2km x 2km box = 4 km²
     const effectiveRange = Math.min(range, maxRange);
     
     // Create bounding box from center point and range (in meters)
