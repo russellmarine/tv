@@ -23,8 +23,7 @@
         bottom: 3.2rem;
         right: 1rem;
         width: 420px;
-        max-height: 70vh;
-        min-height: 260px;
+        height: 420px;
         background: rgba(0,0,0,0.95);
         color: #f5f5f5;
         border-radius: 12px;
