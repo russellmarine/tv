@@ -12,8 +12,18 @@
 </head>
 
 <body>
-  <header>
-    <h1>Russell TV</h1>
+  <header class="rtv-header">
+    <div class="rtv-brand">
+      <button
+        type="button"
+        id="rtv-brand-button"
+        class="rtv-brand-button"
+        aria-label="Contact RussellTV"
+      >
+        <span class="rtv-brand-title">Russell TV</span>
+        <span class="rtv-brand-tagline">Click to contact the operator</span>
+      </button>
+    </div>
 
     <!-- Mobile channel dropdown -->
     <div class="channel-select-mobile-wrapper">
@@ -76,7 +86,7 @@
   <!-- External Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-<!-- Configuration -->
+  <!-- Configuration -->
   <script src="/js/russelltv-core.js"></script>
   <script src="/config/channels.js"></script>
   <script src="/config/time-config.js"></script>
@@ -102,10 +112,25 @@
   <script src="/js/satellite-lookangles.js"></script>
   <script src="/js/propagation-panel.js"></script>
   <script src="/js/feature-toggles.js"></script>
-    <!-- GunnyGPT Chat -->
+  <!-- GunnyGPT Chat -->
   <script src="/js/gunny-chat.js"></script>
 
   <!-- Application Bootstrap -->
   <script src="/js/app.js"></script>
+
+  <!-- Brand click -> mailto: contact -->
+  <script>
+    (function () {
+      const brandButton = document.getElementById('rtv-brand-button');
+      if (!brandButton) return;
+
+      brandButton.addEventListener('click', () => {
+        const email = 'mike@russellmarine.tech';
+        const subject = 'Russell TV';
+        const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+        window.location.href = mailtoUrl;
+      });
+    })();
+  </script>
 </body>
 </html>
