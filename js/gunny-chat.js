@@ -77,13 +77,15 @@
       }
       .gunny-chat-msg.from-me {
         align-self: flex-end;
-        background: rgba(100,150,255,0.9);
+        background: rgba(255,140,0,0.85); /* 🔥 Marine-orange */
         color: #000;
+        border: 1px solid rgba(255,180,60,0.9);
       }
       .gunny-chat-msg.from-gunny {
         align-self: flex-start;
-        background: rgba(255,120,0,0.85);
-        color: #fff;
+        background: rgba(50,50,50,0.95); /* dark radio-chatter */
+        color: #ff9d42; /* tactical amber text */
+        border: 1px solid rgba(255,120,0,0.6);
       }
       .gunny-chat-msg.from-other {
         align-self: flex-start;
