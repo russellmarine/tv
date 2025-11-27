@@ -9,6 +9,7 @@
  * - Loading spinner during data fetch
  * - Weather impact assessment
  * - Starlink coverage warnings
+ * - 24-hour localStorage caching
  * 
  * Requires: N2YO API proxy at /api/n2yo
  */
@@ -26,11 +27,10 @@
 
   const API_PROXY = '/api/n2yo';
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
-
-  // Minimum elevation to show (degrees) - satellites below this are hidden
   const MIN_ELEVATION_FILTER = 5;
 
   const SATELLITES = {
+    // === MILITARY SATCOM ===
     wgs: {
       name: 'WGS (Wideband Global)',
       band: 'X/Ka',
@@ -62,6 +62,20 @@
         { id: 46757, name: 'AEHF-6' }
       ]
     },
+    muos: {
+      name: 'MUOS (Narrowband)',
+      band: 'UHF',
+      type: 'milsatcom',
+      satellites: [
+        { id: 38093, name: 'MUOS-1' },
+        { id: 39206, name: 'MUOS-2' },
+        { id: 40374, name: 'MUOS-3' },
+        { id: 40887, name: 'MUOS-4' },
+        { id: 41622, name: 'MUOS-5' }
+      ]
+    },
+
+    // === COMMERCIAL - GLOBAL COVERAGE ===
     intelsat: {
       name: 'Intelsat',
       band: 'C/Ku',
@@ -75,7 +89,8 @@
         { id: 39476, name: 'IS 30' },
         { id: 42741, name: 'IS 35e' },
         { id: 40982, name: 'IS 36' },
-        { id: 43823, name: 'IS 38' }
+        { id: 43823, name: 'IS 38' },
+        { id: 44476, name: 'IS 39' }
       ]
     },
     eutelsat: {
@@ -90,7 +105,8 @@
         { id: 35953, name: 'E 36B' },
         { id: 40272, name: 'E 9B' },
         { id: 42432, name: 'E 172B' },
-        { id: 45026, name: 'E 7C' }
+        { id: 45026, name: 'E 7C' },
+        { id: 44334, name: 'E KONNECT' }
       ]
     },
     ses: {
@@ -106,21 +122,51 @@
         { id: 40946, name: 'SES-9' },
         { id: 41382, name: 'SES-10' },
         { id: 43157, name: 'SES-14' },
-        { id: 44334, name: 'SES-17' }
+        { id: 44334, name: 'SES-17' },
+        { id: 41903, name: 'SES-15' }
       ]
     },
-    other: {
-      name: 'Other Regional',
-      band: 'Various',
+    telesat: {
+      name: 'Telesat',
+      band: 'C/Ku',
+      type: 'commercial',
+      satellites: [
+        { id: 42951, name: 'Telstar 19V' },
+        { id: 43562, name: 'Telstar 18V' },
+        { id: 26824, name: 'Telstar 11N' },
+        { id: 37602, name: 'Telstar 14R' }
+      ]
+    },
+    mena: {
+      name: 'MENA Regional',
+      band: 'C/Ku/Ka',
       type: 'commercial',
       satellites: [
         { id: 37816, name: 'Yamal 402' },
         { id: 40733, name: 'Turksat 4B' },
+        { id: 39020, name: 'Yahsat 1B' },
+        { id: 41036, name: 'Yahsat 1C' },
+        { id: 37777, name: 'Arabsat 5C' },
+        { id: 40878, name: 'Arabsat 6B' },
+        { id: 43039, name: 'Al Yah 3' },
+        { id: 44333, name: 'Amos 17' },
+        { id: 41028, name: 'Amos 5' }
+      ]
+    },
+    asia: {
+      name: 'Asia-Pacific',
+      band: 'C/Ku',
+      type: 'commercial',
+      satellites: [
         { id: 42934, name: 'AsiaSat 9' },
         { id: 40424, name: 'ABS-3A' },
-        { id: 39020, name: 'Yahsat 1B' },
-        { id: 38245, name: 'Arabsat 6A' },
-        { id: 44333, name: 'Amos 17' }
+        { id: 41589, name: 'ABS-2A' },
+        { id: 37933, name: 'Apstar 7' },
+        { id: 43875, name: 'Apstar 5C' },
+        { id: 40425, name: 'JCSAT-14' },
+        { id: 41729, name: 'JCSAT-16' },
+        { id: 40271, name: 'Thaicom 6' },
+        { id: 39500, name: 'Thaicom 7' }
       ]
     }
   };
@@ -145,91 +191,67 @@
   let lastFetch = null;
   let isExpanded = false;
   let isLoading = false;
-  let selectedConstellations = ['wgs', 'aehf', 'intelsat'];
+  let selectedConstellations = ['wgs', 'aehf', 'muos', 'intelsat'];
   let autocompleteResults = [];
   let autocompleteTimeout = null;
-  let showOnlyGoodAngles = true;  // Default: only show El > 5°
+  let showOnlyGoodAngles = true;
 
   // ============ MGRS CONVERSION ============
-  // Simplified MGRS to Lat/Lon converter (handles most common cases)
 
   const MGRS_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const UTM_ZONES_LAT = 'CDEFGHJKLMNPQRSTUVWX';
 
   function mgrsToLatLon(mgrs) {
     mgrs = mgrs.replace(/\s/g, '').toUpperCase();
-    
-    // Parse MGRS string: e.g., "33TWN8412520648" or "4QFJ12345678"
     const match = mgrs.match(/^(\d{1,2})([C-X])([A-Z]{2})(\d+)$/);
-    if (!match) {
-      throw new Error('Invalid MGRS format. Example: 33TWN8412520648');
-    }
+    if (!match) throw new Error('Invalid MGRS format. Example: 33TWN8412520648');
 
     const zone = parseInt(match[1]);
     const latBand = match[2];
     const gridLetters = match[3];
     const coords = match[4];
 
-    if (zone < 1 || zone > 60) {
-      throw new Error('Invalid UTM zone (must be 1-60)');
-    }
+    if (zone < 1 || zone > 60) throw new Error('Invalid UTM zone (must be 1-60)');
 
-    // Split numeric part into easting and northing
     const len = coords.length;
-    if (len % 2 !== 0 || len < 2 || len > 10) {
-      throw new Error('Invalid MGRS coordinates length');
-    }
+    if (len % 2 !== 0 || len < 2 || len > 10) throw new Error('Invalid MGRS coordinates length');
 
     const half = len / 2;
     const precision = Math.pow(10, 5 - half);
     let easting = parseInt(coords.substring(0, half)) * precision;
     let northing = parseInt(coords.substring(half)) * precision;
 
-    // Get 100km grid square
     const col = gridLetters[0];
     const row = gridLetters[1];
 
-    // Calculate 100km easting
     const setNumber = ((zone - 1) % 6);
     const colOrigin = setNumber * 8 % 24;
     let colIndex = MGRS_LETTERS.indexOf(col) - colOrigin;
     if (colIndex < 0) colIndex += 24;
     easting += (colIndex + 1) * 100000;
 
-    // Calculate 100km northing
     const rowSet = (zone - 1) % 2;
     const rowOrigin = rowSet === 0 ? 'A' : 'F';
     let rowIndex = MGRS_LETTERS.indexOf(row) - MGRS_LETTERS.indexOf(rowOrigin);
     if (rowIndex < 0) rowIndex += 20;
 
-    // Get approximate northing from latitude band
     const latBandIndex = UTM_ZONES_LAT.indexOf(latBand);
-    const bandNorthing = (latBandIndex - 10) * 8 * 111000; // Approximate
+    const bandNorthing = (latBandIndex - 10) * 8 * 111000;
 
-    // Adjust northing for southern hemisphere
     let baseNorthing = rowIndex * 100000;
-    while (baseNorthing < bandNorthing - 500000) {
-      baseNorthing += 2000000;
-    }
+    while (baseNorthing < bandNorthing - 500000) baseNorthing += 2000000;
     northing += baseNorthing;
 
-    // Convert UTM to Lat/Lon using simplified formula
     return utmToLatLon(zone, latBand < 'N', easting, northing);
   }
 
   function utmToLatLon(zone, isSouthern, easting, northing) {
-    // WGS84 constants
-    const a = 6378137;
-    const f = 1 / 298.257223563;
-    const k0 = 0.9996;
-
-    const e = Math.sqrt(2 * f - f * f);
-    const e2 = e * e;
+    const a = 6378137, f = 1 / 298.257223563, k0 = 0.9996;
+    const e = Math.sqrt(2 * f - f * f), e2 = e * e;
     const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
 
     const x = easting - 500000;
     const y = isSouthern ? northing - 10000000 : northing;
-
     const M = y / k0;
     const mu = M / (a * (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256));
 
@@ -253,54 +275,34 @@
               / Math.cos(phi1);
 
     const lon0 = (zone - 1) * 6 - 180 + 3;
-
-    lat = lat * 180 / Math.PI;
-    lon = lon0 + lon * 180 / Math.PI;
-
-    return { lat, lon };
+    return { lat: lat * 180 / Math.PI, lon: lon0 + lon * 180 / Math.PI };
   }
 
   // ============ GEOCODING / AUTOCOMPLETE ============
 
   async function searchLocation(query) {
-    if (!query || query.length < 3) {
-      autocompleteResults = [];
-      return [];
-    }
+    if (!query || query.length < 3) { autocompleteResults = []; return []; }
 
     try {
       const url = `${NOMINATIM_URL}?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1`;
-      const response = await fetch(url, {
-        headers: { 'User-Agent': 'RussellTV-SatLookAngles/1.0' }
-      });
-
+      const response = await fetch(url, { headers: { 'User-Agent': 'RussellTV-SatLookAngles/1.0' } });
       if (!response.ok) throw new Error('Geocoding failed');
 
       const results = await response.json();
       autocompleteResults = results.map(r => {
         const addr = r.address || {};
-        // Build a descriptive location string
         const city = r.name || addr.city || addr.town || addr.village || '';
         const state = addr.state || addr.county || addr.region || '';
         const country = addr.country || '';
         const postcode = addr.postcode || '';
 
-        // Create detailed display
         let detail = '';
         if (state) detail += state;
         if (postcode) detail += (detail ? ', ' : '') + postcode;
         if (country && country !== state) detail += (detail ? ', ' : '') + country;
 
-        return {
-          name: r.display_name,
-          shortName: city || r.display_name.split(',')[0],
-          detail: detail,
-          lat: parseFloat(r.lat),
-          lon: parseFloat(r.lon),
-          country: country
-        };
+        return { name: r.display_name, shortName: city || r.display_name.split(',')[0], detail, lat: parseFloat(r.lat), lon: parseFloat(r.lon), country };
       });
-
       return autocompleteResults;
     } catch (error) {
       console.error('[SatLookAngles] Geocoding error:', error);
@@ -320,20 +322,15 @@
   function renderAutocompleteDropdown() {
     const dropdown = document.getElementById('satla-autocomplete');
     if (!dropdown) return;
-
-    if (autocompleteResults.length === 0) {
-      dropdown.style.display = 'none';
-      return;
-    }
+    if (autocompleteResults.length === 0) { dropdown.style.display = 'none'; return; }
 
     const sanitize = window.RussellTV?.sanitize || (s => s);
     dropdown.innerHTML = autocompleteResults.map((r, i) => `
-      <div class="autocomplete-item" onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.selectAutocomplete(${i})">
+      <div class="autocomplete-item" onmousedown="event.preventDefault(); window.RussellTV.SatLookAngles.selectAutocomplete(${i})">
         <span class="autocomplete-name">${sanitize(r.shortName)}</span>
         <span class="autocomplete-detail">${sanitize(r.detail)}</span>
       </div>
     `).join('');
-
     dropdown.style.display = 'block';
   }
 
@@ -342,11 +339,9 @@
     if (!result) return;
 
     currentLocation = {
-      lat: result.lat,
-      lon: result.lon,
+      lat: result.lat, lon: result.lon,
       name: result.shortName + (result.detail ? `, ${result.detail.split(',')[0]}` : ''),
-      fullName: result.name,
-      source: 'search'
+      fullName: result.name, source: 'search'
     };
 
     const input = document.getElementById('satla-location-input');
@@ -363,8 +358,6 @@
   // ============ WEATHER FETCHING ============
 
   async function fetchWeatherForLocation(lat, lon) {
-    // Try the existing weather proxy with lat/lon
-    // If it fails, weather just won't be shown (not critical)
     try {
       const response = await fetch(`/weather?lat=${lat}&lon=${lon}`);
       if (response.ok) {
@@ -380,11 +373,7 @@
           return;
         }
       }
-    } catch (e) {
-      // Silently fail - weather is optional
-    }
-    
-    // Weather unavailable for this location
+    } catch (e) { /* Silent fail */ }
     currentWeather = null;
     Events.emit('satla:render');
   }
@@ -393,52 +382,35 @@
 
   function maidenheadToLatLon(grid) {
     grid = grid.toUpperCase().trim();
-    if (!/^[A-R]{2}\d{2}([A-X]{2}(\d{2})?)?$/.test(grid)) {
-      throw new Error('Invalid Maidenhead format');
-    }
+    if (!/^[A-R]{2}\d{2}([A-X]{2}(\d{2})?)?$/.test(grid)) throw new Error('Invalid Maidenhead format');
 
     let lon = -180, lat = -90;
     lon += (grid.charCodeAt(0) - 65) * 20;
     lat += (grid.charCodeAt(1) - 65) * 10;
     lon += parseInt(grid[2]) * 2;
     lat += parseInt(grid[3]) * 1;
-
     if (grid.length >= 6) {
       lon += (grid.charCodeAt(4) - 65) * (2 / 24);
       lat += (grid.charCodeAt(5) - 65) * (1 / 24);
     }
     if (grid.length === 4) { lon += 1; lat += 0.5; }
     else if (grid.length === 6) { lon += 1/24; lat += 0.5/24; }
-
     return { lat, lon };
   }
 
   function parseCoordinates(input) {
     input = input.trim();
-
-    // Try lat/lon first (e.g., "38.8977, -77.0365" or "38.8977 -77.0365")
     const latLonMatch = input.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
     if (latLonMatch) {
-      const lat = parseFloat(latLonMatch[1]);
-      const lon = parseFloat(latLonMatch[2]);
-      if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      const lat = parseFloat(latLonMatch[1]), lon = parseFloat(latLonMatch[2]);
+      if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)
         return { lat, lon, type: 'latlon' };
-      }
     }
-
-    // Try MGRS (e.g., "33TWN8412520648" or "4QFJ 12345 67890")
     const mgrsClean = input.replace(/\s/g, '').toUpperCase();
-    if (/^\d{1,2}[C-X][A-Z]{2}\d{2,10}$/.test(mgrsClean)) {
-      const result = mgrsToLatLon(mgrsClean);
-      return { ...result, type: 'mgrs' };
-    }
-
-    // Try Maidenhead (e.g., "FM19la")
-    if (/^[A-Ra-r]{2}\d{2}([A-Xa-x]{2})?$/i.test(input)) {
-      const result = maidenheadToLatLon(input);
-      return { ...result, type: 'maidenhead' };
-    }
-
+    if (/^\d{1,2}[C-X][A-Z]{2}\d{2,10}$/.test(mgrsClean))
+      return { ...mgrsToLatLon(mgrsClean), type: 'mgrs' };
+    if (/^[A-Ra-r]{2}\d{2}([A-Xa-x]{2})?$/i.test(input))
+      return { ...maidenheadToLatLon(input), type: 'maidenhead' };
     throw new Error('Could not parse. Try: "38.89, -77.03" or MGRS "33TWN84125" or Grid "FM19la"');
   }
 
@@ -447,13 +419,10 @@
   function checkStarlinkCoverage(lat, lon) {
     for (const region of STARLINK_RESTRICTED.regions) {
       const [minLat, maxLat, minLon, maxLon] = region.bounds;
-      if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon) {
+      if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon)
         return { available: false, message: `No coverage - ${region.name}`, icon: '🚫' };
-      }
     }
-    if (Math.abs(lat) > 70) {
-      return { available: 'limited', message: 'Polar - limited', icon: '⚠️' };
-    }
+    if (Math.abs(lat) > 70) return { available: 'limited', message: 'Polar - limited', icon: '⚠️' };
     return { available: true, message: 'Available', icon: '✅' };
   }
 
@@ -463,32 +432,15 @@
     try {
       const url = `${API_PROXY}/positions/${noradId}/${lat}/${lon}/0/1`;
       const response = await fetch(url);
-      
-      if (!response.ok) {
-        console.warn(`[SatLookAngles] HTTP ${response.status} for NORAD ${noradId}`);
-        return null;
-      }
-
+      if (!response.ok) { console.warn(`[SatLookAngles] HTTP ${response.status} for NORAD ${noradId}`); return null; }
       const data = await response.json();
-      
-      if (data.error) {
-        console.warn(`[SatLookAngles] API error for ${noradId}:`, data.error);
-        return null;
-      }
-
+      if (data.error) { console.warn(`[SatLookAngles] API error for ${noradId}:`, data.error); return null; }
       if (data.positions && data.positions.length > 0) {
         const pos = data.positions[0];
-        return {
-          azimuth: pos.azimuth,
-          elevation: pos.elevation,
-          range: calculateRange(lat, lon, pos.satlatitude, pos.satlongitude, pos.sataltitude || 35786)
-        };
+        return { azimuth: pos.azimuth, elevation: pos.elevation, range: calculateRange(lat, lon, pos.satlatitude, pos.satlongitude, pos.sataltitude || 35786) };
       }
       return null;
-    } catch (error) {
-      console.error(`[SatLookAngles] Fetch error for ${noradId}:`, error.message);
-      return null;
-    }
+    } catch (error) { console.error(`[SatLookAngles] Fetch error for ${noradId}:`, error.message); return null; }
   }
 
   function calculateRange(obsLat, obsLon, satLat, satLon, satAlt) {
@@ -503,10 +455,8 @@
 
   async function fetchAllSatellites(forceRefresh = false) {
     if (!currentLocation) return;
-
     const { lat, lon } = currentLocation;
 
-    // Check cache first (unless force refresh)
     if (!forceRefresh) {
       const cached = loadFromCache(lat, lon);
       if (cached) {
@@ -522,29 +472,21 @@
     Events.emit('satla:render');
 
     const newData = {};
-
     for (const [key, constellation] of Object.entries(SATELLITES)) {
       if (!selectedConstellations.includes(key)) continue;
-
       newData[key] = { ...constellation, satellites: [] };
-
-      // Fetch with 200ms delays to avoid rate limiting
       const promises = constellation.satellites.map(async (sat, index) => {
         await new Promise(resolve => setTimeout(resolve, index * 200));
         const position = await fetchSatellitePosition(sat.id, lat, lon);
         return { ...sat, position };
       });
-
       newData[key].satellites = await Promise.all(promises);
     }
 
     satelliteData = newData;
     lastFetch = new Date();
     isLoading = false;
-
-    // Save to cache
     saveToCache(lat, lon, newData);
-
     Events.emit('satla:render');
   }
 
@@ -562,17 +504,23 @@
   function getWeatherImpact(band, wx) {
     if (!wx) return { impact: 'unknown', message: 'Weather N/A', color: '#888' };
     const cond = (wx.main || '').toLowerCase();
+    const b = (band || '').toUpperCase();
 
-    if (band === 'EHF' || band === 'Ka' || band === 'X/Ka') {
-      if (cond.includes('rain') || cond.includes('thunder'))
-        return { impact: 'severe', color: '#ff4444', message: 'Rain fade 10-20+ dB' };
-      if (cond.includes('drizzle') || cond.includes('snow'))
-        return { impact: 'moderate', color: '#ff8800', message: 'Atten 3-10 dB' };
+    // EHF most affected
+    if (b.includes('EHF') || b === 'KA') {
+      if (cond.includes('rain') || cond.includes('thunder')) return { impact: 'severe', color: '#ff4444', message: 'Rain fade 10-20+ dB' };
+      if (cond.includes('drizzle') || cond.includes('snow')) return { impact: 'moderate', color: '#ff8800', message: 'Atten 3-10 dB' };
     }
-    if (band.includes('Ku')) {
-      if (cond.includes('rain') || cond.includes('thunder'))
-        return { impact: 'moderate', color: '#ff8800', message: 'Rain fade 2-8 dB' };
+    // Ka/X bands
+    if (b.includes('KA') || b.includes('X/KA') || b.includes('KU/KA')) {
+      if (cond.includes('rain') || cond.includes('thunder')) return { impact: 'moderate', color: '#ff8800', message: 'Rain fade 5-15 dB' };
+      if (cond.includes('snow')) return { impact: 'minor', color: '#ffcc00', message: 'Atten 2-5 dB' };
     }
+    // Ku band
+    if (b.includes('KU') || b.includes('C/KU')) {
+      if (cond.includes('rain') || cond.includes('thunder')) return { impact: 'moderate', color: '#ff8800', message: 'Rain fade 2-8 dB' };
+    }
+    // C-band and UHF most resilient
     return { impact: 'none', color: '#00ff88', message: 'Good' };
   }
 
@@ -608,7 +556,7 @@
                    placeholder="Search city, MGRS, or coords..."
                    value="${currentLocation?.name || ''}"
                    oninput="window.RussellTV.SatLookAngles.handleSearch(this.value)"
-                   onclick="event.stopPropagation()" autocomplete="off">
+                   autocomplete="off">
             <div id="satla-autocomplete" class="autocomplete-dropdown"></div>
           </div>
           <div class="search-buttons">
@@ -640,23 +588,22 @@
           </div>`;
         }
 
-        // Constellation checkboxes + filter toggle
+        // Constellation checkboxes - fixed click handling
         html += `<div class="satla-filters">
           ${Object.keys(SATELLITES).map(k => `
-            <label onclick="event.stopPropagation()">
+            <label class="satla-checkbox-label">
               <input type="checkbox" ${selectedConstellations.includes(k) ? 'checked' : ''}
-                     onchange="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleConstellation('${k}')">
-              ${k.toUpperCase()}
+                     onchange="window.RussellTV.SatLookAngles.toggleConstellation('${k}')">
+              <span>${k.toUpperCase()}</span>
             </label>
           `).join('')}
-          <label class="filter-toggle" onclick="event.stopPropagation()">
+          <label class="satla-checkbox-label filter-toggle">
             <input type="checkbox" ${showOnlyGoodAngles ? 'checked' : ''}
-                   onchange="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleGoodAnglesFilter()">
-            El&gt;5° only
+                   onchange="window.RussellTV.SatLookAngles.toggleGoodAnglesFilter()">
+            <span>El&gt;5°</span>
           </label>
         </div>`;
 
-        // Azimuth note
         html += `<div class="satla-az-note">📐 Azimuth is TRUE north (not magnetic)</div>`;
 
         if (isLoading) {
@@ -664,22 +611,16 @@
         } else if (Object.keys(satelliteData).length > 0) {
           for (const [key, c] of Object.entries(satelliteData)) {
             if (!selectedConstellations.includes(key)) continue;
-            
+
             const impact = getWeatherImpact(c.band, currentWeather);
-            
-            // Filter satellites based on elevation
             const filteredSats = c.satellites.filter(s => {
               if (!s.position || s.position.elevation == null) return false;
               if (showOnlyGoodAngles) return s.position.elevation >= MIN_ELEVATION_FILTER;
               return s.position.elevation >= 0;
             });
+            const sortedSats = [...filteredSats].sort((a,b) => (b.position?.elevation ?? -999) - (a.position?.elevation ?? -999));
 
-            // Sort by elevation descending
-            const sortedSats = [...filteredSats].sort((a,b) => 
-              (b.position?.elevation ?? -999) - (a.position?.elevation ?? -999)
-            );
-
-            if (sortedSats.length === 0) continue; // Skip empty constellations
+            if (sortedSats.length === 0) continue;
 
             html += `<div class="satla-constellation">
               <div class="constellation-header">
@@ -693,7 +634,6 @@
             }
 
             html += `<table class="sat-table"><thead><tr><th>Sat</th><th>Az°</th><th>El°</th><th>Range</th></tr></thead><tbody>`;
-
             for (const sat of sortedSats) {
               const p = sat.position;
               const q = getElevationQuality(p?.elevation);
@@ -757,7 +697,10 @@
     .satla-starlink.limited { background:rgba(255,200,0,0.1); border:1px solid rgba(255,200,0,0.3); }
     .satla-starlink.restricted { background:rgba(255,68,68,0.1); border:1px solid rgba(255,68,68,0.3); }
     .satla-filters { display:flex; flex-wrap:wrap; gap:0.3rem 0.6rem; padding:0.4rem 0; margin-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.1); font-size:0.7rem; }
-    .satla-filters label { display:flex; align-items:center; gap:0.2rem; cursor:pointer; }
+    .satla-checkbox-label { display:flex; align-items:center; gap:0.25rem; cursor:pointer; padding:0.15rem 0.3rem; border-radius:3px; }
+    .satla-checkbox-label:hover { background:rgba(255,255,255,0.1); }
+    .satla-checkbox-label input[type="checkbox"] { cursor:pointer; margin:0; }
+    .satla-checkbox-label span { cursor:pointer; }
     .satla-filters .filter-toggle { margin-left:auto; color:#88ff88; }
     .satla-az-note { font-size:0.65rem; opacity:0.6; margin-bottom:0.5rem; font-style:italic; }
     .satla-loading { display:flex; align-items:center; justify-content:center; gap:0.6rem; padding:1.5rem; font-size:0.8rem; }
@@ -781,10 +724,7 @@
 
   // ============ PUBLIC API ============
 
-  function toggleExpand() {
-    isExpanded = !isExpanded;
-    Events.emit('satla:render');
-  }
+  function toggleExpand() { isExpanded = !isExpanded; Events.emit('satla:render'); }
 
   function toggleConstellation(key) {
     const idx = selectedConstellations.indexOf(key);
@@ -794,10 +734,7 @@
     else Events.emit('satla:render');
   }
 
-  function toggleGoodAnglesFilter() {
-    showOnlyGoodAngles = !showOnlyGoodAngles;
-    Events.emit('satla:render');
-  }
+  function toggleGoodAnglesFilter() { showOnlyGoodAngles = !showOnlyGoodAngles; Events.emit('satla:render'); }
 
   function usePanelLocation() {
     const loc = window.RussellTV?.Propagation?.getSelectedLocation?.();
@@ -818,46 +755,29 @@
     try {
       const result = parseCoordinates(input.value.trim());
       const typeName = result.type === 'mgrs' ? 'MGRS' : result.type === 'maidenhead' ? 'Grid' : 'Coords';
-      currentLocation = { 
-        lat: result.lat, 
-        lon: result.lon, 
-        name: `${typeName}: ${result.lat.toFixed(4)}, ${result.lon.toFixed(4)}`, 
-        source: result.type 
-      };
+      currentLocation = { lat: result.lat, lon: result.lon, name: `${typeName}: ${result.lat.toFixed(4)}, ${result.lon.toFixed(4)}`, source: result.type };
       fetchWeatherForLocation(result.lat, result.lon);
       fetchAllSatellites();
-    } catch (e) {
-      alert(e.message);
-    }
+    } catch (e) { alert(e.message); }
   }
 
   function refresh() {
     if (!currentLocation) { alert('Select a location first'); return; }
     fetchWeatherForLocation(currentLocation.lat, currentLocation.lon);
-    fetchAllSatellites(true);  // Force refresh, bypass cache
+    fetchAllSatellites(true);
   }
 
   function handleSearch(value) { handleAutocompleteInput(value); }
 
   // ============ CACHING ============
-  
-  function getCacheKey(lat, lon) {
-    return `satla_${lat.toFixed(2)}_${lon.toFixed(2)}`;
-  }
+
+  function getCacheKey(lat, lon) { return `satla_${lat.toFixed(2)}_${lon.toFixed(2)}`; }
 
   function saveToCache(lat, lon, data) {
     try {
       const key = getCacheKey(lat, lon);
-      const cacheEntry = {
-        data: data,
-        timestamp: Date.now(),
-        lat: lat,
-        lon: lon
-      };
-      localStorage.setItem(key, JSON.stringify(cacheEntry));
-    } catch (e) {
-      console.warn('[SatLookAngles] Cache save failed:', e);
-    }
+      localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now(), lat, lon }));
+    } catch (e) { console.warn('[SatLookAngles] Cache save failed:', e); }
   }
 
   function loadFromCache(lat, lon) {
@@ -865,20 +785,10 @@
       const key = getCacheKey(lat, lon);
       const cached = localStorage.getItem(key);
       if (!cached) return null;
-
       const entry = JSON.parse(cached);
-      const age = Date.now() - entry.timestamp;
-      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-      if (age > maxAge) {
-        localStorage.removeItem(key);
-        return null;
-      }
-
+      if (Date.now() - entry.timestamp > 24 * 60 * 60 * 1000) { localStorage.removeItem(key); return null; }
       return entry;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   }
 
   function init() {
@@ -886,9 +796,6 @@
     styleEl.textContent = styles;
     document.head.appendChild(styleEl);
 
-    // No auto-refresh - GEO satellites don't move much, fetch manually only
-
-    // Close autocomplete on outside click
     document.addEventListener('click', () => {
       const d = document.getElementById('satla-autocomplete');
       if (d) d.style.display = 'none';
@@ -902,14 +809,8 @@
   window.RussellTV = window.RussellTV || {};
   window.RussellTV.SatLookAngles = {
     render: renderSatelliteLookAngles,
-    toggleExpand,
-    toggleConstellation,
-    toggleGoodAnglesFilter,
-    usePanelLocation,
-    parseManualCoords,
-    refresh,
-    handleSearch,
-    selectAutocomplete,
+    toggleExpand, toggleConstellation, toggleGoodAnglesFilter,
+    usePanelLocation, parseManualCoords, refresh, handleSearch, selectAutocomplete,
     getData: () => satelliteData
   };
 
