@@ -39,15 +39,36 @@ body {
   gap: 0.12rem;
 }
 
+/* Brand styling refinements */
 .rtv-brand-title {
   margin: 0;
   font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 0 10px rgba(255, 120, 0, 0.45);
+  color: rgba(255, 160, 80, 0.95);
+  text-shadow: 0 0 6px rgba(255, 80, 0, 0.55),
+               0 0 12px rgba(255, 60, 0, 0.45);
   transition: text-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.rtv-brand-tagline {
+  font-size: 0.72rem;
+  color: rgba(255, 200, 150, 0.55);
+  opacity: 0.75;
+  text-shadow: 0 0 4px rgba(255, 120, 0, 0.18);
+  letter-spacing: 0.05em;
+  transition: opacity 0.25s ease, text-shadow 0.25s ease;
+}
+
+/* Fiery hover intensifies */
+.rtv-brand-button:hover .rtv-brand-title,
+.rtv-brand-button:hover .rtv-brand-tagline {
+  text-shadow: 0 0 12px rgba(255, 150, 0, 0.85),
+               0 0 22px rgba(255, 100, 0, 0.85),
+               0 0 32px rgba(255, 60, 0, 1);
+  opacity: 1;
+  transform: translateY(-1px);
 }
 
 .rtv-brand-tagline {
@@ -414,9 +435,37 @@ main {
     margin-bottom: 0.25rem;
   }
 
-  .rtv-brand-title {
-    font-size: 1.05rem;
-  }
+/* Brand styling refinements */
+.rtv-brand-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 160, 80, 0.95);
+  text-shadow: 0 0 6px rgba(255, 80, 0, 0.55),
+               0 0 12px rgba(255, 60, 0, 0.45);
+  transition: text-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.rtv-brand-tagline {
+  font-size: 0.72rem;
+  color: rgba(255, 200, 150, 0.55);
+  opacity: 0.75;
+  text-shadow: 0 0 4px rgba(255, 120, 0, 0.18);
+  letter-spacing: 0.05em;
+  transition: opacity 0.25s ease, text-shadow 0.25s ease;
+}
+
+/* Fiery hover intensifies */
+.rtv-brand-button:hover .rtv-brand-title,
+.rtv-brand-button:hover .rtv-brand-tagline {
+  text-shadow: 0 0 12px rgba(255, 150, 0, 0.85),
+               0 0 22px rgba(255, 100, 0, 0.85),
+               0 0 32px rgba(255, 60, 0, 1);
+  opacity: 1;
+  transform: translateY(-1px);
+}
 
   .rtv-brand-tagline {
     font-size: 0.7rem;
