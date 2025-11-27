@@ -1602,14 +1602,33 @@
       if (resultEl) resultEl.classList.remove('visible');
     };
 
-    const showResult = (name, lat, lon) => {
+    const showResult = (name, lat, lon, inputValue, inputType) => {
       if (resultEl) {
-        resultEl.querySelector('.location-result-name').textContent = name;
-        resultEl.querySelector('.location-result-coords').textContent = `${lat.toFixed(6)}°, ${lon.toFixed(6)}°`;
+        let displayName = name;
+        // For MGRS/Grid/LatLon, show both the input and the nearby location
+        if (inputType === 'mgrs' && inputValue) {
+          displayName = `📍 Near: ${name}`;
+          resultEl.querySelector('.location-result-name').innerHTML = 
+            `<div style="font-family:monospace;color:#ffcc00;margin-bottom:0.2rem;">MGRS: ${inputValue.toUpperCase()}</div>` +
+            `<div style="font-size:0.8rem;opacity:0.85;">${displayName}</div>`;
+        } else if (inputType === 'maidenhead' && inputValue) {
+          displayName = `📍 Near: ${name}`;
+          resultEl.querySelector('.location-result-name').innerHTML = 
+            `<div style="font-family:monospace;color:#ffcc00;margin-bottom:0.2rem;">Grid: ${inputValue.toUpperCase()}</div>` +
+            `<div style="font-size:0.8rem;opacity:0.85;">${displayName}</div>`;
+        } else if (inputType === 'latlon') {
+          displayName = `📍 Near: ${name}`;
+          resultEl.querySelector('.location-result-name').innerHTML = 
+            `<div style="font-size:0.8rem;opacity:0.85;">${displayName}</div>`;
+        } else {
+          resultEl.querySelector('.location-result-name').textContent = name;
+        }
+        resultEl.querySelector('.location-result-coords').innerHTML = 
+          `<span style="color:#88ffaa;">Exact coords:</span> ${lat.toFixed(6)}°, ${lon.toFixed(6)}°`;
         resultEl.classList.add('visible');
       }
       if (errorEl) errorEl.classList.remove('visible');
-      pendingLocation = { name, lat, lon };
+      pendingLocation = { name, lat, lon, inputValue, inputType };
     };
 
     try {
@@ -1624,7 +1643,10 @@
         const result = mgrsToLatLon(mgrsInput);
         lat = result.lat;
         lon = result.lon;
-        name = await reverseGeocode(lat, lon) || `MGRS: ${mgrsInput}`;
+        const nearbyName = await reverseGeocode(lat, lon);
+        name = nearbyName || 'Unknown area';
+        showResult(name, lat, lon, mgrsInput, 'mgrs');
+        return;
         
       } else if (locationInputMode === 'latlon') {
         const latInput = document.getElementById('prop-lat-input')?.value?.trim();
@@ -1636,7 +1658,10 @@
         const result = parseLatLonInput(latInput, lonInput);
         lat = result.lat;
         lon = result.lon;
-        name = await reverseGeocode(lat, lon) || `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
+        const nearbyName = await reverseGeocode(lat, lon);
+        name = nearbyName || 'Unknown area';
+        showResult(name, lat, lon, null, 'latlon');
+        return;
         
       } else if (locationInputMode === 'maidenhead') {
         const gridInput = document.getElementById('prop-grid-input')?.value?.trim();
@@ -1647,10 +1672,13 @@
         const result = maidenheadToLatLon(gridInput);
         lat = result.lat;
         lon = result.lon;
-        name = await reverseGeocode(lat, lon) || `Grid: ${gridInput.toUpperCase()}`;
+        const nearbyName = await reverseGeocode(lat, lon);
+        name = nearbyName || 'Unknown area';
+        showResult(name, lat, lon, gridInput, 'maidenhead');
+        return;
       }
 
-      showResult(name, lat, lon);
+      showResult(name, lat, lon, null, null);
       
     } catch (e) {
       showError(e.message);
@@ -1659,7 +1687,16 @@
 
   function confirmPendingLocation() {
     if (!pendingLocation) return;
-    applyLocation(pendingLocation.name, pendingLocation.lat, pendingLocation.lon, locationInputMode);
+    
+    // Create a label that includes the input type for MGRS/Grid
+    let label = pendingLocation.name;
+    if (pendingLocation.inputType === 'mgrs' && pendingLocation.inputValue) {
+      label = `${pendingLocation.inputValue.toUpperCase()} (${pendingLocation.name})`;
+    } else if (pendingLocation.inputType === 'maidenhead' && pendingLocation.inputValue) {
+      label = `${pendingLocation.inputValue.toUpperCase()} (${pendingLocation.name})`;
+    }
+    
+    applyLocation(label, pendingLocation.lat, pendingLocation.lon, locationInputMode);
   }
 
   function renderLocationInputArea() {
