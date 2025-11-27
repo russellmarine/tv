@@ -150,6 +150,213 @@
       margin-bottom: 0.3rem;
     }
 
+    /* Location input mode tabs */
+    #propagation-panel .location-mode-tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    #propagation-panel .location-mode-tab {
+      flex: 1;
+      padding: 0.35rem 0.25rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.65rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #propagation-panel .location-mode-tab:hover {
+      background: rgba(255, 120, 0, 0.15);
+      border-color: rgba(255, 120, 0, 0.4);
+    }
+
+    #propagation-panel .location-mode-tab.active {
+      background: rgba(255, 120, 0, 0.25);
+      border-color: rgba(255, 120, 0, 0.6);
+      color: #ffcc88;
+      font-weight: 600;
+    }
+
+    #propagation-panel .location-input-area {
+      margin-bottom: 0.5rem;
+    }
+
+    #propagation-panel .location-input-hint {
+      font-size: 0.65rem;
+      color: rgba(255, 200, 150, 0.7);
+      margin-bottom: 0.35rem;
+      font-style: italic;
+    }
+
+    #propagation-panel .location-input-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    #propagation-panel .location-input-field {
+      flex: 1;
+    }
+
+    #propagation-panel .location-input-field label {
+      display: block;
+      font-size: 0.6rem;
+      opacity: 0.6;
+      margin-bottom: 0.2rem;
+      text-transform: uppercase;
+    }
+
+    #propagation-panel .location-input-field input {
+      width: 100%;
+      padding: 0.4rem 0.5rem;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 120, 0, 0.4);
+      border-radius: 6px;
+      color: white;
+      font-size: 0.85rem;
+      box-sizing: border-box;
+    }
+
+    #propagation-panel .location-input-field input:focus {
+      outline: none;
+      border-color: rgba(255, 120, 0, 0.8);
+    }
+
+    #propagation-panel .location-input-field input::placeholder {
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 0.75rem;
+    }
+
+    #propagation-panel .location-go-btn {
+      padding: 0.4rem 0.75rem;
+      background: rgba(255, 120, 0, 0.3);
+      border: 1px solid rgba(255, 120, 0, 0.6);
+      border-radius: 6px;
+      color: #ffcc88;
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: all 0.2s;
+    }
+
+    #propagation-panel .location-go-btn:hover {
+      background: rgba(255, 120, 0, 0.5);
+    }
+
+    #propagation-panel .location-error {
+      font-size: 0.7rem;
+      color: #ff6666;
+      margin-top: 0.35rem;
+      padding: 0.3rem 0.5rem;
+      background: rgba(255, 50, 50, 0.1);
+      border-radius: 4px;
+      display: none;
+    }
+
+    #propagation-panel .location-error.visible {
+      display: block;
+    }
+
+    #propagation-panel .location-result {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.6rem;
+      background: rgba(0, 255, 100, 0.08);
+      border: 1px solid rgba(0, 255, 100, 0.3);
+      border-radius: 6px;
+      display: none;
+    }
+
+    #propagation-panel .location-result.visible {
+      display: block;
+    }
+
+    #propagation-panel .location-result-name {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #88ffaa;
+    }
+
+    #propagation-panel .location-result-coords {
+      font-family: monospace;
+      font-size: 0.7rem;
+      opacity: 0.8;
+      margin-top: 0.2rem;
+    }
+
+    #propagation-panel .location-result-use {
+      margin-top: 0.4rem;
+      padding: 0.3rem 0.6rem;
+      background: rgba(0, 255, 100, 0.2);
+      border: 1px solid rgba(0, 255, 100, 0.4);
+      border-radius: 4px;
+      color: #88ffaa;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    #propagation-panel .location-result-use:hover {
+      background: rgba(0, 255, 100, 0.35);
+    }
+
+    /* Recent searches */
+    #propagation-panel .recent-searches {
+      margin-top: 0.5rem;
+    }
+
+    #propagation-panel .recent-searches-header {
+      font-size: 0.65rem;
+      opacity: 0.6;
+      margin-bottom: 0.3rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #propagation-panel .recent-searches-clear {
+      font-size: 0.6rem;
+      color: rgba(255, 150, 100, 0.7);
+      cursor: pointer;
+    }
+
+    #propagation-panel .recent-searches-clear:hover {
+      color: #ff9966;
+      text-decoration: underline;
+    }
+
+    #propagation-panel .recent-search-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.35rem 0.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      margin-bottom: 0.25rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.15s;
+    }
+
+    #propagation-panel .recent-search-item:hover {
+      background: rgba(255, 120, 0, 0.15);
+      border-color: rgba(255, 120, 0, 0.3);
+    }
+
+    #propagation-panel .recent-search-name {
+      font-weight: 500;
+    }
+
+    #propagation-panel .recent-search-coords {
+      font-family: monospace;
+      font-size: 0.65rem;
+      opacity: 0.6;
+    }
+
     #propagation-panel .location-search-container {
       position: relative;
     }
@@ -1072,7 +1279,489 @@
   // Geocoding state
   let autocompleteResults = [];
   let autocompleteTimeout = null;
+  let locationInputMode = 'search'; // 'search', 'mgrs', 'latlon', 'maidenhead'
+  let recentSearches = [];
+  let pendingLocation = null; // For preview before confirming
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+  const NOMINATIM_REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse';
+  const MAX_RECENT_SEARCHES = 8;
+
+  // ============ COORDINATE PARSING ============
+
+  const MGRS_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const UTM_ZONES_LAT = 'CDEFGHJKLMNPQRSTUVWX';
+
+  function mgrsToLatLon(mgrs) {
+    // Clean input - remove spaces, convert to uppercase
+    mgrs = mgrs.replace(/\s/g, '').toUpperCase();
+    
+    // Match pattern: 1-2 digit zone, lat band letter, 2 grid letters, 2-10 digit coords
+    const match = mgrs.match(/^(\d{1,2})([C-X])([A-HJ-NP-Z]{2})(\d+)$/);
+    if (!match) {
+      throw new Error('Invalid MGRS format. Example: 18SVK4083001357 (no spaces required)');
+    }
+
+    const zone = parseInt(match[1]);
+    const latBand = match[2];
+    const gridLetters = match[3];
+    const coords = match[4];
+
+    if (zone < 1 || zone > 60) throw new Error('Invalid UTM zone (must be 1-60)');
+
+    const len = coords.length;
+    if (len % 2 !== 0 || len < 2 || len > 10) {
+      throw new Error('MGRS coordinates must be even length (2, 4, 6, 8, or 10 digits)');
+    }
+
+    const half = len / 2;
+    const precision = Math.pow(10, 5 - half);
+    let easting = parseInt(coords.substring(0, half)) * precision;
+    let northing = parseInt(coords.substring(half)) * precision;
+
+    // Add offset to center of grid square
+    easting += precision / 2;
+    northing += precision / 2;
+
+    const col = gridLetters[0];
+    const row = gridLetters[1];
+
+    const setNumber = ((zone - 1) % 6);
+    const colOrigin = setNumber * 8 % 24;
+    let colIndex = MGRS_LETTERS.indexOf(col) - colOrigin;
+    if (colIndex < 0) colIndex += 24;
+    easting += (colIndex + 1) * 100000;
+
+    const rowSet = (zone - 1) % 2;
+    const rowOrigin = rowSet === 0 ? 'A' : 'F';
+    let rowIndex = MGRS_LETTERS.indexOf(row) - MGRS_LETTERS.indexOf(rowOrigin);
+    if (rowIndex < 0) rowIndex += 20;
+
+    const latBandIndex = UTM_ZONES_LAT.indexOf(latBand);
+    const bandNorthing = (latBandIndex - 10) * 8 * 111000;
+
+    let baseNorthing = rowIndex * 100000;
+    while (baseNorthing < bandNorthing - 500000) baseNorthing += 2000000;
+    northing += baseNorthing;
+
+    return utmToLatLon(zone, latBand < 'N', easting, northing);
+  }
+
+  function utmToLatLon(zone, isSouthern, easting, northing) {
+    const a = 6378137, f = 1 / 298.257223563, k0 = 0.9996;
+    const e = Math.sqrt(2 * f - f * f), e2 = e * e;
+    const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+
+    const x = easting - 500000;
+    const y = isSouthern ? northing - 10000000 : northing;
+    const M = y / k0;
+    const mu = M / (a * (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256));
+
+    const phi1 = mu + (3*e1/2 - 27*e1*e1*e1/32) * Math.sin(2*mu)
+                    + (21*e1*e1/16 - 55*e1*e1*e1*e1/32) * Math.sin(4*mu)
+                    + (151*e1*e1*e1/96) * Math.sin(6*mu);
+
+    const N1 = a / Math.sqrt(1 - e2 * Math.sin(phi1) * Math.sin(phi1));
+    const T1 = Math.tan(phi1) * Math.tan(phi1);
+    const C1 = (e2 / (1 - e2)) * Math.cos(phi1) * Math.cos(phi1);
+    const R1 = a * (1 - e2) / Math.pow(1 - e2 * Math.sin(phi1) * Math.sin(phi1), 1.5);
+    const D = x / (N1 * k0);
+
+    let lat = phi1 - (N1 * Math.tan(phi1) / R1) * (
+      D*D/2 - (5 + 3*T1 + 10*C1 - 4*C1*C1 - 9*(e2/(1-e2))) * D*D*D*D/24
+      + (61 + 90*T1 + 298*C1 + 45*T1*T1 - 252*(e2/(1-e2)) - 3*C1*C1) * D*D*D*D*D*D/720
+    );
+
+    let lon = (D - (1 + 2*T1 + C1) * D*D*D/6
+              + (5 - 2*C1 + 28*T1 - 3*C1*C1 + 8*(e2/(1-e2)) + 24*T1*T1) * D*D*D*D*D/120)
+              / Math.cos(phi1);
+
+    const lon0 = (zone - 1) * 6 - 180 + 3;
+    return { lat: lat * 180 / Math.PI, lon: lon0 + lon * 180 / Math.PI };
+  }
+
+  function maidenheadToLatLon(grid) {
+    grid = grid.toUpperCase().trim();
+    if (!/^[A-R]{2}\d{2}([A-X]{2}(\d{2})?)?$/.test(grid)) {
+      throw new Error('Invalid Maidenhead format. Examples: FM19, FM19la, FM19la52');
+    }
+
+    let lon = -180, lat = -90;
+    lon += (grid.charCodeAt(0) - 65) * 20;
+    lat += (grid.charCodeAt(1) - 65) * 10;
+    lon += parseInt(grid[2]) * 2;
+    lat += parseInt(grid[3]) * 1;
+
+    if (grid.length >= 6) {
+      lon += (grid.charCodeAt(4) - 65) * (2 / 24);
+      lat += (grid.charCodeAt(5) - 65) * (1 / 24);
+    }
+    if (grid.length === 8) {
+      lon += parseInt(grid[6]) * (2 / 240);
+      lat += parseInt(grid[7]) * (1 / 240);
+    }
+
+    // Add offset to center of grid square
+    if (grid.length === 4) { lon += 1; lat += 0.5; }
+    else if (grid.length === 6) { lon += 1/24; lat += 0.5/24; }
+    else if (grid.length === 8) { lon += 1/240; lat += 0.5/240; }
+
+    return { lat, lon };
+  }
+
+  function parseDMS(dmsStr) {
+    // Parse degrees/minutes/seconds format
+    // Accepts: 34°30'15"N, 34 30 15 N, 34-30-15N, 34.5042 (decimal)
+    dmsStr = dmsStr.trim().toUpperCase();
+    
+    // Try decimal first
+    const decimalMatch = dmsStr.match(/^(-?\d+\.?\d*)$/);
+    if (decimalMatch) {
+      return parseFloat(decimalMatch[1]);
+    }
+
+    // Try DMS format
+    const dmsMatch = dmsStr.match(/^(-?)(\d+)[°\s\-]+(\d+)?['\s\-]*(\d+\.?\d*)?["'\s]*([NSEW])?$/);
+    if (dmsMatch) {
+      const sign = (dmsMatch[1] === '-' || dmsMatch[5] === 'S' || dmsMatch[5] === 'W') ? -1 : 1;
+      const deg = parseFloat(dmsMatch[2]) || 0;
+      const min = parseFloat(dmsMatch[3]) || 0;
+      const sec = parseFloat(dmsMatch[4]) || 0;
+      return sign * (deg + min/60 + sec/3600);
+    }
+
+    throw new Error('Invalid coordinate format');
+  }
+
+  function parseLatLonInput(latStr, lonStr) {
+    try {
+      const lat = parseDMS(latStr);
+      const lon = parseDMS(lonStr);
+      
+      if (lat < -90 || lat > 90) throw new Error('Latitude must be between -90 and 90');
+      if (lon < -180 || lon > 180) throw new Error('Longitude must be between -180 and 180');
+      
+      return { lat, lon };
+    } catch (e) {
+      throw new Error(`Invalid coordinates: ${e.message}`);
+    }
+  }
+
+  // ============ REVERSE GEOCODING ============
+
+  async function reverseGeocode(lat, lon) {
+    try {
+      const url = `${NOMINATIM_REVERSE_URL}?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
+      const response = await fetch(url, { headers: { 'User-Agent': 'RussellTV-PropPanel/1.0' } });
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      if (!data || data.error) return null;
+      
+      const addr = data.address || {};
+      const city = addr.city || addr.town || addr.village || addr.hamlet || addr.county || '';
+      const state = addr.state || addr.region || '';
+      const country = addr.country || '';
+      
+      let name = city;
+      if (state && state !== city) name += name ? `, ${state}` : state;
+      if (country && country !== state) name += name ? `, ${country}` : country;
+      
+      return name || data.display_name?.split(',').slice(0, 2).join(',') || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+    } catch (e) {
+      console.warn('[Propagation] Reverse geocoding failed:', e);
+      return null;
+    }
+  }
+
+  // ============ RECENT SEARCHES ============
+
+  function loadRecentSearches() {
+    try {
+      const saved = window.RussellTV?.Storage?.load?.('propRecentSearches');
+      if (saved) {
+        recentSearches = JSON.parse(saved);
+      }
+    } catch (e) {
+      recentSearches = [];
+    }
+  }
+
+  function saveRecentSearches() {
+    try {
+      if (window.RussellTV?.Storage?.save) {
+        window.RussellTV.Storage.save('propRecentSearches', JSON.stringify(recentSearches));
+      }
+    } catch (e) {
+      console.warn('[Propagation] Failed to save recent searches:', e);
+    }
+  }
+
+  function addToRecentSearches(location) {
+    if (!location || !location.label || !location.coords) return;
+    
+    // Remove duplicate if exists
+    recentSearches = recentSearches.filter(r => 
+      r.label !== location.label && 
+      !(Math.abs(r.coords.lat - location.coords.lat) < 0.001 && Math.abs(r.coords.lon - location.coords.lon) < 0.001)
+    );
+    
+    // Add to front
+    recentSearches.unshift({
+      label: location.label,
+      coords: location.coords,
+      source: location.source || 'search'
+    });
+    
+    // Trim to max
+    if (recentSearches.length > MAX_RECENT_SEARCHES) {
+      recentSearches = recentSearches.slice(0, MAX_RECENT_SEARCHES);
+    }
+    
+    saveRecentSearches();
+  }
+
+  function clearRecentSearches() {
+    recentSearches = [];
+    saveRecentSearches();
+    renderLocationInputArea();
+  }
+
+  function selectRecentSearch(idx) {
+    const recent = recentSearches[idx];
+    if (!recent) return;
+    
+    applyLocation(recent.label, recent.coords.lat, recent.coords.lon, recent.source || 'recent');
+  }
+
+  // ============ LOCATION APPLICATION ============
+
+  async function applyLocation(label, lat, lon, source) {
+    selectedLocation = {
+      label: label,
+      coords: { lat, lon },
+      source: source || 'manual'
+    };
+
+    // Add to recent searches
+    addToRecentSearches(selectedLocation);
+
+    // Save to storage
+    if (window.RussellTV?.Storage?.save) {
+      window.RussellTV.Storage.save('propLocation', JSON.stringify(selectedLocation));
+    }
+
+    // Fetch weather for custom location
+    if (source !== 'saved') {
+      fetchWeatherForCustomLocation(lat, lon).then(() => {
+        updatePanelContent();
+      });
+    }
+
+    // Emit event
+    Events.emit('propagation:location-changed', selectedLocation);
+
+    // Hide error, clear preview
+    pendingLocation = null;
+    const errorEl = document.getElementById('prop-location-error');
+    if (errorEl) errorEl.classList.remove('visible');
+    const resultEl = document.getElementById('prop-location-result');
+    if (resultEl) resultEl.classList.remove('visible');
+
+    updatePanelContent();
+  }
+
+  // ============ INPUT MODE HANDLERS ============
+
+  function setLocationInputMode(mode) {
+    locationInputMode = mode;
+    renderLocationInputArea();
+  }
+
+  async function handleCoordinateSubmit() {
+    const errorEl = document.getElementById('prop-location-error');
+    const resultEl = document.getElementById('prop-location-result');
+    
+    const showError = (msg) => {
+      if (errorEl) {
+        errorEl.textContent = msg;
+        errorEl.classList.add('visible');
+      }
+      if (resultEl) resultEl.classList.remove('visible');
+    };
+
+    const showResult = (name, lat, lon) => {
+      if (resultEl) {
+        resultEl.querySelector('.location-result-name').textContent = name;
+        resultEl.querySelector('.location-result-coords').textContent = `${lat.toFixed(6)}°, ${lon.toFixed(6)}°`;
+        resultEl.classList.add('visible');
+      }
+      if (errorEl) errorEl.classList.remove('visible');
+      pendingLocation = { name, lat, lon };
+    };
+
+    try {
+      let lat, lon, name;
+
+      if (locationInputMode === 'mgrs') {
+        const mgrsInput = document.getElementById('prop-mgrs-input')?.value?.trim();
+        if (!mgrsInput) {
+          showError('Please enter an MGRS coordinate');
+          return;
+        }
+        const result = mgrsToLatLon(mgrsInput);
+        lat = result.lat;
+        lon = result.lon;
+        name = await reverseGeocode(lat, lon) || `MGRS: ${mgrsInput}`;
+        
+      } else if (locationInputMode === 'latlon') {
+        const latInput = document.getElementById('prop-lat-input')?.value?.trim();
+        const lonInput = document.getElementById('prop-lon-input')?.value?.trim();
+        if (!latInput || !lonInput) {
+          showError('Please enter both latitude and longitude');
+          return;
+        }
+        const result = parseLatLonInput(latInput, lonInput);
+        lat = result.lat;
+        lon = result.lon;
+        name = await reverseGeocode(lat, lon) || `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
+        
+      } else if (locationInputMode === 'maidenhead') {
+        const gridInput = document.getElementById('prop-grid-input')?.value?.trim();
+        if (!gridInput) {
+          showError('Please enter a Maidenhead grid square');
+          return;
+        }
+        const result = maidenheadToLatLon(gridInput);
+        lat = result.lat;
+        lon = result.lon;
+        name = await reverseGeocode(lat, lon) || `Grid: ${gridInput.toUpperCase()}`;
+      }
+
+      showResult(name, lat, lon);
+      
+    } catch (e) {
+      showError(e.message);
+    }
+  }
+
+  function confirmPendingLocation() {
+    if (!pendingLocation) return;
+    applyLocation(pendingLocation.name, pendingLocation.lat, pendingLocation.lon, locationInputMode);
+  }
+
+  function renderLocationInputArea() {
+    const container = document.getElementById('prop-location-input-area');
+    if (!container) return;
+
+    // Update tab active states
+    document.querySelectorAll('.location-mode-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.mode === locationInputMode);
+    });
+
+    let html = '';
+
+    if (locationInputMode === 'search') {
+      html = `
+        <div class="location-input-hint">Search by city name, address, base name, or postal code</div>
+        <div class="location-search-container">
+          <input type="text" 
+                 id="prop-location-input" 
+                 class="location-search-input"
+                 placeholder="e.g., Jacksonville NC, Camp Lejeune, 28540"
+                 oninput="window.RussellTV.Propagation.handleLocationInput(this.value)"
+                 autocomplete="off">
+          <div id="prop-location-autocomplete" class="location-autocomplete"></div>
+        </div>
+      `;
+    } else if (locationInputMode === 'mgrs') {
+      html = `
+        <div class="location-input-hint">Enter MGRS coordinate (spaces optional)</div>
+        <div class="location-input-row">
+          <div class="location-input-field" style="flex: 1;">
+            <input type="text" id="prop-mgrs-input" 
+                   placeholder="e.g., 18SVK4083001357"
+                   style="text-transform: uppercase; font-family: monospace;">
+          </div>
+          <button class="location-go-btn" onclick="window.RussellTV.Propagation.handleCoordinateSubmit()">→</button>
+        </div>
+        <div class="location-input-hint" style="margin-top: 0.3rem; font-size: 0.6rem; opacity: 0.5;">
+          Format: Zone + Band + Grid + Easting/Northing (2-10 digits)
+        </div>
+      `;
+    } else if (locationInputMode === 'latlon') {
+      html = `
+        <div class="location-input-hint">Enter latitude and longitude (decimal or DMS)</div>
+        <div class="location-input-row">
+          <div class="location-input-field">
+            <label>Latitude</label>
+            <input type="text" id="prop-lat-input" placeholder="e.g., 34.5042 or 34°30'15&quot;N">
+          </div>
+          <div class="location-input-field">
+            <label>Longitude</label>
+            <input type="text" id="prop-lon-input" placeholder="e.g., -77.3528 or 77°21'10&quot;W">
+          </div>
+          <button class="location-go-btn" onclick="window.RussellTV.Propagation.handleCoordinateSubmit()">→</button>
+        </div>
+        <div class="location-input-hint" style="margin-top: 0.3rem; font-size: 0.6rem; opacity: 0.5;">
+          DMS format: 34°30'15"N or 34 30 15 N | Decimal: 34.5042
+        </div>
+      `;
+    } else if (locationInputMode === 'maidenhead') {
+      html = `
+        <div class="location-input-hint">Enter Maidenhead grid locator (ham radio)</div>
+        <div class="location-input-row">
+          <div class="location-input-field" style="flex: 1;">
+            <input type="text" id="prop-grid-input" 
+                   placeholder="e.g., FM19la or FM19"
+                   style="text-transform: uppercase;">
+          </div>
+          <button class="location-go-btn" onclick="window.RussellTV.Propagation.handleCoordinateSubmit()">→</button>
+        </div>
+        <div class="location-input-hint" style="margin-top: 0.3rem; font-size: 0.6rem; opacity: 0.5;">
+          4, 6, or 8 character grid square (e.g., FM19, FM19la, FM19la52)
+        </div>
+      `;
+    }
+
+    // Add error display
+    html += `<div id="prop-location-error" class="location-error"></div>`;
+
+    // Add result preview
+    html += `
+      <div id="prop-location-result" class="location-result">
+        <div class="location-result-name"></div>
+        <div class="location-result-coords"></div>
+        <button class="location-result-use" onclick="window.RussellTV.Propagation.confirmPendingLocation()">
+          ✓ Use this location
+        </button>
+      </div>
+    `;
+
+    // Add recent searches (for search mode)
+    if (locationInputMode === 'search' && recentSearches.length > 0) {
+      html += `
+        <div class="recent-searches">
+          <div class="recent-searches-header">
+            <span>📍 Recent</span>
+            <span class="recent-searches-clear" onclick="window.RussellTV.Propagation.clearRecentSearches()">Clear</span>
+          </div>
+          ${recentSearches.map((r, i) => `
+            <div class="recent-search-item" onclick="window.RussellTV.Propagation.selectRecentSearch(${i})">
+              <span class="recent-search-name">${escapeHtml(r.label)}</span>
+              <span class="recent-search-coords">${r.coords.lat.toFixed(2)}°, ${r.coords.lon.toFixed(2)}°</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
 
   async function searchLocation(query) {
     if (!query || query.length < 3) { autocompleteResults = []; return []; }
@@ -1183,6 +1872,9 @@
     const dropdown = document.getElementById('prop-location-autocomplete');
     if (dropdown) dropdown.style.display = 'none';
 
+    // Add to recent searches
+    addToRecentSearches(selectedLocation);
+
     // Save to storage
     if (window.RussellTV?.Storage?.save) {
       window.RussellTV.Storage.save('propLocation', JSON.stringify(selectedLocation));
@@ -1195,6 +1887,9 @@
 
     // Emit event for satellite look angles and other listeners
     Events.emit('propagation:location-changed', selectedLocation);
+
+    // Re-render location area to update recent searches display
+    renderLocationInputArea();
 
     updatePanelContent();
   }
@@ -1241,6 +1936,9 @@
       savedLocationsHtml += `<button class="saved-location-btn" onclick="window.RussellTV.Propagation.selectSavedLocation(${idx})">${loc.label}</button>`;
     });
 
+    // Load recent searches
+    loadRecentSearches();
+
     panel = document.createElement('div');
     panel.id = 'propagation-panel';
     panel.innerHTML = `
@@ -1254,20 +1952,14 @@
       <div class="panel-content">
         <div class="location-selector">
           <label>Location</label>
-          <div class="location-search-container">
-            <input type="text" 
-                   id="prop-location-input" 
-                   class="location-search-input"
-                   placeholder="Search city, base, MGRS, or coords..."
-                   oninput="window.RussellTV.Propagation.handleLocationInput(this.value)"
-                   autocomplete="off">
-            <div id="prop-location-autocomplete" class="location-autocomplete"></div>
+          <div class="location-mode-tabs">
+            <div class="location-mode-tab active" data-mode="search" onclick="window.RussellTV.Propagation.setLocationMode('search')">🔍 Search</div>
+            <div class="location-mode-tab" data-mode="mgrs" onclick="window.RussellTV.Propagation.setLocationMode('mgrs')">🎯 MGRS</div>
+            <div class="location-mode-tab" data-mode="latlon" onclick="window.RussellTV.Propagation.setLocationMode('latlon')">📍 Lat/Lon</div>
+            <div class="location-mode-tab" data-mode="maidenhead" onclick="window.RussellTV.Propagation.setLocationMode('maidenhead')">📻 Grid</div>
           </div>
-          <div id="prop-location-current" class="location-current" style="display: none;">
-            <span id="prop-location-name"></span>
-            <span id="prop-location-coords" class="location-current-coords"></span>
-          </div>
-          <span class="saved-locations-toggle" onclick="window.RussellTV.Propagation.toggleSavedLocations()">📍 Saved locations</span>
+          <div id="prop-location-input-area" class="location-input-area"></div>
+          <span class="saved-locations-toggle" onclick="window.RussellTV.Propagation.toggleSavedLocations()">📍 Preset locations</span>
           <div id="prop-saved-locations" class="saved-locations-dropdown">
             ${savedLocationsHtml}
           </div>
@@ -1299,6 +1991,9 @@
         if (dropdown) dropdown.style.display = 'none';
       }
     });
+
+    // Render the initial location input area
+    renderLocationInputArea();
 
     // Load saved location
     loadSavedLocation();
@@ -1630,7 +2325,12 @@
     handleLocationInput,
     selectLocation: selectLocationFromAutocomplete,
     selectSavedLocation,
-    toggleSavedLocations
+    toggleSavedLocations,
+    setLocationMode: setLocationInputMode,
+    handleCoordinateSubmit,
+    confirmPendingLocation,
+    selectRecentSearch,
+    clearRecentSearches
   };
 
 })();
