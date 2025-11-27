@@ -23,7 +23,7 @@
   // ============ CONFIGURATION ============
   
   const CELL_API_URL = '/cell'; // Proxied through cell-proxy.js or nginx
-  const SEARCH_RADIUS = 500; // 1km search radius (API limit is ~2km box)
+  const SEARCH_RADIUS = 1000; // 1km search radius (API limit is ~2km box)
   const CACHE_TTL = 60 * 60 * 1000; // 1 hour cache
 
   // Coverage quality colors
@@ -112,11 +112,30 @@
     
     .cell-btn { padding:0.25rem 0.4rem; border-radius:4px; border:1px solid rgba(150,100,255,0.5); background:rgba(150,100,255,0.2); color:white; cursor:pointer; font-size:0.7rem; }
     .cell-btn:hover { background:rgba(150,100,255,0.4); }
+    
+    .cell-roaming-warning { display:flex; align-items:flex-start; gap:0.5rem; padding:0.6rem; background:rgba(255,100,100,0.15); border:1px solid rgba(255,100,100,0.4); border-radius:6px; margin-bottom:0.6rem; }
+    .cell-roaming-icon { font-size:1.2rem; }
+    .cell-roaming-text { font-size:0.75rem; line-height:1.4; }
+    .cell-roaming-text small { opacity:0.8; }
+    
+    .cell-signal-stats { padding:0.5rem 0.6rem; background:rgba(100,200,255,0.08); border-radius:6px; margin-bottom:0.6rem; }
+    .cell-signal-title { font-size:0.7rem; font-weight:600; margin-bottom:0.4rem; }
+    .cell-signal-bar { height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; margin-bottom:0.3rem; }
+    .cell-signal-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+    .cell-signal-details { display:flex; gap:0.8rem; font-size:0.65rem; opacity:0.85; }
   `;
 
   // ============ DATA FETCHING ============
   
   async function fetchCellData(lat, lon) {
+    // Skip if we already have recent data for this location
+    if (cellData && lastFetch && (Date.now() - lastFetch < CACHE_TTL) && currentLocation &&
+        Math.abs(currentLocation.lat - lat) < 0.001 && Math.abs(currentLocation.lon - lon) < 0.001) {
+      console.log('[Cellular] Using cached data');
+      Events.emit('cell:render');
+      return;
+    }
+    
     isLoading = true;
     Events.emit('cell:render');
     
@@ -182,7 +201,7 @@
           <span class="expand-icon">${isExpanded ? '▼' : '▶'}</span>
         </div>`;
 
-    if (true) { // Always pre-fetch
+    if (isExpanded) {
       html += `<div class="cell-content">`;
 
       if (!currentLocation) {
@@ -205,6 +224,7 @@
         const coverage = cellData.summary?.coverage || 'unknown';
         const coverageColor = COVERAGE_COLORS[coverage] || COVERAGE_COLORS.unknown;
         const coverageLabel = coverage.charAt(0).toUpperCase() + coverage.slice(1);
+        const countryFlag = cellData.summary?.expectedCountryFlag || '';
         
         html += `
           <div class="cell-summary">
@@ -212,10 +232,43 @@
               ${coverageLabel}
             </span>
             <span class="cell-summary-text">
-              ${cellData.summary?.total || 0} towers within ${SEARCH_RADIUS/1000}km
+              ${countryFlag} ${cellData.summary?.total || 0} towers within ${SEARCH_RADIUS/1000}km
               ${cellData.summary?.nearestTower ? ` · Nearest: ${cellData.summary.nearestTower}m` : ''}
             </span>
           </div>`;
+
+        // Roaming warning
+        if (cellData.summary?.roamingWarning && cellData.summary?.roamingCountries?.length > 0) {
+          const roamingFlags = cellData.summary.roamingCountries.map(c => c.flag).join(' ');
+          html += `
+            <div class="cell-roaming-warning">
+              <span class="cell-roaming-icon">⚠️</span>
+              <span class="cell-roaming-text">
+                <strong>Roaming Alert:</strong> Towers from other countries detected nearby: ${roamingFlags}
+                <br><small>Your device may connect to foreign networks, potentially incurring roaming charges.</small>
+              </span>
+            </div>`;
+        }
+
+        // Signal strength stats
+        if (cellData.summary?.signalStats) {
+          const stats = cellData.summary.signalStats;
+          const signalColor = stats.quality === 'excellent' ? '#00ff88' : 
+                              stats.quality === 'good' ? '#88cc44' : 
+                              stats.quality === 'fair' ? '#ffcc00' : '#ff6644';
+          html += `
+            <div class="cell-signal-stats">
+              <div class="cell-signal-title">📶 Signal Strength</div>
+              <div class="cell-signal-bar">
+                <div class="cell-signal-fill" style="width:${Math.min(100, (140 + stats.avg) / 1.4)}%; background:${signalColor};"></div>
+              </div>
+              <div class="cell-signal-details">
+                <span style="color:${signalColor};">${stats.quality.toUpperCase()}</span>
+                <span>Avg: ${stats.avg} dBm</span>
+                <span>Range: ${stats.min} to ${stats.max} dBm</span>
+              </div>
+            </div>`; 
+        }
 
         // Technology summary
         if (cellData.technologies && Object.keys(cellData.technologies).length > 0) {
@@ -243,9 +296,10 @@
               <div class="cell-carriers-title">Carriers Detected</div>`;
           
           for (const carrier of cellData.carriers.slice(0, 6)) {
+            const flag = carrier.flag || '';
             html += `
               <div class="cell-carrier">
-                <span class="cell-carrier-name">${escapeHtml(carrier.name)}</span>
+                <span class="cell-carrier-name">${flag} ${escapeHtml(carrier.name)}</span>
                 <div class="cell-carrier-tech">`;
             
             // Show technologies for this carrier
@@ -295,9 +349,10 @@
           
           for (const tower of cellData.towers.slice(0, 8)) {
             const techColor = TECH_COLORS[tower.technology] || '#888';
+            const flag = tower.flag || '';
             html += `
               <div class="cell-tower">
-                <span style="font-size:0.65rem;">${escapeHtml(tower.carrier?.split(' ')[0] || 'Unknown')}</span>
+                <span style="font-size:0.65rem;">${flag} ${escapeHtml(tower.carrier?.split(' ')[0] || 'Unknown')}</span>
                 <span style="color:${techColor};">${tower.technology || tower.radio || '?'}</span>
                 <span class="cell-tower-distance">${tower.distance}m</span>
                 <span class="cell-tower-signal">${tower.signal ? tower.signal + ' dBm' : '—'}</span>
@@ -398,9 +453,8 @@
             name: location.label
           };
           
-          if (true) { // Always pre-fetch
-            fetchCellData(newLat, newLon);
-          }
+          // Always pre-fetch data when location changes (cache will handle duplicates)
+          fetchCellData(newLat, newLon);
         }
       }
     });
