@@ -23,6 +23,13 @@
   // ============ FEATURE DEFINITIONS ============
 
   const FEATURES = {
+    'news-ticker': {
+      label: 'News Ticker',
+      description: 'Scrolling news headlines display',
+      icon: '📰',
+      category: 'display',
+      default: true
+    },
     'space-weather-indicators': {
       label: 'HF/GPS/SAT Indicators',
       description: 'Status indicators in the info bar',
@@ -37,7 +44,7 @@
       category: 'space-comms',
       default: true
     },
-    'satellite-planner': {
+    'satellite-look-angles': {
       label: 'Satellite Look Angles',
       description: 'GEO satellite visibility calculator',
       icon: '🛰️',
@@ -54,6 +61,7 @@
   };
 
   const CATEGORIES = {
+    'display': { label: 'Display Features', icon: '🖥️' },
     'space-comms': { label: 'Comm Planner Tools', icon: '📡' },
     'weather': { label: 'Weather Features', icon: '🌤️' }
   };
@@ -88,7 +96,7 @@
     const enabled = featureStates[key];
     console.log(`[Features] Applying state: ${key} = ${enabled}`);
 
-    // Emit event - info-bar.js will handle the actual DOM changes
+    // Emit event - other modules will handle the actual DOM changes
     Events.emit('feature:toggle', { feature: key, enabled });
 
     // Special case for weather tooltips (CSS class on body)
@@ -100,6 +108,74 @@
     if (key === 'propagation-panel' && !enabled) {
       const panel = document.getElementById('propagation-panel');
       if (panel) panel.style.display = 'none';
+    }
+
+    // Handle news ticker visibility
+    if (key === 'news-ticker') {
+      // Target the news headline sections from news.js
+      // Try to find the parent containers of the headline lists
+      const channelList = document.getElementById('channel-headlines-list');
+      const marinesList = document.getElementById('marines-headlines-list');
+      
+      // Hide the entire section containing the headlines
+      if (channelList) {
+        // Walk up to find the section container
+        let container = channelList.parentElement;
+        while (container && container !== document.body) {
+          if (container.id?.includes('headline') || 
+              container.className?.includes('headline') ||
+              container.className?.includes('news') ||
+              container.tagName === 'SECTION' ||
+              container.tagName === 'ASIDE') {
+            container.style.display = enabled ? '' : 'none';
+            break;
+          }
+          container = container.parentElement;
+        }
+        // Fallback: just hide the list itself
+        if (container === document.body) {
+          channelList.style.display = enabled ? '' : 'none';
+        }
+      }
+      
+      if (marinesList) {
+        let container = marinesList.parentElement;
+        while (container && container !== document.body) {
+          if (container.id?.includes('headline') || 
+              container.id?.includes('marine') ||
+              container.className?.includes('headline') ||
+              container.className?.includes('marine') ||
+              container.className?.includes('news') ||
+              container.tagName === 'SECTION') {
+            container.style.display = enabled ? '' : 'none';
+            break;
+          }
+          container = container.parentElement;
+        }
+        if (container === document.body) {
+          marinesList.style.display = enabled ? '' : 'none';
+        }
+      }
+      
+      // Also check for any ticker elements
+      const tickerSelectors = [
+        '.news-ticker-container',
+        '#news-ticker',
+        '.ticker-wrapper',
+        '.mobile-ticker'
+      ];
+      tickerSelectors.forEach(sel => {
+        const el = document.querySelector(sel);
+        if (el) el.style.display = enabled ? '' : 'none';
+      });
+    }
+
+    // Handle satellite look angles section visibility
+    if (key === 'satellite-look-angles') {
+      const satlaSection = document.querySelector('.satla-section, #satla-container');
+      if (satlaSection) {
+        satlaSection.style.display = enabled ? '' : 'none';
+      }
     }
   }
 
@@ -341,7 +417,7 @@
     panel.id = 'feature-settings-panel';
     panel.innerHTML = `
       <div class="panel-header">
-        <span style="font-weight: 600;">⚙️ Comm Planner Tools<span class="drag-hint">(drag to move)</span></span>
+        <span style="font-weight: 600;">⚙️ Dashboard Settings<span class="drag-hint">(drag to move)</span></span>
         <button class="panel-close">&times;</button>
       </div>
       <div class="toggle-all-row">
@@ -490,9 +566,19 @@
       applyAllStates();
     });
 
+    // Also listen for satla:render to apply satellite toggle state
+    Events.on('satla:render', () => {
+      if (!featureStates['satellite-look-angles']) {
+        const satlaSection = document.querySelector('.satla-section, #satla-container');
+        if (satlaSection) {
+          satlaSection.style.display = 'none';
+        }
+      }
+    });
+
     Events.emit('features:ready', null, { sticky: true });
 
-    console.log('✅ [Features] Initialized');
+    console.log('✅ [Features] Initialized with Dashboard Settings');
   }
 
   Events.whenReady('core:ready', init);
