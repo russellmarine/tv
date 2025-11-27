@@ -68,6 +68,23 @@
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 100, 0, 0.2);
       color: white;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      cursor: grab;
+    }
+
+    #propagation-panel:active {
+      cursor: grabbing;
+    }
+
+    #propagation-panel input,
+    #propagation-panel button,
+    #propagation-panel select,
+    #propagation-panel a {
+      cursor: pointer;
+    }
+
+    #propagation-panel input[type="text"],
+    #propagation-panel input[type="search"] {
+      cursor: text;
     }
 
     #propagation-panel .panel-header {
@@ -1013,14 +1030,23 @@
 
   // ============ DRAG FUNCTIONALITY ============
 
-  function initDrag(panelEl, headerEl) {
-    headerEl.addEventListener('mousedown', (e) => {
-      if (e.target.classList.contains('panel-close')) return;
+  function initDrag(panelEl) {
+    // Allow dragging from anywhere on the panel except interactive elements
+    panelEl.addEventListener('mousedown', (e) => {
+      // Don't drag if clicking on interactive elements
+      const target = e.target;
+      const isInteractive = target.closest('button, input, select, a, .location-autocomplete-item, .saved-location-btn, .satla-checkbox-label, .satla-btn, .autocomplete-item');
+      if (isInteractive) return;
+      
+      // Don't drag if clicking on the close button
+      if (target.classList.contains('panel-close')) return;
+      
       isDragging = true;
       const rect = panelEl.getBoundingClientRect();
       dragOffset.x = e.clientX - rect.left;
       dragOffset.y = e.clientY - rect.top;
       panelEl.style.transition = 'none';
+      panelEl.style.cursor = 'grabbing';
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -1036,6 +1062,7 @@
       if (isDragging) {
         isDragging = false;
         panelEl.style.transition = '';
+        panelEl.style.cursor = '';
       }
     });
   }
@@ -1258,7 +1285,7 @@
     document.body.appendChild(panel);
 
     // Initialize drag
-    initDrag(panel, panel.querySelector('.panel-header'));
+    initDrag(panel);
 
     // Close button
     panel.querySelector('.panel-close').addEventListener('click', () => {
