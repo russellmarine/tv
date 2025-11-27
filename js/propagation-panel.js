@@ -1249,14 +1249,25 @@
     try {
       const saved = window.RussellTV?.Storage?.load?.('propLocation');
       if (saved) {
-        selectedLocation = JSON.parse(saved);
-        const input = document.getElementById('prop-location-input');
-        if (input && selectedLocation?.label) {
-          input.value = selectedLocation.label;
+        const parsed = JSON.parse(saved);
+        // Validate that we have valid coordinates
+        const lat = parsed.coords?.lat ?? parsed.lat;
+        const lon = parsed.coords?.lon ?? parsed.lon;
+        if (lat != null && lon != null && !isNaN(lat) && !isNaN(lon)) {
+          selectedLocation = parsed;
+          const input = document.getElementById('prop-location-input');
+          if (input && selectedLocation?.label) {
+            input.value = selectedLocation.label;
+          }
+        } else {
+          // Invalid saved location, clear it
+          selectedLocation = null;
+          window.RussellTV?.Storage?.save?.('propLocation', '');
         }
       }
     } catch (e) {
       console.warn('[Propagation] Failed to load saved location:', e);
+      selectedLocation = null;
     }
   }
 
@@ -1327,28 +1338,30 @@
     `;
 
     // ===== LOCATION-SPECIFIC SECTIONS =====
-    if (selectedLocation) {
+    if (selectedLocation && (selectedLocation.coords || (selectedLocation.lat != null && selectedLocation.lon != null))) {
       // Normalize location structure - handle both old format (lat/lon) and new format (coords.lat/lon)
-      const loc = {
-        label: selectedLocation.label,
-        lat: selectedLocation.coords?.lat ?? selectedLocation.lat,
-        lon: selectedLocation.coords?.lon ?? selectedLocation.lon,
-        tz: selectedLocation.tz || 'UTC'
-      };
+      const lat = selectedLocation.coords?.lat ?? selectedLocation.lat;
+      const lon = selectedLocation.coords?.lon ?? selectedLocation.lon;
       
-      if (loc.lat == null || loc.lon == null) {
-        contentEl.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.7;">Invalid location data</div>';
-        return;
-      }
-      
-      const dayNight = getDayNightStatus(loc.lat, loc.lon);
-      const sunTimes = dayNight.sunTimes || calculateSunTimes(loc.lat, loc.lon);
-      const muf = estimateMUF(loc.lat, loc.lon, data);
-      const bands = getRecommendedBands(muf, dayNight);
-      const geomagLat = getGeomagLat(loc.lat, loc.lon);
-      const nvis = getNvisAssessment(loc.lat, data);
-      const hfAssessment = getHfAssessment(loc.lat, loc.lon, data);
-      const satcom = getSatcomAssessment(loc.lat, loc.lon, data, loc.label);
+      // Skip if we don't have valid coordinates
+      if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
+        // Don't show location section if no valid location
+      } else {
+        const loc = {
+          label: selectedLocation.label || 'Unknown',
+          lat: lat,
+          lon: lon,
+          tz: selectedLocation.tz || 'UTC'
+        };
+        
+        const dayNight = getDayNightStatus(loc.lat, loc.lon);
+        const sunTimes = dayNight.sunTimes || calculateSunTimes(loc.lat, loc.lon);
+        const muf = estimateMUF(loc.lat, loc.lon, data);
+        const bands = getRecommendedBands(muf, dayNight);
+        const geomagLat = getGeomagLat(loc.lat, loc.lon);
+        const nvis = getNvisAssessment(loc.lat, data);
+        const hfAssessment = getHfAssessment(loc.lat, loc.lon, data);
+        const satcom = getSatcomAssessment(loc.lat, loc.lon, data, loc.label);
 
       // ===== SECTION 2: LOCATION CONDITIONS =====
       html += `
@@ -1475,6 +1488,7 @@
 
       // ===== SECTION 5: SATELLITE LOOK ANGLES =====
       html += `<div id="satla-container"></div>`;
+      }  // End of valid coordinates check
     } else {
       html += `
         <div style="text-align: center; padding: 1.5rem; opacity: 0.6; font-size: 0.9rem;">
