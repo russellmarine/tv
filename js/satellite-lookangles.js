@@ -445,7 +445,7 @@
         </div>`;
 
     if (isExpanded) {
-      html += `<div class="satla-content" onclick="event.stopPropagation()">`;
+      html += `<div class="satla-content">`;
 
       if (currentLocation) {
         html += `<div class="satla-current-location">
@@ -552,7 +552,7 @@
   // ============ STYLES ============
 
   const styles = `
-    .satla-section { margin-top:1rem; border:1px solid rgba(100,150,255,0.3); border-radius:8px; overflow:hidden; }
+    .satla-section { margin-top:1rem; border:1px solid rgba(100,150,255,0.3); border-radius:8px; overflow:visible; }
     .satla-header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(100,150,255,0.1); cursor:pointer; user-select:none; transition:background 0.15s; }
     .satla-header:hover { background:rgba(100,150,255,0.25); }
     .satla-header:active { background:rgba(100,150,255,0.35); }
