@@ -157,14 +157,34 @@
   }
 
   // Check Webex login status; if not logged in, redirect to FedRAMP Webex login
+  
+  // Start or resume Webex login for this browser/user
   async function ensureLoggedIn() {
     try {
-      const status = await apiJson('/webex/status');
-      if (status && status.logged_in) {
+      const login = await apiJson('/webex/login');
+
+      // If backend says we're already logged in for this browser/user
+      if (login && login.logged_in) {
         return true;
       }
 
-      const login = await apiJson('/webex/login');
+      // If a login URL is provided, redirect to FedRAMP Webex OAuth
+      if (login && login.url) {
+        setStatus('Redirecting to Webex login…', false);
+        window.location.href = login.url;
+        return false;
+      }
+
+      setStatus('Unable to start Webex login flow.', true);
+      return false;
+    } catch (err) {
+      console.error('[GunnyChat] ensureLoggedIn error', err);
+      setStatus('Webex auth check failed. Try again.', true);
+      return false;
+    }
+  }
+
+const login = await apiJson('/webex/login');
       if (login && login.url) {
         setStatus('Redirecting to Webex login…', false);
         window.location.href = login.url;
