@@ -1343,16 +1343,21 @@
       const lat = selectedLocation.coords?.lat ?? selectedLocation.lat;
       const lon = selectedLocation.coords?.lon ?? selectedLocation.lon;
       
+      console.log('[Propagation] Location debug:', { selectedLocation, lat, lon });
+      
       // Skip if we don't have valid coordinates
       if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
+        console.warn('[Propagation] Invalid coordinates, skipping location section');
         // Don't show location section if no valid location
       } else {
         const loc = {
           label: selectedLocation.label || 'Unknown',
-          lat: lat,
-          lon: lon,
+          lat: parseFloat(lat),
+          lon: parseFloat(lon),
           tz: selectedLocation.tz || 'UTC'
         };
+        
+        console.log('[Propagation] Using loc:', loc);
         
         const dayNight = getDayNightStatus(loc.lat, loc.lon);
         const sunTimes = dayNight.sunTimes || calculateSunTimes(loc.lat, loc.lon);
