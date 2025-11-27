@@ -309,6 +309,9 @@
         <div class="gunny-chat-messages"></div>
         <div class="gunny-chat-footer">
           <div class="gunny-chat-status"></div>
+          <div class="gunny-chat-typing">
+            GunnyGPT is thinking<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+          </div>
           <form class="gunny-chat-form">
             <input class="gunny-chat-input" type="text"
                    placeholder="Ask Gunny about your comm plan…"
