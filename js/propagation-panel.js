@@ -59,7 +59,8 @@
       right: 20px;
       width: 420px;
       max-height: 85vh;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
       background: linear-gradient(145deg, rgba(10, 5, 0, 0.98) 0%, rgba(25, 12, 0, 0.98) 100%);
       border: 2px solid rgba(255, 120, 0, 0.5);
       border-radius: 16px;
@@ -68,11 +69,6 @@
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 100, 0, 0.2);
       color: white;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      cursor: grab;
-    }
-
-    #propagation-panel:active {
-      cursor: grabbing;
     }
 
     #propagation-panel input,
@@ -94,8 +90,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      cursor: move;
+      cursor: grab;
       user-select: none;
+      flex-shrink: 0;
     }
 
     #propagation-panel .panel-header:active {
@@ -134,6 +131,18 @@
 
     #propagation-panel .panel-content {
       padding: 1rem;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Satellite look angles header inside propagation panel */
+    #propagation-panel .satla-header {
+      cursor: pointer !important;
+    }
+
+    #propagation-panel .satla-header * {
+      pointer-events: none;
     }
 
     /* Location selector */
@@ -780,6 +789,8 @@
       font-size: 0.65rem;
       color: rgba(255, 255, 255, 0.5);
       text-align: center;
+      flex-shrink: 0;
+      background: rgba(10, 5, 0, 0.95);
     }
 
     #propagation-panel .panel-footer a {
@@ -1238,22 +1249,19 @@
   // ============ DRAG FUNCTIONALITY ============
 
   function initDrag(panelEl) {
-    // Allow dragging from anywhere on the panel except interactive elements
-    panelEl.addEventListener('mousedown', (e) => {
-      // Don't drag if clicking on interactive elements
-      const target = e.target;
-      const isInteractive = target.closest('button, input, select, a, .location-autocomplete-item, .saved-location-btn, .satla-checkbox-label, .satla-btn, .autocomplete-item');
-      if (isInteractive) return;
-      
+    const headerEl = panelEl.querySelector('.panel-header');
+    if (!headerEl) return;
+
+    // Only allow dragging from the header
+    headerEl.addEventListener('mousedown', (e) => {
       // Don't drag if clicking on the close button
-      if (target.classList.contains('panel-close')) return;
+      if (e.target.classList.contains('panel-close')) return;
       
       isDragging = true;
       const rect = panelEl.getBoundingClientRect();
       dragOffset.x = e.clientX - rect.left;
       dragOffset.y = e.clientY - rect.top;
       panelEl.style.transition = 'none';
-      panelEl.style.cursor = 'grabbing';
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -1269,7 +1277,6 @@
       if (isDragging) {
         isDragging = false;
         panelEl.style.transition = '';
-        panelEl.style.cursor = '';
       }
     });
   }
