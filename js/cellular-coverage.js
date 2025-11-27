@@ -23,7 +23,7 @@
   // ============ CONFIGURATION ============
   
   const CELL_API_URL = '/cell'; // Proxied through cell-proxy.js or nginx
-  const SEARCH_RADIUS = 1000; // 1km search radius (API limit is ~2km box)
+  const SEARCH_RADIUS = 500; // 500m search radius (API limit is ~2km box)
   const CACHE_TTL = 60 * 60 * 1000; // 1 hour cache
 
   // Coverage quality colors
