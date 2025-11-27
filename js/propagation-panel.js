@@ -1218,6 +1218,9 @@
           </div>
         </div>
       `;
+
+      // ===== SECTION 5: SATELLITE LOOK ANGLES =====
+      html += `<div id="satla-container"></div>`;
     } else {
       html += `
         <div style="text-align: center; padding: 1.5rem; opacity: 0.6; font-size: 0.9rem;">
@@ -1227,6 +1230,14 @@
     }
 
     contentEl.innerHTML = html;
+
+    // Render satellite look angles section if available
+    if (selectedLocation && window.RussellTV?.SatLookAngles) {
+      const satlaContainer = contentEl.querySelector('#satla-container');
+      if (satlaContainer) {
+        window.RussellTV.SatLookAngles.render(satlaContainer);
+      }
+    }
 
     // Update footer
     const lastUpdate = window.RussellTV?.SpaceWeather?.getLastUpdate();
@@ -1243,6 +1254,16 @@
 
     Events.on('spaceweather:data-updated', () => {
       updatePanelContent();
+    });
+
+    // Listen for satellite look angles render requests
+    Events.on('satla:render', () => {
+      if (selectedLocation) {
+        const satlaContainer = panel?.querySelector('#satla-container');
+        if (satlaContainer && window.RussellTV?.SatLookAngles) {
+          window.RussellTV.SatLookAngles.render(satlaContainer);
+        }
+      }
     });
 
     Events.on('feature:toggle', ({ feature, enabled }) => {
