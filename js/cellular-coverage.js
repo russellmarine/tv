@@ -182,7 +182,7 @@
           <span class="expand-icon">${isExpanded ? '▼' : '▶'}</span>
         </div>`;
 
-    if (isExpanded) {
+    if (true) { // Always pre-fetch
       html += `<div class="cell-content">`;
 
       if (!currentLocation) {
@@ -398,7 +398,7 @@
             name: location.label
           };
           
-          if (isExpanded) {
+          if (true) { // Always pre-fetch
             fetchCellData(newLat, newLon);
           }
         }
