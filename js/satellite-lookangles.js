@@ -503,7 +503,7 @@
 
     let html = `
       <div class="satla-section ${isExpanded ? 'expanded' : 'collapsed'}">
-        <div class="satla-header" onclick="window.RussellTV.SatLookAngles.toggleExpand()">
+        <div class="satla-header" onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleExpand()">
           <span class="section-title">📡 Satellite Look Angles</span>
           <span class="expand-icon">${isExpanded ? '▼' : '▶'}</span>
         </div>
@@ -513,9 +513,9 @@
       html += `
         <div class="satla-content">
           <!-- Location Input -->
-          <div class="satla-location-input">
+          <div class="satla-location-input" onclick="event.stopPropagation()">
             <div class="input-row">
-              <select id="satla-coord-format" class="coord-format-select">
+              <select id="satla-coord-format" class="coord-format-select" onclick="event.stopPropagation()">
                 <option value="latlon">Lat/Long</option>
                 <option value="mgrs">MGRS</option>
                 <option value="maidenhead">Maidenhead</option>
@@ -523,14 +523,15 @@
               <input type="text" id="satla-coord-input" 
                      placeholder="38.8977, -77.0365" 
                      class="coord-input"
+                     onclick="event.stopPropagation()"
                      value="${currentLocation ? `${currentLocation.lat}, ${currentLocation.lon}` : ''}">
-              <button onclick="window.RussellTV.SatLookAngles.setLocation()" class="satla-btn">Set</button>
+              <button onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.setLocation()" class="satla-btn">Set</button>
             </div>
             <div class="input-row">
-              <button onclick="window.RussellTV.SatLookAngles.useSelectedLocation()" class="satla-btn secondary">
+              <button onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.useSelectedLocation()" class="satla-btn secondary">
                 Use Panel Location
               </button>
-              <button onclick="window.RussellTV.SatLookAngles.refresh()" class="satla-btn secondary">
+              <button onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.refresh()" class="satla-btn secondary">
                 🔄 Refresh
               </button>
             </div>
@@ -571,19 +572,19 @@
 
         // Constellation filters
         html += `
-          <div class="satla-filters">
+          <div class="satla-filters" onclick="event.stopPropagation()">
             <label><input type="checkbox" ${selectedConstellations.includes('wgs') ? 'checked' : ''} 
-                   onchange="window.RussellTV.SatLookAngles.toggleConstellation('wgs')"> WGS</label>
+                   onchange="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleConstellation('wgs')"> WGS</label>
             <label><input type="checkbox" ${selectedConstellations.includes('aehf') ? 'checked' : ''} 
-                   onchange="window.RussellTV.SatLookAngles.toggleConstellation('aehf')"> AEHF</label>
+                   onchange="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleConstellation('aehf')"> AEHF</label>
             <label><input type="checkbox" ${selectedConstellations.includes('intelsat') ? 'checked' : ''} 
-                   onchange="window.RussellTV.SatLookAngles.toggleConstellation('intelsat')"> Intelsat</label>
+                   onchange="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleConstellation('intelsat')"> Intelsat</label>
             <label><input type="checkbox" ${selectedConstellations.includes('eutelsat') ? 'checked' : ''} 
-                   onchange="window.RussellTV.SatLookAngles.toggleConstellation('eutelsat')"> Eutelsat</label>
+                   onchange="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleConstellation('eutelsat')"> Eutelsat</label>
             <label><input type="checkbox" ${selectedConstellations.includes('ses') ? 'checked' : ''} 
-                   onchange="window.RussellTV.SatLookAngles.toggleConstellation('ses')"> SES</label>
+                   onchange="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleConstellation('ses')"> SES</label>
             <label><input type="checkbox" ${selectedConstellations.includes('other') ? 'checked' : ''} 
-                   onchange="window.RussellTV.SatLookAngles.toggleConstellation('other')"> Other</label>
+                   onchange="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleConstellation('other')"> Other</label>
           </div>
         `;
 
