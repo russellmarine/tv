@@ -757,7 +757,9 @@
     const sScale = data?.scales?.S || 0;
     const geomagLat = getGeomagLat(lat, lon);
     const absGeomagLat = Math.abs(geomagLat);
-    const weather = window.RussellTV?.InfoBar?.getWeather?.(locationLabel);
+    
+    // Try InfoBar weather first (for predefined locations), then custom location weather
+    const weather = window.RussellTV?.InfoBar?.getWeather?.(locationLabel) || customLocationWeather;
     
     let assessment = {
       // Bands ordered by frequency (high to low)
@@ -1110,6 +1112,32 @@
     dropdown.style.display = 'block';
   }
 
+  // Weather cache for custom locations
+  let customLocationWeather = null;
+
+  async function fetchWeatherForCustomLocation(lat, lon) {
+    try {
+      const response = await fetch(`/weather?lat=${lat}&lon=${lon}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.main) {
+          customLocationWeather = {
+            main: data.weather?.[0]?.main || '',
+            desc: data.weather?.[0]?.description || '',
+            temp: Math.round(data.main.temp),
+            humidity: Math.round(data.main.humidity)
+          };
+          console.log('[Propagation] Fetched weather for custom location:', customLocationWeather);
+          return customLocationWeather;
+        }
+      }
+    } catch (e) {
+      console.warn('[Propagation] Weather fetch failed:', e);
+    }
+    customLocationWeather = null;
+    return null;
+  }
+
   function selectLocationFromAutocomplete(index) {
     const result = autocompleteResults[index];
     if (!result) return;
@@ -1132,6 +1160,11 @@
     if (window.RussellTV?.Storage?.save) {
       window.RussellTV.Storage.save('propLocation', JSON.stringify(selectedLocation));
     }
+
+    // Fetch weather for this custom location, then update panel
+    fetchWeatherForCustomLocation(result.lat, result.lon).then(() => {
+      updatePanelContent();
+    });
 
     // Emit event for satellite look angles and other listeners
     Events.emit('propagation:location-changed', selectedLocation);
