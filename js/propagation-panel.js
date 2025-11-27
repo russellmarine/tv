@@ -2305,6 +2305,9 @@
 
       // ===== SECTION 5: SATELLITE LOOK ANGLES =====
       html += `<div id="satla-container"></div>`;
+
+      // ===== SECTION 6: CELLULAR COVERAGE =====
+      html += `<div id="cell-container"></div>`;
       }  // End of valid coordinates check
     } else {
       html += `
