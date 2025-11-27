@@ -1274,6 +1274,7 @@
   Events.whenReady('spaceweather:ready', init);
 
   // ============ PUBLIC API ============
+
   window.RussellTV = window.RussellTV || {};
   window.RussellTV.Propagation = {
     getSelectedLocation: () => selectedLocation,
