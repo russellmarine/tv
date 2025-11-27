@@ -166,17 +166,17 @@ main {
 .single-side-panel {
   flex: 1;
   min-height: 200px;
-  border-radius: 12px;
-  border: 1px dashed rgba(255,255,255,0.12);
-  background: rgba(0,0,0,0.35);
   box-sizing: border-box;
-  padding: 0.5rem;
+  padding: 0.5rem 0 0.5rem 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   overflow-y: auto;
   max-height: 80vh;
+  border: none;
+  background: transparent;
 }
+
 
 /* ---------- Headlines Sidebar ---------- */
 .headline-section {
@@ -406,11 +406,20 @@ main {
     max-width: 100%;
   }
 
-  .single-side-panel {
-    width: 100%;
-    min-height: 120px;
-    max-height: none;
-  }
+.single-side-panel {
+  flex: 1;
+  min-height: 200px;
+  box-sizing: border-box;
+  padding: 0.5rem 0 0.5rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  max-height: 80vh;
+  border: none;
+  background: transparent;
+}
+
 
   .grid-wrapper {
     grid-template-columns: 1fr;
@@ -538,3 +547,9 @@ main {
     margin-right: 2px; 
   }
 }
+
+/* Hide sidebar when empty (no news widgets) */
+.single-side-panel:empty {
+  display: none !important;
+}
+
