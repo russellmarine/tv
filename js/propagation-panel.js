@@ -59,16 +59,22 @@
       right: 20px;
       width: 420px;
       max-height: 85vh;
-      display: flex;
-      flex-direction: column;
       background: linear-gradient(145deg, rgba(10, 5, 0, 0.98) 0%, rgba(25, 12, 0, 0.98) 100%);
       border: 2px solid rgba(255, 120, 0, 0.5);
       border-radius: 16px;
       z-index: 10000;
-      display: none;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 100, 0, 0.2);
       color: white;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #propagation-panel[style*="display: block"],
+    #propagation-panel[style*="display:block"],
+    #propagation-panel.visible {
+      display: flex !important;
     }
 
     #propagation-panel input,
@@ -1988,7 +1994,7 @@
 
     // Close button
     panel.querySelector('.panel-close').addEventListener('click', () => {
-      panel.style.display = 'none';
+      panel.classList.remove('visible');
     });
 
     // Close autocomplete on outside click
@@ -2310,7 +2316,7 @@
 
     Events.on('feature:toggle', ({ feature, enabled }) => {
       if (feature === 'propagation-panel' && !enabled && panel) {
-        panel.style.display = 'none';
+        panel.classList.remove('visible');
       }
     });
 
@@ -2324,11 +2330,44 @@
 
   Events.whenReady('spaceweather:ready', init);
 
+  // ============ PANEL VISIBILITY ============
+  
+  function showPanel() {
+    if (panel) {
+      panel.style.display = '';  // Clear any inline style
+      panel.classList.add('visible');
+    }
+  }
+
+  function hidePanel() {
+    if (panel) {
+      panel.classList.remove('visible');
+    }
+  }
+
+  function togglePanel() {
+    if (panel) {
+      if (panel.classList.contains('visible')) {
+        hidePanel();
+      } else {
+        showPanel();
+      }
+    }
+  }
+
+  function isPanelVisible() {
+    return panel?.classList.contains('visible') || false;
+  }
+
   // ============ PUBLIC API ============
   window.RussellTV = window.RussellTV || {};
   window.RussellTV.Propagation = {
     getSelectedLocation: () => selectedLocation,
     getPanel: () => panel,
+    showPanel,
+    hidePanel,
+    togglePanel,
+    isPanelVisible,
     handleLocationInput,
     selectLocation: selectLocationFromAutocomplete,
     selectSavedLocation,
