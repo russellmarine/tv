@@ -1,373 +1,357 @@
-// /js/gunny-chat.js
-// GunnyGPT Comm Planner chat – modular, no coupling to other features
 (function() {
   'use strict';
 
-  const API_ME = '/api/me';
-  const API_HISTORY = '/api/chat/history?limit=40';
-  const API_SEND = '/api/chat/send';
+  console.log('✅ [GunnyChat] module loaded');
 
-  const state = {
-    isAuthenticated: false,
-    visible: false,
-    pollTimer: null
-  };
+  const API_BASE = '/api';
 
-  let containerEl, panelEl, messagesEl, inputEl, sendBtn, loginOverlayEl, headerUserEl;
+  let panelEl = null;
+  let messagesEl = null;
+  let inputEl = null;
+  let formEl = null;
+  let statusEl = null;
+  let isOpen = false;
 
-  function init() {
-    containerEl = document.getElementById('gunny-chat-container');
-    if (!containerEl) {
-      console.warn('[GunnyChat] #gunny-chat-container not found, skipping init.');
-      return;
-    }
-
-    buildLayout();
-    wireEvents();
-    checkAuth();
-  }
-
-  function buildLayout() {
-    // Slightly reuse your headline look but with a fiery twist
-    containerEl.innerHTML = `
-      <div id="gunny-chat-panel" class="gunny-chat-collapsed">
-        <div id="gunny-chat-header">
-          <span class="gunny-title">🔥 GunnyGPT – Comm Planner</span>
-          <span id="gunny-user-label" class="gunny-user-label"></span>
-        </div>
-        <div id="gunny-chat-body">
-          <div id="gunny-chat-messages"></div>
-        </div>
-        <div id="gunny-chat-footer">
-          <textarea id="gunny-input" rows="2"
-            placeholder="Ask the Gunny about links, SATCOM plans, TTPs…"></textarea>
-          <button id="gunny-send-btn">Send</button>
-        </div>
-        <div id="gunny-login-overlay" class="gunny-hidden">
-          <p>Sign in with Webex to talk with GunnyGPT.</p>
-          <a id="gunny-login-btn" href="/api/webex/login">Login with Webex</a>
-        </div>
-      </div>
-    `;
-
-    panelEl = document.getElementById('gunny-chat-panel');
-    messagesEl = document.getElementById('gunny-chat-messages');
-    inputEl = document.getElementById('gunny-input');
-    sendBtn = document.getElementById('gunny-send-btn');
-    loginOverlayEl = document.getElementById('gunny-login-overlay');
-    headerUserEl = document.getElementById('gunny-user-label');
-
-    applyStyles();
-  }
-
-  function applyStyles() {
-    // Inline styles so you don't have to touch CSS files yet; you can migrate later.
-    const css = `
-      .gunny-hidden { display: none; }
-
-      #gunny-chat-panel {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        height: 260px;
-        background: radial-gradient(circle at top left, #3b0b0b 0, #130303 40%, #050000 100%);
-        border-radius: 6px;
-        border: 1px solid rgba(255, 80, 0, 0.55);
-        box-shadow: 0 0 16px rgba(255, 80, 0, 0.35);
-        overflow: hidden;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      }
-
-      #gunny-chat-panel.gunny-chat-collapsed {
+  // ---------- Styles ----------
+  function injectStyles() {
+    if (document.getElementById('gunny-chat-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'gunny-chat-styles';
+    style.textContent = `
+      .gunny-chat-panel {
+        position: fixed;
+        bottom: 3.2rem;
+        right: 1rem;
+        width: 420px;
+        max-height: 70vh;
+        min-height: 260px;
+        background: rgba(0,0,0,0.95);
+        color: #f5f5f5;
+        border-radius: 12px;
+        border: 1px solid rgba(255,120,0,0.6);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.8);
         display: none;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 9999;
+        font-size: 0.85rem;
       }
-
-      #gunny-chat-header {
+      .gunny-chat-panel.open {
         display: flex;
-        justify-content: space-between;
+      }
+      .gunny-chat-header {
+        padding: 0.4rem 0.6rem;
+        display: flex;
         align-items: center;
-        padding: 0.35rem 0.6rem;
-        border-bottom: 1px solid rgba(255, 120, 0, 0.4);
-        background: linear-gradient(90deg, rgba(255,120,0,0.2), rgba(255,0,0,0.05));
+        justify-content: space-between;
+        background: radial-gradient(circle at top left,
+          rgba(255,120,0,0.4),
+          rgba(0,0,0,0.95));
+        border-bottom: 1px solid rgba(255,120,0,0.4);
+      }
+      .gunny-chat-title {
+        font-weight: 600;
         font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: #ffd9c2;
       }
-
-      #gunny-chat-header .gunny-title::before {
-        content: "● ";
-        color: #ff5a00;
+      .gunny-chat-close {
+        background: transparent;
+        border: none;
+        color: #fff;
+        cursor: pointer;
+        font-size: 0.9rem;
       }
-
-      .gunny-user-label {
-        font-size: 0.7rem;
-        opacity: 0.75;
-      }
-
-      #gunny-chat-body {
-        flex: 1;
+      .gunny-chat-messages {
+        padding: 0.5rem 0.6rem;
+        flex: 1 1 auto;
         overflow-y: auto;
-        padding: 0.5rem;
-      }
-
-      #gunny-chat-messages {
         display: flex;
         flex-direction: column;
-        gap: 0.3rem;
+        gap: 0.35rem;
       }
-
-      .gunny-msg {
-        max-width: 90%;
-        padding: 0.3rem 0.55rem;
-        border-radius: 0.4rem;
-        font-size: 0.78rem;
+      .gunny-chat-msg {
+        padding: 0.35rem 0.5rem;
+        border-radius: 8px;
+        max-width: 85%;
         line-height: 1.3;
-        position: relative;
+        white-space: pre-wrap;
+        word-break: break-word;
       }
-
-      .gunny-msg.me {
-        margin-left: auto;
-        background: linear-gradient(135deg, #ff7b21, #ff4b10);
-        color: #120500;
-        box-shadow: 0 0 8px rgba(255, 130, 40, 0.65);
+      .gunny-chat-msg.from-me {
+        align-self: flex-end;
+        background: rgba(100,150,255,0.9);
+        color: #000;
       }
-
-      .gunny-msg.gunny {
-        margin-right: auto;
-        background: radial-gradient(circle at top left, #2b0903, #140202);
-        color: #ffd7bd;
-        border: 1px solid rgba(255, 120, 0, 0.4);
+      .gunny-chat-msg.from-gunny {
+        align-self: flex-start;
+        background: rgba(255,120,0,0.85);
+        color: #fff;
       }
-
-      .gunny-msg .meta {
-        font-size: 0.65rem;
-        opacity: 0.65;
-        margin-top: 0.12rem;
+      .gunny-chat-msg.from-other {
+        align-self: flex-start;
+        background: rgba(80,80,80,0.9);
       }
-
-      #gunny-chat-footer {
-        border-top: 1px solid rgba(255, 80, 0, 0.4);
-        padding: 0.4rem;
+      .gunny-chat-footer {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding: 0.35rem 0.4rem 0.45rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .gunny-chat-status {
+        min-height: 1.1em;
+        font-size: 0.7rem;
+        color: rgba(220,220,220,0.8);
+      }
+      .gunny-chat-status.error {
+        color: #ff8080;
+      }
+      .gunny-chat-form {
         display: flex;
         gap: 0.35rem;
-        background: rgba(0, 0, 0, 0.92);
       }
-
-      #gunny-input {
-        flex: 1;
-        resize: none;
-        background: rgba(15, 5, 2, 0.9);
-        border: 1px solid rgba(255, 90, 0, 0.6);
-        color: #ffe2cd;
-        padding: 0.3rem 0.4rem;
-        font-size: 0.78rem;
-        border-radius: 0.3rem;
+      .gunny-chat-input {
+        flex: 1 1 auto;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.25);
+        background: rgba(0,0,0,0.7);
+        color: #fff;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.8rem;
       }
-
-      #gunny-input:focus {
+      .gunny-chat-input:focus {
         outline: none;
-        box-shadow: 0 0 8px rgba(255, 120, 0, 0.7);
+        border-color: rgba(255,120,0,0.85);
+        box-shadow: 0 0 4px rgba(255,120,0,0.8);
       }
-
-      #gunny-send-btn {
-        align-self: flex-end;
-        padding: 0.3rem 0.7rem;
+      .gunny-chat-send {
         border-radius: 999px;
-        border: 1px solid rgba(255, 160, 80, 0.9);
-        background: radial-gradient(circle at top, #ffb347, #ff5a1f);
-        color: #201004;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+        border: none;
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
         cursor: pointer;
-        white-space: nowrap;
+        background: linear-gradient(135deg, #ff8800, #ff4500);
+        color: #000;
+        font-weight: 600;
       }
-
-      #gunny-send-btn:hover {
-        box-shadow: 0 0 10px rgba(255, 120, 0, 0.9);
-      }
-
-      #gunny-login-overlay {
-        position: absolute;
-        inset: 0;
-        background: rgba(5, 0, 0, 0.95);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 0.7rem;
-        color: #ffe0c7;
-        font-size: 0.82rem;
-        text-align: center;
-        padding: 0 1.5rem;
-      }
-
-      #gunny-login-overlay.gunny-hidden {
-        display: none;
-      }
-
-      #gunny-login-btn {
-        padding: 0.35rem 0.9rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 120, 0, 0.85);
-        text-decoration: none;
-        color: #1a0500;
-        background: linear-gradient(135deg, #ffaa3a, #ff5f1c);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-size: 0.78rem;
+      .gunny-chat-send:hover {
+        filter: brightness(1.1);
       }
     `;
-    const styleEl = document.createElement('style');
-    styleEl.textContent = css;
-    document.head.appendChild(styleEl);
+    document.head.appendChild(style);
   }
 
-  function wireEvents() {
-    if (!sendBtn || !inputEl) return;
-
-    sendBtn.addEventListener('click', sendMessage);
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
+  // ---------- API helper ----------
+  async function apiJson(path, options) {
+    const res = await fetch(API_BASE + path, {
+      credentials: 'include',
+      ...options,
     });
+    if (!res.ok) {
+      let body;
+      try { body = await res.text(); } catch { body = '<no body>'; }
+      throw new Error('API ' + path + ' failed: ' + res.status + ' ' + body);
+    }
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) return {};
+    return await res.json();
   }
 
-  async function checkAuth() {
+  // Check Webex login status; if not logged in, redirect to FedRAMP Webex login
+  async function ensureLoggedIn() {
     try {
-      const res = await fetch(API_ME, { credentials: 'include' });
-      const data = await res.json();
-      if (!data.authenticated) {
-        state.isAuthenticated = false;
-        loginOverlayEl && loginOverlayEl.classList.remove('gunny-hidden');
-        stopPolling();
-        return;
+      const status = await apiJson('/webex/status');
+      if (status && status.logged_in) {
+        return true;
       }
-      state.isAuthenticated = true;
-      if (headerUserEl) headerUserEl.textContent = data.displayName || '';
-      loginOverlayEl && loginOverlayEl.classList.add('gunny-hidden');
-      startPolling();
+
+      const login = await apiJson('/webex/login');
+      if (login && login.url) {
+        setStatus('Redirecting to Webex login…', false);
+        window.location.href = login.url;
+      } else {
+        setStatus('Unable to start Webex login flow.', true);
+      }
+      return false;
     } catch (err) {
-      console.error('[GunnyChat] auth check failed', err);
+      console.error('[GunnyChat] ensureLoggedIn error', err);
+      setStatus('Webex auth check failed. Try again.', true);
+      return false;
     }
   }
 
-  async function loadHistory() {
-    if (!state.isAuthenticated || !messagesEl) return;
-    try {
-      const res = await fetch(API_HISTORY, { credentials: 'include' });
-      if (!res.ok) return;
-      const data = await res.json();
-      renderMessages(data.messages || []);
-    } catch (err) {
-      console.error('[GunnyChat] history error', err);
-    }
+  // ---------- UI helpers ----------
+  function setStatus(msg, isError) {
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.classList.toggle('error', !!isError);
   }
 
-  function renderMessages(msgs) {
-    messagesEl.innerHTML = '';
-    msgs.forEach((m) => {
-      const div = document.createElement('div');
-      div.classList.add('gunny-msg');
-      if (m.fromMe) div.classList.add('me');
-      else if (m.fromGunny) div.classList.add('gunny');
+  function clearStatus() {
+    setStatus('');
+  }
 
-      const textSpan = document.createElement('div');
-      textSpan.textContent = m.text || '';
-
-      const meta = document.createElement('div');
-      meta.classList.add('meta');
-      const ts = new Date(m.created);
-      meta.textContent =
-        (m.fromGunny ? 'GunnyGPT' : 'You') +
-        ' · ' +
-        ts.toLocaleTimeString();
-
-      div.appendChild(textSpan);
-      div.appendChild(meta);
-      messagesEl.appendChild(div);
-    });
+  function scrollToBottom() {
+    if (!messagesEl) return;
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  async function sendMessage() {
-    if (!state.isAuthenticated) {
-      loginOverlayEl && loginOverlayEl.classList.remove('gunny-hidden');
-      return;
+  function renderMessage(msg) {
+    if (!messagesEl) return;
+    const div = document.createElement('div');
+    const cls = msg.fromMe ? 'from-me'
+              : msg.fromGunny ? 'from-gunny'
+              : 'from-other';
+
+    div.className = 'gunny-chat-msg ' + cls;
+    div.textContent = msg.text || '';
+    messagesEl.appendChild(div);
+  }
+
+  // ---------- History ----------
+  async function loadHistory() {
+    try {
+      setStatus('Loading history…');
+      const data = await apiJson('/chat/history');
+      messagesEl.innerHTML = '';
+      const list = (data && data.messages) || [];
+      for (const m of list) {
+        renderMessage(m);
+      }
+      scrollToBottom();
+      clearStatus();
+    } catch (err) {
+      console.error('[GunnyChat] history error', err);
+      setStatus('Unable to load history. Try again, Devil Dog.', true);
     }
+  }
+
+  // ---------- Sending ----------
+  async function onSend(e) {
+    e.preventDefault();
     const text = (inputEl.value || '').trim();
     if (!text) return;
+
+    // Show user bubble immediately
+    renderMessage({ text, fromMe: true });
+    scrollToBottom();
     inputEl.value = '';
 
     try {
-      const res = await fetch(API_SEND, {
+      const logged = await ensureLoggedIn();
+      if (!logged) return;
+
+      const resp = await apiJson('/chat/send', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text }),
       });
-      if (!res.ok) {
-        console.error('[GunnyChat] send failed', await res.text());
-        return;
+
+      // Render Gunny's reply if present
+      if (resp && resp.markdown) {
+        renderMessage({ text: resp.markdown, fromGunny: true });
+        scrollToBottom();
       }
-      // Small delay so the bot has time to answer
-      setTimeout(loadHistory, 600);
+
+      clearStatus();
     } catch (err) {
       console.error('[GunnyChat] send error', err);
+      setStatus('Send failed. Check Webex auth or try again.', true);
     }
   }
 
-  function startPolling() {
-    loadHistory();
-    if (state.pollTimer) clearInterval(state.pollTimer);
-    state.pollTimer = window.setInterval(loadHistory, 3500);
+  // ---------- Panel ----------
+  function ensurePanel() {
+    if (panelEl) return;
+
+    injectStyles();
+
+    panelEl = document.getElementById('gunny-chat-container');
+    if (!panelEl) {
+      panelEl = document.createElement('div');
+      panelEl.id = 'gunny-chat-container';
+      panelEl.className = 'gunny-chat-panel';
+      panelEl.innerHTML = `
+        <div class="gunny-chat-header">
+          <div class="gunny-chat-title">🔥 GunnyGPT · Comm Planner</div>
+          <button class="gunny-chat-close" type="button" aria-label="Close Gunny chat">✕</button>
+        </div>
+        <div class="gunny-chat-messages"></div>
+        <div class="gunny-chat-footer">
+          <div class="gunny-chat-status"></div>
+          <form class="gunny-chat-form">
+            <input class="gunny-chat-input" type="text"
+                   placeholder="Ask Gunny about your comm plan…"
+                   autocomplete="off" />
+            <button class="gunny-chat-send" type="submit">Send</button>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(panelEl);
+    }
+
+    messagesEl = panelEl.querySelector('.gunny-chat-messages');
+    inputEl    = panelEl.querySelector('.gunny-chat-input');
+    formEl     = panelEl.querySelector('.gunny-chat-form');
+    statusEl   = panelEl.querySelector('.gunny-chat-status');
+
+    const closeBtn = panelEl.querySelector('.gunny-chat-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        closePanel();
+      });
+    }
+
+    if (formEl) {
+      formEl.addEventListener('submit', onSend);
+    }
+
+    console.log('✅ [GunnyChat] panel initialized');
   }
 
-  function stopPolling() {
-    if (state.pollTimer) {
-      clearInterval(state.pollTimer);
-      state.pollTimer = null;
+  async function openPanel() {
+    ensurePanel();
+    panelEl.classList.add('open');
+    isOpen = true;
+
+    try {
+      const logged = await ensureLoggedIn();
+      if (!logged) return;
+      await loadHistory();
+    } catch (err) {
+      console.error('[GunnyChat] open error', err);
+      setStatus('Auth or API error talking to Gunny.', true);
     }
   }
 
-  // Public API for info-bar toggle
-  function show() {
+  function closePanel() {
     if (!panelEl) return;
-    state.visible = true;
-    panelEl.classList.remove('gunny-chat-collapsed');
+    panelEl.classList.remove('open');
+    isOpen = false;
   }
 
-  function hide() {
-    if (!panelEl) return;
-    state.visible = false;
-    panelEl.classList.add('gunny-chat-collapsed');
-  }
-
-  function toggle() {
-    if (!panelEl) return;
-    if (state.visible) hide();
-    else {
-      show();
-      // lazy-auth check each open in case cookie expired
-      checkAuth();
+  function togglePanel() {
+    if (isOpen) {
+      closePanel();
+    } else {
+      openPanel();
     }
   }
 
-  // Expose global handle for info-bar.js
-  window.GunnyChat = {
-    init,
-    toggle,
-    show,
-    hide
+  // ---------- Export globals ----------
+  window.RussellTV = window.RussellTV || {};
+  window.RussellTV.GunnyChat = {
+    open: openPanel,
+    close: closePanel,
+    toggle: togglePanel,
+    isOpen: function() { return !!isOpen; },
   };
 
-  // Auto-init after DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  window.GunnyChat = {
+    open: openPanel,
+    close: closePanel,
+    toggle: togglePanel,
+    isOpen: function() { return !!isOpen; },
+  };
+
+  console.log('✅ [GunnyChat] globals ready (window.GunnyChat + RussellTV.GunnyChat)');
 })();
