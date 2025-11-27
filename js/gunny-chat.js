@@ -4,7 +4,6 @@
   console.log('✅ [GunnyChat] module loaded');
 
   const API_BASE = '/api';
-  const HISTORY_KEY = 'gunny_chat_history_v1';
 
   let panelEl = null;
   let messagesEl = null;
@@ -13,11 +12,6 @@
   let statusEl = null;
   let typingEl = null;
   let isOpen = false;
-  let history = [];
-
-  // Drag state
-  let isDragging = false;
-  let dragState = null;
 
   // ---------- Styles ----------
   function injectStyles() {
@@ -78,14 +72,26 @@
         display: flex;
         flex-direction: column;
         gap: 0.35rem;
+        overscroll-behavior: contain;
+        touch-action: pan-y;
       }
       .gunny-chat-msg {
         padding: 0.35rem 0.5rem;
         border-radius: 8px;
         max-width: 85%;
         line-height: 1.3;
-        white-space: pre-wrap;
         word-break: break-word;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .gunny-chat-msg-text {
+        white-space: pre-wrap;
+      }
+      .gunny-chat-msg-meta {
+        font-size: 0.65rem;
+        opacity: 0.65;
+        text-align: right;
       }
       .gunny-chat-msg.from-me {
         align-self: flex-end;
@@ -102,13 +108,6 @@
       .gunny-chat-msg.from-other {
         align-self: flex-start;
         background: rgba(80,80,80,0.9);
-      }
-      .gunny-chat-timestamp {
-        display: block;
-        font-size: 0.65rem;
-        opacity: 0.6;
-        text-align: right;
-        margin-top: 0.15rem;
       }
       .gunny-chat-footer {
         border-top: 1px solid rgba(255,255,255,0.1);
@@ -142,11 +141,13 @@
       .gunny-chat-typing .dot:nth-child(3) {
         animation-delay: 0.4s;
       }
+
       @keyframes gunny-dots {
         0%, 20%   { opacity: 0.2; transform: translateY(0); }
         50%       { opacity: 1;   transform: translateY(-1px); }
         100%      { opacity: 0.2; transform: translateY(0); }
       }
+
       .gunny-chat-form {
         display: flex;
         gap: 0.35rem;
@@ -233,6 +234,14 @@
     setStatus('');
   }
 
+  function showTyping() {
+    if (typingEl) typingEl.style.display = 'block';
+  }
+
+  function hideTyping() {
+    if (typingEl) typingEl.style.display = 'none';
+  }
+
   function scrollToBottom() {
     if (!messagesEl) return;
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -242,89 +251,59 @@
     if (!ts) return '';
     const d = new Date(ts);
     if (isNaN(d.getTime())) return '';
-    return d.toLocaleTimeString('en-US', {
+    const dateStr = d.toISOString().slice(0, 10); // YYYY-MM-DD
+    const timeStr = d.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false
+      hour12: false,
     });
-  }
-
-  // ---------- Local history (browser persistence) ----------
-  function loadLocalHistory() {
-    try {
-      const raw = window.localStorage.getItem(HISTORY_KEY);
-      if (!raw) return [];
-      const arr = JSON.parse(raw);
-      if (!Array.isArray(arr)) return [];
-      return arr;
-    } catch (e) {
-      console.warn('[GunnyChat] failed to load history from localStorage', e);
-      return [];
-    }
-  }
-
-  function saveLocalHistory() {
-    try {
-      window.localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    } catch (e) {
-      console.warn('[GunnyChat] failed to save history to localStorage', e);
-    }
-  }
-
-  function addToHistory(msg) {
-    history.push(msg);
-    // keep only last 200 messages to avoid unbounded growth
-    if (history.length > 200) {
-      history = history.slice(history.length - 200);
-    }
-    saveLocalHistory();
+    return `${dateStr} ${timeStr}`;
   }
 
   function renderMessage(msg) {
     if (!messagesEl) return;
-    const div = document.createElement('div');
+
+    const wrapper = document.createElement('div');
     const cls = msg.fromMe ? 'from-me'
               : msg.fromGunny ? 'from-gunny'
               : 'from-other';
-
-    div.className = 'gunny-chat-msg ' + cls;
+    wrapper.className = 'gunny-chat-msg ' + cls;
 
     const textDiv = document.createElement('div');
+    textDiv.className = 'gunny-chat-msg-text';
     textDiv.textContent = msg.text || '';
-    div.appendChild(textDiv);
 
-    const tsStr = msg.ts ? formatTimestamp(msg.ts) : '';
+    const tsRaw = msg.timestamp || msg.ts || msg.createdAt || Date.now();
+    const tsStr = formatTimestamp(tsRaw);
+
+    wrapper.appendChild(textDiv);
+
     if (tsStr) {
-      const tsSpan = document.createElement('span');
-      tsSpan.className = 'gunny-chat-timestamp';
-      tsSpan.textContent = tsStr;
-      div.appendChild(tsSpan);
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'gunny-chat-msg-meta';
+      metaDiv.textContent = tsStr;
+      wrapper.appendChild(metaDiv);
     }
 
-    messagesEl.appendChild(div);
+    messagesEl.appendChild(wrapper);
   }
 
-  // ---------- History load (from localStorage) ----------
+  // ---------- History ----------
   async function loadHistory() {
-    history = loadLocalHistory();
-    if (!messagesEl) return;
-    messagesEl.innerHTML = '';
-    for (const m of history) {
-      renderMessage(m);
+    try {
+      setStatus('Loading history…');
+      const data = await apiJson('/chat/history');
+      messagesEl.innerHTML = '';
+      const list = (data && data.messages) || [];
+      for (const m of list) {
+        renderMessage(m);
+      }
+      scrollToBottom();
+      clearStatus();
+    } catch (err) {
+      console.error('[GunnyChat] history error', err);
+      setStatus('Unable to load history. Try again, Devil Dog.', true);
     }
-    scrollToBottom();
-    clearStatus();
-  }
-
-  // ---------- Typing indicator ----------
-  function showTyping() {
-    if (!typingEl) return;
-    typingEl.style.display = 'block';
-  }
-
-  function hideTyping() {
-    if (!typingEl) return;
-    typingEl.style.display = 'none';
   }
 
   // ---------- Sending ----------
@@ -333,25 +312,19 @@
     const text = (inputEl.value || '').trim();
     if (!text) return;
 
-    // Prepare user message object
-    const userMsg = {
-      text,
-      fromMe: true,
-      fromGunny: false,
-      ts: new Date().toISOString()
-    };
-
-    // Show user bubble immediately and persist
-    renderMessage(userMsg);
-    addToHistory(userMsg);
+    // Local echo
+    renderMessage({ text, fromMe: true, timestamp: Date.now() });
     scrollToBottom();
     inputEl.value = '';
 
+    showTyping();
+
     try {
       const logged = await ensureLoggedIn();
-      if (!logged) return;
-
-      showTyping();
+      if (!logged) {
+        hideTyping();
+        return;
+      }
 
       const resp = await apiJson('/chat/send', {
         method: 'POST',
@@ -360,14 +333,11 @@
       });
 
       if (resp && resp.markdown) {
-        const gunnyMsg = {
+        renderMessage({
           text: resp.markdown,
-          fromMe: false,
           fromGunny: true,
-          ts: new Date().toISOString()
-        };
-        renderMessage(gunnyMsg);
-        addToHistory(gunnyMsg);
+          timestamp: resp.timestamp || Date.now(),
+        });
         scrollToBottom();
       }
 
@@ -381,53 +351,49 @@
   }
 
   // ---------- Drag handling ----------
-  function onHeaderMouseDown(e) {
-    if (e.button !== 0) return; // left-click only
-    if (!panelEl) return;
-    e.preventDefault();
+  function makeDraggable(panel, handle) {
+    if (!panel || !handle) return;
 
-    const rect = panelEl.getBoundingClientRect();
-    dragState = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startLeft: rect.left,
-      startTop: rect.top,
-      width: rect.width,
-      height: rect.height
-    };
-    isDragging = true;
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
 
-    document.addEventListener('mousemove', onHeaderMouseMove);
-    document.addEventListener('mouseup', onHeaderMouseUp);
-  }
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      dragging = true;
 
-  function onHeaderMouseMove(e) {
-    if (!isDragging || !dragState || !panelEl) return;
+      const rect = panel.getBoundingClientRect();
+      // Switch to top/left positioning when dragging
+      panel.style.top = rect.top + 'px';
+      panel.style.left = rect.left + 'px';
+      panel.style.bottom = 'auto';
+      panel.style.right = 'auto';
 
-    const dx = e.clientX - dragState.startX;
-    const dy = e.clientY - dragState.startY;
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = rect.left;
+      startTop = rect.top;
 
-    let newLeft = dragState.startLeft + dx;
-    let newTop = dragState.startTop + dy;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
 
-    const maxLeft = window.innerWidth - dragState.width;
-    const maxTop = window.innerHeight - dragState.height;
+    function onMove(e) {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      panel.style.left = startLeft + dx + 'px';
+      panel.style.top = startTop + dy + 'px';
+    }
 
-    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-    newTop = Math.max(0, Math.min(newTop, maxTop));
-
-    panelEl.style.left = newLeft + 'px';
-    panelEl.style.top = newTop + 'px';
-    panelEl.style.right = 'auto';
-    panelEl.style.bottom = 'auto';
-  }
-
-  function onHeaderMouseUp() {
-    if (!isDragging) return;
-    isDragging = false;
-    dragState = null;
-    document.removeEventListener('mousemove', onHeaderMouseMove);
-    document.removeEventListener('mouseup', onHeaderMouseUp);
+    function onUp() {
+      if (!dragging) return;
+      dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
   }
 
   // ---------- Panel ----------
@@ -481,9 +447,7 @@
     }
 
     const headerEl = panelEl.querySelector('.gunny-chat-header');
-    if (headerEl) {
-      headerEl.addEventListener('mousedown', onHeaderMouseDown);
-    }
+    makeDraggable(panelEl, headerEl);
 
     console.log('✅ [GunnyChat] panel initialized');
   }
@@ -493,16 +457,10 @@
     panelEl.classList.add('open');
     isOpen = true;
 
-    hideTyping();
-    clearStatus();
-
     try {
       const logged = await ensureLoggedIn();
       if (!logged) return;
       await loadHistory();
-      if (inputEl) {
-        inputEl.focus();
-      }
     } catch (err) {
       console.error('[GunnyChat] open error', err);
       setStatus('Auth or API error talking to Gunny.', true);
