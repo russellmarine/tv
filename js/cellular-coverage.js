@@ -459,37 +459,97 @@
       }
     });
 
+    // Helper function to ensure container exists
+    function ensureCellContainer() {
+      let cellContainer = document.getElementById('cell-container');
+      if (!cellContainer) {
+        cellContainer = document.createElement('div');
+        cellContainer.id = 'cell-container';
+        
+        // Try to insert after satellite look angles section
+        const satlaSection = document.querySelector('.satla-section');
+        if (satlaSection && satlaSection.parentNode) {
+          satlaSection.parentNode.insertBefore(cellContainer, satlaSection.nextSibling);
+        } else {
+          // Fallback: append to prop-content
+          const propContent = document.getElementById('prop-content');
+          if (propContent) {
+            propContent.appendChild(cellContainer);
+          }
+        }
+      }
+      return cellContainer;
+    }
+
     // Listen for satellite look angles render to inject our section
     Events.on('satla:render', () => {
       setTimeout(() => {
-        // Find where to inject our panel (after satellite look angles or at end of prop-content)
-        const satlaSection = document.querySelector('.satla-section');
-        let cellContainer = document.getElementById('cell-container');
-        
-        if (!cellContainer) {
-          cellContainer = document.createElement('div');
-          cellContainer.id = 'cell-container';
-          
-          if (satlaSection) {
-            // Insert after satellite look angles
-            satlaSection.parentNode.insertBefore(cellContainer, satlaSection.nextSibling);
-          } else {
-            // Append to prop-content
-            const propContent = document.getElementById('prop-content');
-            if (propContent) {
-              propContent.appendChild(cellContainer);
-            }
-          }
-        }
-        
-        renderCellularCoverage(cellContainer);
+        const container = ensureCellContainer();
+        if (container) renderCellularCoverage(container);
       }, 50);
     });
 
     // Initial render when propagation panel is ready
     Events.whenReady('propagation:ready', () => {
       setTimeout(() => {
-        Events.emit('cell:render');
+        // Get location from propagation panel first
+        let propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
+        
+        // Fallback: check localStorage using RussellTV Storage API
+        if (!propLocation || !propLocation.coords) {
+          try {
+            const Storage = window.RussellTV?.Storage;
+            if (Storage) {
+              // The propagation panel saves to 'propLocation'
+              const savedLoc = Storage.load('propLocation');
+              if (savedLoc) {
+                const parsed = typeof savedLoc === 'string' ? JSON.parse(savedLoc) : savedLoc;
+                if (parsed && parsed.lat && parsed.lon) {
+                  propLocation = {
+                    coords: { lat: parsed.lat, lon: parsed.lon },
+                    label: parsed.label || 'Saved Location'
+                  };
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[Cellular] Error reading saved location:', e);
+          }
+        }
+        
+        if (propLocation && propLocation.coords) {
+          currentLocation = {
+            lat: propLocation.coords.lat,
+            lon: propLocation.coords.lon,
+            name: propLocation.label
+          };
+          // Pre-fetch data for cached location
+          fetchCellData(currentLocation.lat, currentLocation.lon);
+        }
+        
+        // Ensure container exists and render
+        const container = ensureCellContainer();
+        if (container) renderCellularCoverage(container);
+      }, 300);
+    });
+
+    // Also listen for propagation panel render to ensure we always show
+    Events.on('propagation:render', () => {
+      setTimeout(() => {
+        // Check for location again in case it wasn't ready before
+        if (!currentLocation) {
+          const propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
+          if (propLocation && propLocation.coords) {
+            currentLocation = {
+              lat: propLocation.coords.lat,
+              lon: propLocation.coords.lon,
+              name: propLocation.label
+            };
+            fetchCellData(currentLocation.lat, currentLocation.lon);
+          }
+        }
+        const container = ensureCellContainer();
+        if (container) renderCellularCoverage(container);
       }, 100);
     });
 
