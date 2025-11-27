@@ -355,9 +355,9 @@
     isLoading = true;
     Events.emit('satla:render');
 
+    // Fetch ALL constellations (not just selected ones) so toggling is instant
     const newData = {};
     for (const [key, constellation] of Object.entries(SATELLITES)) {
-      if (!selectedConstellations.includes(key)) continue;
       newData[key] = { ...constellation, satellites: [] };
       const promises = constellation.satellites.map(async (sat, index) => {
         await new Promise(resolve => setTimeout(resolve, index * 200));
@@ -602,8 +602,8 @@
     const idx = selectedConstellations.indexOf(key);
     if (idx >= 0) selectedConstellations.splice(idx, 1);
     else selectedConstellations.push(key);
-    if (idx < 0 && currentLocation) fetchAllSatellites();
-    else Events.emit('satla:render');
+    // Just re-render - all data is already fetched
+    Events.emit('satla:render');
   }
 
   function toggleGoodAnglesFilter() { showOnlyGoodAngles = !showOnlyGoodAngles; Events.emit('satla:render'); }
