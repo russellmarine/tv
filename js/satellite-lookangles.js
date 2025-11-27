@@ -363,23 +363,29 @@
   // ============ WEATHER FETCHING ============
 
   async function fetchWeatherForLocation(lat, lon) {
+    // Try the existing weather proxy with lat/lon
+    // If it fails, weather just won't be shown (not critical)
     try {
       const response = await fetch(`/weather?lat=${lat}&lon=${lon}`);
-      if (!response.ok) throw new Error('Weather fetch failed');
-
-      const data = await response.json();
-      if (data && data.main) {
-        currentWeather = {
-          main: data.weather?.[0]?.main || '',
-          desc: data.weather?.[0]?.description || '',
-          temp: Math.round(data.main.temp),
-          humidity: Math.round(data.main.humidity)
-        };
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.main) {
+          currentWeather = {
+            main: data.weather?.[0]?.main || '',
+            desc: data.weather?.[0]?.description || '',
+            temp: Math.round(data.main.temp),
+            humidity: Math.round(data.main.humidity)
+          };
+          Events.emit('satla:render');
+          return;
+        }
       }
-    } catch (error) {
-      console.error('[SatLookAngles] Weather fetch error:', error);
-      currentWeather = null;
+    } catch (e) {
+      // Silently fail - weather is optional
     }
+    
+    // Weather unavailable for this location
+    currentWeather = null;
     Events.emit('satla:render');
   }
 
@@ -819,8 +825,8 @@
     styleEl.textContent = styles;
     document.head.appendChild(styleEl);
 
-    // Auto-refresh every 60 seconds
-    setInterval(() => { if (currentLocation && !isLoading) fetchAllSatellites(); }, 60000);
+    // Auto-refresh every 30 minutes (GEO satellites don't move much)
+    setInterval(() => { if (currentLocation && !isLoading) fetchAllSatellites(); }, 1800000);
 
     // Close autocomplete on outside click
     document.addEventListener('click', () => {
