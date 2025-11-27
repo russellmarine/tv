@@ -127,6 +127,8 @@ main {
   padding: 0.75rem;
   padding-bottom: 2.2rem;
   box-sizing: border-box;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 #single-view,
@@ -142,7 +144,7 @@ main {
 }
 
 .single-video-card {
-  flex: 0 1 70%;
+  flex: 0 1 60%;
   max-width: 960px;
   background: rgba(0,0,0,0.6);
   border-radius: 12px;
