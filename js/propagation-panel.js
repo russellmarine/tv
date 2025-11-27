@@ -1328,7 +1328,19 @@
 
     // ===== LOCATION-SPECIFIC SECTIONS =====
     if (selectedLocation) {
-      const loc = selectedLocation;
+      // Normalize location structure - handle both old format (lat/lon) and new format (coords.lat/lon)
+      const loc = {
+        label: selectedLocation.label,
+        lat: selectedLocation.coords?.lat ?? selectedLocation.lat,
+        lon: selectedLocation.coords?.lon ?? selectedLocation.lon,
+        tz: selectedLocation.tz || 'UTC'
+      };
+      
+      if (loc.lat == null || loc.lon == null) {
+        contentEl.innerHTML = '<div style="text-align: center; padding: 2rem; opacity: 0.7;">Invalid location data</div>';
+        return;
+      }
+      
       const dayNight = getDayNightStatus(loc.lat, loc.lon);
       const sunTimes = dayNight.sunTimes || calculateSunTimes(loc.lat, loc.lon);
       const muf = estimateMUF(loc.lat, loc.lon, data);
