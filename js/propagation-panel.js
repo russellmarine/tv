@@ -990,15 +990,6 @@
       panel.querySelector('#prop-location-select').value = savedIdx;
     }
 
-    // Close on outside click
-    document.addEventListener('click', (e) => {
-      if (panel.style.display !== 'none' &&
-          !e.target.closest('#propagation-panel') &&
-          !e.target.closest('#propagation-panel-btn')) {
-        panel.style.display = 'none';
-      }
-    });
-
     attachLocationListener();
     updatePanelContent();
   }
