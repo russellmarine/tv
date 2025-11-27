@@ -26,7 +26,6 @@
   // ============ CONFIGURATION ============
 
   const API_PROXY = '/api/n2yo';
-  const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
   const MIN_ELEVATION_FILTER = 5;
 
   const SATELLITES = {
@@ -192,8 +191,6 @@
   let isExpanded = false;
   let isLoading = false;
   let selectedConstellations = ['wgs', 'aehf', 'muos', 'intelsat'];
-  let autocompleteResults = [];
-  let autocompleteTimeout = null;
   let showOnlyGoodAngles = true;
 
   // ============ MGRS CONVERSION ============
@@ -278,83 +275,6 @@
     return { lat: lat * 180 / Math.PI, lon: lon0 + lon * 180 / Math.PI };
   }
 
-  // ============ GEOCODING / AUTOCOMPLETE ============
-
-  async function searchLocation(query) {
-    if (!query || query.length < 3) { autocompleteResults = []; return []; }
-
-    try {
-      const url = `${NOMINATIM_URL}?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1`;
-      const response = await fetch(url, { headers: { 'User-Agent': 'RussellTV-SatLookAngles/1.0' } });
-      if (!response.ok) throw new Error('Geocoding failed');
-
-      const results = await response.json();
-      autocompleteResults = results.map(r => {
-        const addr = r.address || {};
-        const city = r.name || addr.city || addr.town || addr.village || '';
-        const state = addr.state || addr.county || addr.region || '';
-        const country = addr.country || '';
-        const postcode = addr.postcode || '';
-
-        let detail = '';
-        if (state) detail += state;
-        if (postcode) detail += (detail ? ', ' : '') + postcode;
-        if (country && country !== state) detail += (detail ? ', ' : '') + country;
-
-        return { name: r.display_name, shortName: city || r.display_name.split(',')[0], detail, lat: parseFloat(r.lat), lon: parseFloat(r.lon), country };
-      });
-      return autocompleteResults;
-    } catch (error) {
-      console.error('[SatLookAngles] Geocoding error:', error);
-      autocompleteResults = [];
-      return [];
-    }
-  }
-
-  function handleAutocompleteInput(value) {
-    if (autocompleteTimeout) clearTimeout(autocompleteTimeout);
-    autocompleteTimeout = setTimeout(async () => {
-      await searchLocation(value);
-      renderAutocompleteDropdown();
-    }, 300);
-  }
-
-  function renderAutocompleteDropdown() {
-    const dropdown = document.getElementById('satla-autocomplete');
-    if (!dropdown) return;
-    if (autocompleteResults.length === 0) { dropdown.style.display = 'none'; return; }
-
-    const sanitize = window.RussellTV?.sanitize || (s => s);
-    dropdown.innerHTML = autocompleteResults.map((r, i) => `
-      <div class="autocomplete-item" onmousedown="event.preventDefault(); window.RussellTV.SatLookAngles.selectAutocomplete(${i})">
-        <span class="autocomplete-name">${sanitize(r.shortName)}</span>
-        <span class="autocomplete-detail">${sanitize(r.detail)}</span>
-      </div>
-    `).join('');
-    dropdown.style.display = 'block';
-  }
-
-  function selectAutocomplete(index) {
-    const result = autocompleteResults[index];
-    if (!result) return;
-
-    currentLocation = {
-      lat: result.lat, lon: result.lon,
-      name: result.shortName + (result.detail ? `, ${result.detail.split(',')[0]}` : ''),
-      fullName: result.name, source: 'search'
-    };
-
-    const input = document.getElementById('satla-location-input');
-    if (input) input.value = currentLocation.name;
-
-    autocompleteResults = [];
-    const dropdown = document.getElementById('satla-autocomplete');
-    if (dropdown) dropdown.style.display = 'none';
-
-    fetchWeatherForLocation(currentLocation.lat, currentLocation.lon);
-    fetchAllSatellites();
-  }
-
   // ============ WEATHER FETCHING ============
 
   async function fetchWeatherForLocation(lat, lon) {
@@ -376,42 +296,6 @@
     } catch (e) { /* Silent fail */ }
     currentWeather = null;
     Events.emit('satla:render');
-  }
-
-  // ============ COORDINATE PARSING ============
-
-  function maidenheadToLatLon(grid) {
-    grid = grid.toUpperCase().trim();
-    if (!/^[A-R]{2}\d{2}([A-X]{2}(\d{2})?)?$/.test(grid)) throw new Error('Invalid Maidenhead format');
-
-    let lon = -180, lat = -90;
-    lon += (grid.charCodeAt(0) - 65) * 20;
-    lat += (grid.charCodeAt(1) - 65) * 10;
-    lon += parseInt(grid[2]) * 2;
-    lat += parseInt(grid[3]) * 1;
-    if (grid.length >= 6) {
-      lon += (grid.charCodeAt(4) - 65) * (2 / 24);
-      lat += (grid.charCodeAt(5) - 65) * (1 / 24);
-    }
-    if (grid.length === 4) { lon += 1; lat += 0.5; }
-    else if (grid.length === 6) { lon += 1/24; lat += 0.5/24; }
-    return { lat, lon };
-  }
-
-  function parseCoordinates(input) {
-    input = input.trim();
-    const latLonMatch = input.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
-    if (latLonMatch) {
-      const lat = parseFloat(latLonMatch[1]), lon = parseFloat(latLonMatch[2]);
-      if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)
-        return { lat, lon, type: 'latlon' };
-    }
-    const mgrsClean = input.replace(/\s/g, '').toUpperCase();
-    if (/^\d{1,2}[C-X][A-Z]{2}\d{2,10}$/.test(mgrsClean))
-      return { ...mgrsToLatLon(mgrsClean), type: 'mgrs' };
-    if (/^[A-Ra-r]{2}\d{2}([A-Xa-x]{2})?$/i.test(input))
-      return { ...maidenheadToLatLon(input), type: 'maidenhead' };
-    throw new Error('Could not parse. Try: "38.89, -77.03" or MGRS "33TWN84125" or Grid "FM19la"');
   }
 
   // ============ STARLINK COVERAGE ============
@@ -539,6 +423,18 @@
   function renderSatelliteLookAngles(containerEl) {
     if (!containerEl) return;
     const sanitize = window.RussellTV?.sanitize || (s => s);
+    
+    // Get location from propagation panel
+    const propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
+    if (propLocation && propLocation.coords) {
+      currentLocation = {
+        lat: propLocation.coords.lat,
+        lon: propLocation.coords.lon,
+        name: propLocation.label,
+        source: 'propagation'
+      };
+    }
+    
     const starlink = currentLocation ? checkStarlinkCoverage(currentLocation.lat, currentLocation.lon) : null;
 
     let html = `
@@ -549,22 +445,7 @@
         </div>`;
 
     if (isExpanded) {
-      html += `<div class="satla-content" onclick="event.stopPropagation()">
-        <div class="satla-location-search">
-          <div class="search-container">
-            <input type="text" id="satla-location-input" class="location-search-input"
-                   placeholder="Search city, MGRS, or coords..."
-                   value="${currentLocation?.name || ''}"
-                   oninput="window.RussellTV.SatLookAngles.handleSearch(this.value)"
-                   autocomplete="off">
-            <div id="satla-autocomplete" class="autocomplete-dropdown"></div>
-          </div>
-          <div class="search-buttons">
-            <button onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.usePanelLocation()" class="satla-btn secondary" title="Use propagation panel location">📍</button>
-            <button onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.parseManualCoords()" class="satla-btn secondary" title="Parse as MGRS/coords">🔢</button>
-            <button onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.refresh()" class="satla-btn" title="Refresh">🔄</button>
-          </div>
-        </div>`;
+      html += `<div class="satla-content" onclick="event.stopPropagation()">`;
 
       if (currentLocation) {
         html += `<div class="satla-current-location">
@@ -588,7 +469,7 @@
           </div>`;
         }
 
-        // Constellation checkboxes - fixed click handling
+        // Constellation checkboxes with refresh button
         html += `<div class="satla-filters">
           ${Object.keys(SATELLITES).map(k => `
             <label class="satla-checkbox-label">
@@ -602,6 +483,7 @@
                    onchange="window.RussellTV.SatLookAngles.toggleGoodAnglesFilter()">
             <span>El&gt;5°</span>
           </label>
+          <button onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.refresh()" class="satla-btn" title="Refresh satellite data">🔄</button>
         </div>`;
 
         html += `<div class="satla-az-note">📐 Azimuth is TRUE north (not magnetic)</div>`;
@@ -659,7 +541,7 @@
           html += `<div class="satla-no-data">Click 🔄 to fetch satellite data</div>`;
         }
       } else {
-        html += `<div class="satla-no-location">Search for a location, enter MGRS/coords, or click 📍</div>`;
+        html += `<div class="satla-no-location">Select a location above to see satellite look angles</div>`;
       }
       html += `</div>`;
     }
@@ -676,19 +558,8 @@
     .satla-header .section-title { font-weight:bold; font-size:0.9rem; }
     .expand-icon { font-size:0.8rem; opacity:0.7; }
     .satla-content { padding:1rem; }
-    .satla-location-search { margin-bottom:0.75rem; }
-    .search-container { position:relative; margin-bottom:0.5rem; }
-    .location-search-input { width:100%; padding:0.5rem 0.7rem; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.3); color:white; font-size:0.85rem; box-sizing:border-box; }
-    .location-search-input:focus { outline:none; border-color:rgba(100,150,255,0.5); }
-    .autocomplete-dropdown { position:absolute; top:100%; left:0; right:0; background:rgba(20,20,30,0.98); border:1px solid rgba(100,150,255,0.3); border-radius:0 0 6px 6px; max-height:220px; overflow-y:auto; z-index:1000; display:none; }
-    .autocomplete-item { padding:0.5rem 0.8rem; cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); }
-    .autocomplete-item:hover { background:rgba(100,150,255,0.2); }
-    .autocomplete-name { font-size:0.85rem; font-weight:500; }
-    .autocomplete-detail { font-size:0.7rem; opacity:0.7; max-width:50%; text-align:right; }
-    .search-buttons { display:flex; gap:0.4rem; }
     .satla-btn { padding:0.35rem 0.5rem; border-radius:4px; border:1px solid rgba(100,150,255,0.5); background:rgba(100,150,255,0.2); color:white; cursor:pointer; font-size:0.8rem; }
     .satla-btn:hover { background:rgba(100,150,255,0.4); }
-    .satla-btn.secondary { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.2); }
     .satla-current-location { display:flex; justify-content:space-between; padding:0.4rem 0.6rem; background:rgba(100,150,255,0.1); border-radius:4px; margin-bottom:0.4rem; font-size:0.8rem; }
     .satla-current-location .coords { font-family:monospace; font-size:0.7rem; opacity:0.7; }
     .satla-weather { display:flex; align-items:center; gap:0.4rem; padding:0.35rem 0.6rem; background:rgba(255,255,255,0.05); border-radius:4px; margin-bottom:0.4rem; font-size:0.75rem; }
@@ -696,12 +567,13 @@
     .satla-starlink.available { background:rgba(0,255,100,0.1); border:1px solid rgba(0,255,100,0.3); }
     .satla-starlink.limited { background:rgba(255,200,0,0.1); border:1px solid rgba(255,200,0,0.3); }
     .satla-starlink.restricted { background:rgba(255,68,68,0.1); border:1px solid rgba(255,68,68,0.3); }
-    .satla-filters { display:flex; flex-wrap:wrap; gap:0.3rem 0.6rem; padding:0.4rem 0; margin-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.1); font-size:0.7rem; }
+    .satla-filters { display:flex; flex-wrap:wrap; gap:0.3rem 0.6rem; padding:0.4rem 0; margin-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.1); font-size:0.7rem; align-items:center; }
     .satla-checkbox-label { display:flex; align-items:center; gap:0.25rem; cursor:pointer; padding:0.15rem 0.3rem; border-radius:3px; }
     .satla-checkbox-label:hover { background:rgba(255,255,255,0.1); }
     .satla-checkbox-label input[type="checkbox"] { cursor:pointer; margin:0; }
     .satla-checkbox-label span { cursor:pointer; }
-    .satla-filters .filter-toggle { margin-left:auto; color:#88ff88; }
+    .satla-filters .filter-toggle { color:#88ff88; }
+    .satla-filters .satla-btn { margin-left:auto; padding:0.2rem 0.4rem; font-size:0.7rem; }
     .satla-az-note { font-size:0.65rem; opacity:0.6; margin-bottom:0.5rem; font-style:italic; }
     .satla-loading { display:flex; align-items:center; justify-content:center; gap:0.6rem; padding:1.5rem; font-size:0.8rem; }
     .loading-spinner { width:18px; height:18px; border:2px solid rgba(100,150,255,0.3); border-top-color:rgba(100,150,255,1); border-radius:50%; animation:spin 1s linear infinite; }
@@ -736,38 +608,22 @@
 
   function toggleGoodAnglesFilter() { showOnlyGoodAngles = !showOnlyGoodAngles; Events.emit('satla:render'); }
 
-  function usePanelLocation() {
-    const loc = window.RussellTV?.Propagation?.getSelectedLocation?.();
-    if (loc?.coords) {
-      currentLocation = { lat: loc.coords.lat, lon: loc.coords.lon, name: loc.label, source: 'panel' };
-      const input = document.getElementById('satla-location-input');
-      if (input) input.value = loc.label;
-      fetchWeatherForLocation(loc.coords.lat, loc.coords.lon);
-      fetchAllSatellites();
+  function refresh() {
+    // Get current location from propagation panel
+    const propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
+    if (propLocation && propLocation.coords) {
+      currentLocation = {
+        lat: propLocation.coords.lat,
+        lon: propLocation.coords.lon,
+        name: propLocation.label,
+        source: 'propagation'
+      };
+      fetchWeatherForLocation(currentLocation.lat, currentLocation.lon);
+      fetchAllSatellites(true);
     } else {
-      alert('Select a location in the propagation panel dropdown first.');
+      alert('Select a location in the panel above first');
     }
   }
-
-  function parseManualCoords() {
-    const input = document.getElementById('satla-location-input');
-    if (!input) return;
-    try {
-      const result = parseCoordinates(input.value.trim());
-      const typeName = result.type === 'mgrs' ? 'MGRS' : result.type === 'maidenhead' ? 'Grid' : 'Coords';
-      currentLocation = { lat: result.lat, lon: result.lon, name: `${typeName}: ${result.lat.toFixed(4)}, ${result.lon.toFixed(4)}`, source: result.type };
-      fetchWeatherForLocation(result.lat, result.lon);
-      fetchAllSatellites();
-    } catch (e) { alert(e.message); }
-  }
-
-  function refresh() {
-    if (!currentLocation) { alert('Select a location first'); return; }
-    fetchWeatherForLocation(currentLocation.lat, currentLocation.lon);
-    fetchAllSatellites(true);
-  }
-
-  function handleSearch(value) { handleAutocompleteInput(value); }
 
   // ============ CACHING ============
 
@@ -791,17 +647,34 @@
     } catch (e) { return null; }
   }
 
+  function onLocationChanged(newLocation) {
+    if (newLocation && newLocation.coords) {
+      currentLocation = {
+        lat: newLocation.coords.lat,
+        lon: newLocation.coords.lon,
+        name: newLocation.label,
+        source: 'propagation'
+      };
+      fetchWeatherForLocation(currentLocation.lat, currentLocation.lon);
+      // Auto-fetch satellites when location changes (uses cache if available)
+      fetchAllSatellites();
+    } else {
+      currentLocation = null;
+      currentWeather = null;
+      satelliteData = {};
+    }
+    Events.emit('satla:render');
+  }
+
   function init() {
     const styleEl = document.createElement('style');
     styleEl.textContent = styles;
     document.head.appendChild(styleEl);
 
-    document.addEventListener('click', () => {
-      const d = document.getElementById('satla-autocomplete');
-      if (d) d.style.display = 'none';
-    });
+    // Listen for location changes from propagation panel
+    Events.on('propagation:location-changed', onLocationChanged);
 
-    console.log('✅ [SatLookAngles] Initialized with MGRS support and 24h caching');
+    console.log('✅ [SatLookAngles] Initialized - listening for propagation panel location');
   }
 
   Events.whenReady('core:ready', init);
@@ -809,8 +682,10 @@
   window.RussellTV = window.RussellTV || {};
   window.RussellTV.SatLookAngles = {
     render: renderSatelliteLookAngles,
-    toggleExpand, toggleConstellation, toggleGoodAnglesFilter,
-    usePanelLocation, parseManualCoords, refresh, handleSearch, selectAutocomplete,
+    toggleExpand, 
+    toggleConstellation, 
+    toggleGoodAnglesFilter,
+    refresh,
     getData: () => satelliteData
   };
 
