@@ -51,6 +51,13 @@
       category: 'space-comms',
       default: true
     },
+    'cellular-coverage': {
+      label: 'Cellular Coverage',
+      description: 'Cell tower density and carrier information',
+      icon: '📶',
+      category: 'space-comms',
+      default: true
+    },
     'weather-tooltips': {
       label: 'Weather Tooltips',
       description: 'Location weather information on hover',
@@ -175,6 +182,14 @@
       const satlaSection = document.querySelector('.satla-section, #satla-container');
       if (satlaSection) {
         satlaSection.style.display = enabled ? '' : 'none';
+      }
+    }
+
+    // Handle cellular coverage section visibility
+    if (key === 'cellular-coverage') {
+      const cellSection = document.querySelector('.cell-section, #cell-container');
+      if (cellSection) {
+        cellSection.style.display = enabled ? '' : 'none';
       }
     }
   }
