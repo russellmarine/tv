@@ -1,13 +1,20 @@
 // Cell Tower Proxy for OpenCelliD API
-// Run with: node cell-proxy.js
+// Run with: node cell-proxy.cjs
 // Listens on port 4011
+
+require('dotenv').config();
 
 const http = require('http');
 const https = require('https');
 const url = require('url');
 
 const PORT = 4011;
-const OPENCELLID_TOKEN = process.env.OPENCELLID_TOKEN || 'pk.282c868244fad29d2251aca1fe43d78b';
+const OPENCELLID_TOKEN = process.env.OPENCELLID_TOKEN;
+
+if (!OPENCELLID_TOKEN) {
+  console.error('[Cell] ERROR: OPENCELLID_TOKEN not set in environment or .env file');
+  process.exit(1);
+}
 
 // Simple in-memory cache (cell data is fairly static)
 const cache = new Map();
