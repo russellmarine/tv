@@ -11,21 +11,59 @@ body {
   color: #fff;
 }
 
-header {
+/* ---------- Header / Branding ---------- */
+.rtv-header {
   background: rgba(0,0,0,0.8);
   padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  box-sizing: border-box;
 }
 
-header h1 {
+.rtv-brand {
+  flex: 0 0 auto;
+}
+
+.rtv-brand-button {
+  background: transparent;
+  border: none;
+  padding: 0;
   margin: 0;
-  font-size: 1.2rem;
+  text-align: left;
+  cursor: pointer;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.12rem;
 }
 
+.rtv-brand-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rtv-brand-tagline {
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+/* Hover/focus – subtle “pro” glow */
+.rtv-brand-button:hover .rtv-brand-title,
+.rtv-brand-button:focus-visible .rtv-brand-title {
+  text-shadow: 0 0 10px rgba(255, 140, 0, 0.75);
+}
+
+.rtv-brand-button:hover .rtv-brand-tagline,
+.rtv-brand-button:focus-visible .rtv-brand-tagline {
+  opacity: 1;
+}
+
+/* Channel controls block */
 .mode-toggle {
   display: flex;
   gap: 0.5rem;
@@ -311,6 +349,7 @@ main {
   display: none;
 }
 
+/* You had this before: hide Single button if you don't want it shown */
 #btn-single {
   display: none !important;
 }
@@ -355,7 +394,7 @@ main {
     max-height: 60vh;
   }
 
-  header {
+  .rtv-header {
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-rows: auto auto;
@@ -364,10 +403,17 @@ main {
     padding: 0.5rem 0.75rem;
   }
 
-  header h1 {
+  .rtv-brand {
     grid-column: 1 / span 2;
-    font-size: 1rem;
     margin-bottom: 0.25rem;
+  }
+
+  .rtv-brand-title {
+    font-size: 1.05rem;
+  }
+
+  .rtv-brand-tagline {
+    font-size: 0.7rem;
   }
 
   .channel-select-mobile-wrapper {
@@ -389,7 +435,7 @@ main {
     display: none !important;
   }
 
-  header .mode-toggle:last-child {
+  .rtv-header .mode-toggle:last-child {
     grid-column: 2 / 3;
     display: flex;
     justify-content: flex-end;
