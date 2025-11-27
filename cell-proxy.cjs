@@ -105,6 +105,42 @@ const INTL_CARRIERS = {
   '420-3': { name: 'Mobily', bands: ['B1', 'B3', 'B7', 'B38', 'B40', 'n78'] },
   '420-4': { name: 'Zain SA', bands: ['B1', 'B3', 'B8', 'B38', 'B40'] },
   
+  // Kuwait (MCC 419)
+  '419-2': { name: 'Zain Kuwait', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '419-3': { name: 'Ooredoo Kuwait', bands: ['B1', 'B3', 'B7', 'B8', 'n78'] },
+  '419-4': { name: 'STC Kuwait', bands: ['B1', 'B3', 'B7', 'n78'] },
+  
+  // Qatar (MCC 427)
+  '427-1': { name: 'Ooredoo Qatar', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B38', 'n78'] },
+  '427-2': { name: 'Vodafone Qatar', bands: ['B1', 'B3', 'B7', 'B8', 'B38', 'n78'] },
+  
+  // Bahrain (MCC 426)
+  '426-1': { name: 'Batelco', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  '426-2': { name: 'Zain Bahrain', bands: ['B1', 'B3', 'B7', 'B8', 'n78'] },
+  '426-4': { name: 'STC Bahrain', bands: ['B1', 'B3', 'B7'] },
+  
+  // Iraq (MCC 418)
+  '418-5': { name: 'Asia Cell', bands: ['B1', 'B3', 'B8'] },
+  '418-20': { name: 'Zain Iraq', bands: ['B1', 'B3', 'B8', 'B20'] },
+  '418-30': { name: 'Korek', bands: ['B1', 'B3', 'B8'] },
+  '418-40': { name: 'Fanoos', bands: ['B3', 'B8'] },
+  
+  // Jordan (MCC 416)
+  '416-1': { name: 'Zain Jordan', bands: ['B1', 'B3', 'B7', 'B8', 'B20'] },
+  '416-3': { name: 'Umniah', bands: ['B1', 'B3', 'B7', 'B8'] },
+  '416-77': { name: 'Orange Jordan', bands: ['B1', 'B3', 'B7', 'B8', 'B20'] },
+  
+  // Israel (MCC 425)
+  '425-1': { name: 'Partner', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '425-2': { name: 'Cellcom', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  '425-3': { name: 'Pelephone', bands: ['B1', 'B3', 'B7', 'B8', 'n78'] },
+  
+  // Egypt (MCC 602)
+  '602-1': { name: 'Orange Egypt', bands: ['B1', 'B3', 'B8', 'B40'] },
+  '602-2': { name: 'Vodafone Egypt', bands: ['B1', 'B3', 'B8'] },
+  '602-3': { name: 'Etisalat Egypt', bands: ['B1', 'B3', 'B8', 'B40'] },
+  '602-4': { name: 'WE Egypt', bands: ['B1', 'B3', 'B8', 'B40'] },
+  
   // Philippines (MCC 515)
   '515-2': { name: 'Globe PH', bands: ['B1', 'B3', 'B5', 'B7', 'B8', 'B28', 'B40'] },
   '515-3': { name: 'Smart PH', bands: ['B1', 'B3', 'B5', 'B7', 'B28', 'B40'] },
@@ -115,6 +151,28 @@ const INTL_CARRIERS = {
   '520-3': { name: 'AIS Thailand', bands: ['B1', 'B3', 'B8', 'B40'] },
   '520-4': { name: 'TrueMove', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
   '520-5': { name: 'dtac', bands: ['B1', 'B3', 'B28', 'n28'] },
+  
+  // Vietnam (MCC 452)
+  '452-1': { name: 'MobiFone', bands: ['B1', 'B3', 'B7', 'B8'] },
+  '452-2': { name: 'Vinaphone', bands: ['B1', 'B3', 'B7', 'B8'] },
+  '452-4': { name: 'Viettel', bands: ['B1', 'B3', 'B7', 'B8', 'B40'] },
+  
+  // Singapore (MCC 525)
+  '525-1': { name: 'Singtel', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'B40', 'n78'] },
+  '525-3': { name: 'M1 Singapore', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
+  '525-5': { name: 'StarHub', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
+  
+  // Malaysia (MCC 502)
+  '502-12': { name: 'Maxis', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'B40', 'n78'] },
+  '502-13': { name: 'Celcom', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
+  '502-16': { name: 'Digi', bands: ['B1', 'B3', 'B7', 'B8', 'B28'] },
+  '502-19': { name: 'U Mobile', bands: ['B1', 'B3', 'B7', 'B8', 'B28'] },
+  
+  // Indonesia (MCC 510)
+  '510-1': { name: 'Indosat', bands: ['B1', 'B3', 'B5', 'B8', 'B40'] },
+  '510-10': { name: 'Telkomsel', bands: ['B1', 'B3', 'B5', 'B8', 'B40', 'n78'] },
+  '510-11': { name: 'XL Axiata', bands: ['B1', 'B3', 'B5', 'B8'] },
+  '510-89': { name: 'Three ID', bands: ['B1', 'B3', 'B8', 'B40'] },
   
   // Italy (MCC 222)
   '222-1': { name: 'TIM Italy', bands: ['B1', 'B3', 'B7', 'B20', 'B32', 'n78'] },
@@ -134,45 +192,506 @@ const INTL_CARRIERS = {
   '260-3': { name: 'Orange PL', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
   '260-6': { name: 'Play PL', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
   
+  // Romania (MCC 226)
+  '226-1': { name: 'Vodafone RO', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '226-3': { name: 'Telekom RO', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '226-10': { name: 'Orange RO', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  
+  // Turkey (MCC 286)
+  '286-1': { name: 'Turkcell', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B38', 'n78'] },
+  '286-2': { name: 'Vodafone TR', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '286-3': { name: 'Turk Telekom', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  
+  // Greece (MCC 202)
+  '202-1': { name: 'Cosmote', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '202-5': { name: 'Vodafone GR', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '202-10': { name: 'Wind GR', bands: ['B1', 'B3', 'B7', 'B8', 'B20'] },
+  
   // India (MCC 404, 405)
   '404-10': { name: 'Airtel IN', bands: ['B1', 'B3', 'B5', 'B8', 'B40', 'B41', 'n78'] },
   '404-45': { name: 'Airtel IN', bands: ['B1', 'B3', 'B5', 'B8', 'B40', 'B41'] },
   '404-86': { name: 'Vodafone-Idea', bands: ['B1', 'B3', 'B5', 'B8', 'B40', 'B41'] },
   '405-857': { name: 'Jio', bands: ['B3', 'B5', 'B40', 'n78', 'n258'] },
   '405-858': { name: 'Jio', bands: ['B3', 'B5', 'B40', 'n78'] },
+  '404-11': { name: 'Vodafone-Idea', bands: ['B1', 'B3', 'B5', 'B8', 'B40'] },
+  '404-20': { name: 'Vodafone-Idea', bands: ['B1', 'B3', 'B5', 'B8', 'B40'] },
   
   // China (MCC 460)
   '460-0': { name: 'China Mobile', bands: ['B1', 'B3', 'B8', 'B34', 'B39', 'B40', 'B41', 'n41', 'n78', 'n79'] },
   '460-1': { name: 'China Unicom', bands: ['B1', 'B3', 'B8', 'B40', 'B41', 'n78'] },
-  '460-11': { name: 'China Telecom', bands: ['B1', 'B3', 'B5', 'B41', 'n78'] }
+  '460-11': { name: 'China Telecom', bands: ['B1', 'B3', 'B5', 'B41', 'n78'] },
+  
+  // Taiwan (MCC 466)
+  '466-1': { name: 'Far EasTone', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
+  '466-5': { name: 'Asia Pacific', bands: ['B1', 'B3', 'B8', 'B28', 'n78'] },
+  '466-11': { name: 'Chunghwa', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
+  '466-89': { name: 'T Star', bands: ['B3', 'B8', 'B28', 'n78'] },
+  '466-92': { name: 'Chunghwa', bands: ['B1', 'B3', 'B7', 'B8', 'n78'] },
+  '466-93': { name: 'Taiwan Mobile', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
+  
+  // Hong Kong (MCC 454)
+  '454-0': { name: '1O1O/CSL', bands: ['B1', 'B3', 'B7', 'B8', 'B40', 'n78'] },
+  '454-6': { name: 'SmarTone HK', bands: ['B1', 'B3', 'B7', 'B8', 'B40', 'n78'] },
+  '454-12': { name: 'China Mobile HK', bands: ['B1', 'B3', 'B7', 'B8', 'B40', 'n78'] },
+  '454-16': { name: 'PCCW-HKT', bands: ['B1', 'B3', 'B7', 'B8', 'B40', 'n78'] },
+  '454-19': { name: 'PCCW-HKT', bands: ['B1', 'B3', 'B7', 'B8', 'B40', 'n78'] },
+  
+  // Pakistan (MCC 410)
+  '410-1': { name: 'Jazz', bands: ['B1', 'B3', 'B8', 'B40'] },
+  '410-3': { name: 'Ufone', bands: ['B1', 'B3', 'B8'] },
+  '410-4': { name: 'Zong', bands: ['B1', 'B3', 'B8', 'B40', 'B41'] },
+  '410-6': { name: 'Telenor PK', bands: ['B1', 'B3', 'B8'] },
+  
+  // Afghanistan (MCC 412)
+  '412-1': { name: 'AWCC', bands: ['B3', 'B8'] },
+  '412-20': { name: 'Roshan', bands: ['B3', 'B8'] },
+  '412-40': { name: 'MTN AF', bands: ['B3', 'B8'] },
+  '412-50': { name: 'Etisalat AF', bands: ['B3', 'B8'] },
+  
+  // Kenya (MCC 639)
+  '639-2': { name: 'Safaricom', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B28'] },
+  '639-3': { name: 'Airtel Kenya', bands: ['B1', 'B3', 'B7', 'B8'] },
+  '639-7': { name: 'Telkom Kenya', bands: ['B3', 'B7', 'B8'] },
+  
+  // South Africa (MCC 655)
+  '655-1': { name: 'Vodacom ZA', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
+  '655-2': { name: 'Telkom ZA', bands: ['B1', 'B3', 'B7', 'B8'] },
+  '655-7': { name: 'Cell C', bands: ['B1', 'B3', 'B7', 'B8'] },
+  '655-10': { name: 'MTN ZA', bands: ['B1', 'B3', 'B7', 'B8', 'B28', 'n78'] },
+  
+  // Nigeria (MCC 621)
+  '621-20': { name: 'Airtel NG', bands: ['B3', 'B8'] },
+  '621-30': { name: 'MTN Nigeria', bands: ['B3', 'B7', 'B8'] },
+  '621-50': { name: 'Glo Nigeria', bands: ['B3', 'B8'] },
+  '621-60': { name: '9mobile', bands: ['B3', 'B8'] },
+  
+  // New Zealand (MCC 530)
+  '530-1': { name: 'Vodafone NZ', bands: ['B1', 'B3', 'B7', 'B28', 'n78'] },
+  '530-5': { name: 'Spark NZ', bands: ['B1', 'B3', 'B7', 'B28', 'n78'] },
+  '530-24': { name: '2degrees', bands: ['B1', 'B3', 'B7', 'B28', 'n78'] },
+  
+  // Norway (MCC 242)
+  '242-1': { name: 'Telenor NO', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B28', 'n78'] },
+  '242-2': { name: 'Telia NO', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '242-12': { name: 'ICE NO', bands: ['B3', 'B7', 'B20'] },
+  
+  // Sweden (MCC 240)
+  '240-1': { name: 'Telia SE', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B28', 'n78'] },
+  '240-2': { name: '3 Sweden', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  '240-7': { name: 'Telenor SE', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  
+  // Finland (MCC 244)
+  '244-5': { name: 'Elisa', bands: ['B1', 'B3', 'B7', 'B20', 'B28', 'n78'] },
+  '244-10': { name: 'DNA', bands: ['B1', 'B3', 'B7', 'B20', 'B28', 'n78'] },
+  '244-91': { name: 'Telia FI', bands: ['B1', 'B3', 'B7', 'B20', 'B28', 'n78'] },
+  
+  // Denmark (MCC 238)
+  '238-1': { name: 'TDC', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '238-2': { name: 'Telenor DK', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '238-6': { name: '3 Denmark', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  
+  // Netherlands (MCC 204)
+  '204-4': { name: 'Vodafone NL', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '204-8': { name: 'KPN', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '204-16': { name: 'T-Mobile NL', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  
+  // Belgium (MCC 206)
+  '206-1': { name: 'Proximus', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '206-10': { name: 'Orange BE', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '206-20': { name: 'Telenet', bands: ['B1', 'B3', 'B7', 'B20'] },
+  
+  // Switzerland (MCC 228)
+  '228-1': { name: 'Swisscom', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B28', 'n78'] },
+  '228-2': { name: 'Sunrise', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B28', 'n78'] },
+  '228-3': { name: 'Salt', bands: ['B1', 'B3', 'B7', 'B20', 'B28'] },
+  
+  // Austria (MCC 232)
+  '232-1': { name: 'A1 Austria', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'B28', 'n78'] },
+  '232-3': { name: 'Magenta AT', bands: ['B1', 'B3', 'B7', 'B8', 'B20', 'n78'] },
+  '232-5': { name: '3 Austria', bands: ['B1', 'B3', 'B7', 'B20', 'n78'] },
+  
+  // Ukraine (MCC 255)
+  '255-1': { name: 'Kyivstar', bands: ['B1', 'B3', 'B7', 'B8', 'B20'] },
+  '255-2': { name: 'Vodafone UA', bands: ['B1', 'B3', 'B7', 'B8', 'B20'] },
+  '255-6': { name: 'lifecell', bands: ['B1', 'B3', 'B7', 'B8'] },
+  
+  // Djibouti (MCC 638)
+  '638-1': { name: 'Djibouti Telecom', bands: ['B3', 'B7', 'B8'] },
+  
+  // Somalia (MCC 637)
+  '637-1': { name: 'Telesom', bands: ['B3', 'B8'] },
+  '637-4': { name: 'Somafone', bands: ['B3', 'B8'] },
+  '637-10': { name: 'Nationlink', bands: ['B3', 'B8'] },
+  '637-30': { name: 'Golis', bands: ['B3', 'B8'] },
+  '637-50': { name: 'Hormuud', bands: ['B3', 'B8'] },
+  '637-82': { name: 'Telcom', bands: ['B3', 'B8'] },
+  
+  // Yemen (MCC 421)
+  '421-1': { name: 'SabaFon', bands: ['B3', 'B8'] },
+  '421-2': { name: 'MTN Yemen', bands: ['B3', 'B8'] },
+  '421-3': { name: 'Yemen Mobile', bands: ['B3', 'B8'] },
+  
+  // Syria (MCC 417)
+  '417-1': { name: 'Syriatel', bands: ['B3', 'B8'] },
+  '417-2': { name: 'MTN Syria', bands: ['B3', 'B8'] },
+  
+  // Libya (MCC 606)
+  '606-0': { name: 'Libyana', bands: ['B3', 'B8'] },
+  '606-1': { name: 'Madar', bands: ['B3', 'B8'] },
+  '606-2': { name: 'Al-Jeel', bands: ['B3', 'B8'] },
+  
+  // Sudan (MCC 634)
+  '634-1': { name: 'Zain Sudan', bands: ['B3', 'B8'] },
+  '634-2': { name: 'MTN Sudan', bands: ['B3', 'B8'] },
+  '634-5': { name: 'Sudani', bands: ['B3', 'B8'] },
+  
+  // Maritime/Satellite (MCC 901)
+  '901-1': { name: 'ICO Global', bands: [] },
+  '901-5': { name: 'Thuraya', bands: [] },
+  '901-6': { name: 'Thuraya', bands: [] },
+  '901-13': { name: 'GSM.AQ (Antarctica)', bands: [] },
+  '901-14': { name: 'AeroMobile', bands: [] },
+  '901-15': { name: 'OnAir', bands: [] },
+  '901-18': { name: 'Cingular Wireless', bands: [] },
+  '901-21': { name: 'Seanet Maritime', bands: [] },
+  '901-26': { name: 'TIM@sea', bands: [] },
+  '901-88': { name: 'UN Telecommunications', bands: [] }
 };
 
 // Merge all carriers
 const ALL_CARRIERS = { ...US_CARRIERS, ...INTL_CARRIERS };
 
-// Additional MCC mappings for countries
+// Additional MCC mappings for countries - COMPREHENSIVE LIST
 const MCC_COUNTRIES = {
-  '310': 'US', '311': 'US', '312': 'US', '313': 'US', '316': 'US',
-  '302': 'CA', '334': 'MX', '722': 'AR', '724': 'BR',
-  '234': 'GB', '262': 'DE', '208': 'FR', '222': 'IT', '214': 'ES', '260': 'PL',
-  '440': 'JP', '450': 'KR', '460': 'CN', '520': 'TH', '515': 'PH',
-  '505': 'AU', '530': 'NZ',
-  '250': 'RU', '255': 'UA',
-  '404': 'IN', '405': 'IN',
-  '420': 'SA', '424': 'AE', '425': 'IL',
-  '602': 'EG', '621': 'NG', '655': 'ZA'
+  // North America
+  '310': 'US', '311': 'US', '312': 'US', '313': 'US', '314': 'US', '315': 'US', '316': 'US',
+  '302': 'CA',
+  '334': 'MX', '335': 'MX',
+  
+  // Caribbean
+  '338': 'JM', // Jamaica
+  '342': 'BB', // Barbados
+  '344': 'AG', // Antigua
+  '346': 'KY', // Cayman Islands
+  '348': 'VG', // British Virgin Islands
+  '350': 'BM', // Bermuda
+  '352': 'GD', // Grenada
+  '354': 'MS', // Montserrat
+  '356': 'KN', // St Kitts
+  '358': 'LC', // St Lucia
+  '360': 'VC', // St Vincent
+  '362': 'CW', // Curacao
+  '363': 'AW', // Aruba
+  '364': 'BS', // Bahamas
+  '365': 'AI', // Anguilla
+  '366': 'DM', // Dominica
+  '368': 'CU', // Cuba
+  '370': 'DO', // Dominican Republic
+  '372': 'HT', // Haiti
+  '374': 'TT', // Trinidad
+  '376': 'VI', // US Virgin Islands
+  '330': 'PR', // Puerto Rico
+  
+  // Central America
+  '704': 'GT', // Guatemala
+  '706': 'SV', // El Salvador
+  '708': 'HN', // Honduras
+  '710': 'NI', // Nicaragua
+  '712': 'CR', // Costa Rica
+  '714': 'PA', // Panama
+  '716': 'PE', // Peru
+  
+  // South America
+  '722': 'AR', // Argentina
+  '724': 'BR', // Brazil
+  '730': 'CL', // Chile
+  '732': 'CO', // Colombia
+  '734': 'VE', // Venezuela
+  '736': 'BO', // Bolivia
+  '738': 'GY', // Guyana
+  '740': 'EC', // Ecuador
+  '742': 'GF', // French Guiana
+  '744': 'PY', // Paraguay
+  '746': 'SR', // Suriname
+  '748': 'UY', // Uruguay
+  '750': 'FK', // Falkland Islands
+  
+  // Europe - Western
+  '234': 'GB', '235': 'GB', // UK
+  '272': 'IE', // Ireland
+  '208': 'FR', // France
+  '262': 'DE', // Germany
+  '204': 'NL', // Netherlands
+  '206': 'BE', // Belgium
+  '270': 'LU', // Luxembourg
+  '228': 'CH', // Switzerland
+  '232': 'AT', // Austria
+  
+  // Europe - Southern
+  '222': 'IT', // Italy
+  '214': 'ES', // Spain
+  '268': 'PT', // Portugal
+  '202': 'GR', // Greece
+  '278': 'MT', // Malta
+  '292': 'SM', // San Marino
+  '213': 'AD', // Andorra
+  '212': 'MC', // Monaco
+  '295': 'LI', // Liechtenstein
+  '293': 'SI', // Slovenia
+  '219': 'HR', // Croatia
+  '218': 'BA', // Bosnia
+  '220': 'RS', // Serbia
+  '221': 'XK', // Kosovo
+  '294': 'MK', // North Macedonia
+  '276': 'AL', // Albania
+  '297': 'ME', // Montenegro
+  
+  // Europe - Northern
+  '238': 'DK', // Denmark
+  '240': 'SE', // Sweden
+  '242': 'NO', // Norway
+  '244': 'FI', // Finland
+  '246': 'LT', // Lithuania
+  '247': 'LV', // Latvia
+  '248': 'EE', // Estonia
+  '274': 'IS', // Iceland
+  '266': 'GI', // Gibraltar
+  '288': 'FO', // Faroe Islands
+  
+  // Europe - Eastern
+  '260': 'PL', // Poland
+  '230': 'CZ', // Czech Republic
+  '231': 'SK', // Slovakia
+  '216': 'HU', // Hungary
+  '226': 'RO', // Romania
+  '284': 'BG', // Bulgaria
+  '255': 'UA', // Ukraine
+  '257': 'BY', // Belarus
+  '259': 'MD', // Moldova
+  '250': 'RU', // Russia
+  
+  // Middle East
+  '418': 'IQ', // Iraq
+  '419': 'KW', // Kuwait
+  '420': 'SA', // Saudi Arabia
+  '421': 'YE', // Yemen
+  '422': 'OM', // Oman
+  '424': 'AE', // UAE
+  '425': 'IL', // Israel
+  '426': 'BH', // Bahrain
+  '427': 'QA', // Qatar
+  '428': 'MN', // Mongolia
+  '429': 'NP', // Nepal
+  '430': 'AE', // UAE (alternate)
+  '431': 'AE', // UAE (alternate)
+  '432': 'IR', // Iran
+  '434': 'UZ', // Uzbekistan
+  '436': 'TJ', // Tajikistan
+  '437': 'KG', // Kyrgyzstan
+  '438': 'TM', // Turkmenistan
+  '440': 'JP', // Japan
+  '441': 'JP', // Japan
+  '450': 'KR', // South Korea
+  '452': 'VN', // Vietnam
+  '454': 'HK', // Hong Kong
+  '455': 'MO', // Macau
+  '456': 'KH', // Cambodia
+  '457': 'LA', // Laos
+  '460': 'CN', // China
+  '461': 'CN', // China
+  '466': 'TW', // Taiwan
+  '467': 'KP', // North Korea
+  '470': 'BD', // Bangladesh
+  '472': 'MV', // Maldives
+  '502': 'MY', // Malaysia
+  '505': 'AU', // Australia
+  '510': 'ID', // Indonesia
+  '514': 'TL', // Timor-Leste
+  '515': 'PH', // Philippines
+  '520': 'TH', // Thailand
+  '525': 'SG', // Singapore
+  '528': 'BN', // Brunei
+  '530': 'NZ', // New Zealand
+  '536': 'NR', // Nauru
+  '537': 'PG', // Papua New Guinea
+  '539': 'TO', // Tonga
+  '540': 'SB', // Solomon Islands
+  '541': 'VU', // Vanuatu
+  '542': 'FJ', // Fiji
+  '544': 'AS', // American Samoa
+  '545': 'KI', // Kiribati
+  '546': 'NC', // New Caledonia
+  '547': 'PF', // French Polynesia
+  '548': 'CK', // Cook Islands
+  '549': 'WS', // Samoa
+  '550': 'FM', // Micronesia
+  '551': 'MH', // Marshall Islands
+  '552': 'PW', // Palau
+  '553': 'TV', // Tuvalu
+  '555': 'NU', // Niue
+  
+  // Africa - North
+  '602': 'EG', // Egypt
+  '603': 'DZ', // Algeria
+  '604': 'MA', // Morocco
+  '605': 'TN', // Tunisia
+  '606': 'LY', // Libya
+  '607': 'GM', // Gambia
+  '608': 'SN', // Senegal
+  '609': 'MR', // Mauritania
+  '610': 'ML', // Mali
+  '611': 'GN', // Guinea
+  '612': 'CI', // Ivory Coast
+  '613': 'BF', // Burkina Faso
+  '614': 'NE', // Niger
+  '615': 'TG', // Togo
+  '616': 'BJ', // Benin
+  '617': 'MU', // Mauritius
+  '618': 'LR', // Liberia
+  '619': 'SL', // Sierra Leone
+  '620': 'GH', // Ghana
+  '621': 'NG', // Nigeria
+  '622': 'TD', // Chad
+  '623': 'CF', // Central African Republic
+  '624': 'CM', // Cameroon
+  '625': 'CV', // Cape Verde
+  '626': 'ST', // Sao Tome
+  '627': 'GQ', // Equatorial Guinea
+  '628': 'GA', // Gabon
+  '629': 'CG', // Congo
+  '630': 'CD', // DR Congo
+  '631': 'AO', // Angola
+  '632': 'GW', // Guinea-Bissau
+  '633': 'SC', // Seychelles
+  '634': 'SD', // Sudan
+  '635': 'RW', // Rwanda
+  '636': 'ET', // Ethiopia
+  '637': 'SO', // Somalia
+  '638': 'DJ', // Djibouti
+  '639': 'KE', // Kenya
+  '640': 'TZ', // Tanzania
+  '641': 'UG', // Uganda
+  '642': 'BI', // Burundi
+  '643': 'MZ', // Mozambique
+  '645': 'ZM', // Zambia
+  '646': 'MG', // Madagascar
+  '647': 'RE', // Reunion
+  '648': 'ZW', // Zimbabwe
+  '649': 'NA', // Namibia
+  '650': 'MW', // Malawi
+  '651': 'LS', // Lesotho
+  '652': 'BW', // Botswana
+  '653': 'SZ', // Eswatini
+  '654': 'KM', // Comoros
+  '655': 'ZA', // South Africa
+  '657': 'ER', // Eritrea
+  '658': 'SH', // St Helena
+  '659': 'SS', // South Sudan
+  
+  // Caucasus & Central Asia
+  '282': 'GE', // Georgia
+  '283': 'AM', // Armenia
+  '400': 'AZ', // Azerbaijan
+  '401': 'KZ', // Kazakhstan
+  
+  // Turkey & Cyprus
+  '286': 'TR', // Turkey
+  '280': 'CY', // Cyprus
+  
+  // Special/Maritime
+  '901': 'XX', // International/Maritime
+  '999': 'XX'  // Test networks
 };
 
-// Country code to flag emoji
+// Country code to flag emoji - COMPREHENSIVE
 const COUNTRY_FLAGS = {
-  'US': '🇺🇸', 'CA': '🇨🇦', 'MX': '🇲🇽', 'AR': '🇦🇷', 'BR': '🇧🇷',
-  'GB': '🇬🇧', 'DE': '🇩🇪', 'FR': '🇫🇷', 'IT': '🇮🇹', 'ES': '🇪🇸', 'PL': '🇵🇱',
-  'JP': '🇯🇵', 'KR': '🇰🇷', 'CN': '🇨🇳', 'TH': '🇹🇭', 'PH': '🇵🇭',
-  'AU': '🇦🇺', 'NZ': '🇳🇿',
-  'RU': '🇷🇺', 'UA': '🇺🇦',
-  'IN': '🇮🇳',
-  'SA': '🇸🇦', 'AE': '🇦🇪', 'IL': '🇮🇱',
-  'EG': '🇪🇬', 'NG': '🇳🇬', 'ZA': '🇿🇦'
+  // North America
+  'US': '🇺🇸', 'CA': '🇨🇦', 'MX': '🇲🇽',
+  
+  // Caribbean
+  'JM': '🇯🇲', 'BB': '🇧🇧', 'AG': '🇦🇬', 'KY': '🇰🇾', 'VG': '🇻🇬', 'BM': '🇧🇲',
+  'GD': '🇬🇩', 'MS': '🇲🇸', 'KN': '🇰🇳', 'LC': '🇱🇨', 'VC': '🇻🇨', 'CW': '🇨🇼',
+  'AW': '🇦🇼', 'BS': '🇧🇸', 'AI': '🇦🇮', 'DM': '🇩🇲', 'CU': '🇨🇺', 'DO': '🇩🇴',
+  'HT': '🇭🇹', 'TT': '🇹🇹', 'VI': '🇻🇮', 'PR': '🇵🇷',
+  
+  // Central America
+  'GT': '🇬🇹', 'SV': '🇸🇻', 'HN': '🇭🇳', 'NI': '🇳🇮', 'CR': '🇨🇷', 'PA': '🇵🇦', 'PE': '🇵🇪',
+  
+  // South America
+  'AR': '🇦🇷', 'BR': '🇧🇷', 'CL': '🇨🇱', 'CO': '🇨🇴', 'VE': '🇻🇪', 'BO': '🇧🇴',
+  'GY': '🇬🇾', 'EC': '🇪🇨', 'GF': '🇬🇫', 'PY': '🇵🇾', 'SR': '🇸🇷', 'UY': '🇺🇾', 'FK': '🇫🇰',
+  
+  // Europe - Western
+  'GB': '🇬🇧', 'IE': '🇮🇪', 'FR': '🇫🇷', 'DE': '🇩🇪', 'NL': '🇳🇱', 'BE': '🇧🇪',
+  'LU': '🇱🇺', 'CH': '🇨🇭', 'AT': '🇦🇹',
+  
+  // Europe - Southern
+  'IT': '🇮🇹', 'ES': '🇪🇸', 'PT': '🇵🇹', 'GR': '🇬🇷', 'MT': '🇲🇹', 'SM': '🇸🇲',
+  'AD': '🇦🇩', 'MC': '🇲🇨', 'LI': '🇱🇮', 'SI': '🇸🇮', 'HR': '🇭🇷', 'BA': '🇧🇦',
+  'RS': '🇷🇸', 'XK': '🇽🇰', 'MK': '🇲🇰', 'AL': '🇦🇱', 'ME': '🇲🇪',
+  
+  // Europe - Northern
+  'DK': '🇩🇰', 'SE': '🇸🇪', 'NO': '🇳🇴', 'FI': '🇫🇮', 'LT': '🇱🇹', 'LV': '🇱🇻',
+  'EE': '🇪🇪', 'IS': '🇮🇸', 'GI': '🇬🇮', 'FO': '🇫🇴',
+  
+  // Europe - Eastern
+  'PL': '🇵🇱', 'CZ': '🇨🇿', 'SK': '🇸🇰', 'HU': '🇭🇺', 'RO': '🇷🇴', 'BG': '🇧🇬',
+  'UA': '🇺🇦', 'BY': '🇧🇾', 'MD': '🇲🇩', 'RU': '🇷🇺',
+  
+  // Middle East
+  'IQ': '🇮🇶', 'KW': '🇰🇼', 'SA': '🇸🇦', 'YE': '🇾🇪', 'OM': '🇴🇲', 'AE': '🇦🇪',
+  'IL': '🇮🇱', 'BH': '🇧🇭', 'QA': '🇶🇦', 'IR': '🇮🇷', 'JO': '🇯🇴', 'SY': '🇸🇾',
+  'LB': '🇱🇧', 'PS': '🇵🇸',
+  
+  // Central Asia
+  'MN': '🇲🇳', 'NP': '🇳🇵', 'UZ': '🇺🇿', 'TJ': '🇹🇯', 'KG': '🇰🇬', 'TM': '🇹🇲',
+  'KZ': '🇰🇿', 'AF': '🇦🇫', 'PK': '🇵🇰',
+  
+  // East Asia
+  'JP': '🇯🇵', 'KR': '🇰🇷', 'KP': '🇰🇵', 'CN': '🇨🇳', 'TW': '🇹🇼', 'HK': '🇭🇰', 'MO': '🇲🇴',
+  
+  // Southeast Asia
+  'VN': '🇻🇳', 'KH': '🇰🇭', 'LA': '🇱🇦', 'TH': '🇹🇭', 'MM': '🇲🇲', 'MY': '🇲🇾',
+  'SG': '🇸🇬', 'ID': '🇮🇩', 'TL': '🇹🇱', 'PH': '🇵🇭', 'BN': '🇧🇳',
+  
+  // South Asia
+  'IN': '🇮🇳', 'BD': '🇧🇩', 'LK': '🇱🇰', 'MV': '🇲🇻', 'BT': '🇧🇹',
+  
+  // Oceania
+  'AU': '🇦🇺', 'NZ': '🇳🇿', 'PG': '🇵🇬', 'FJ': '🇫🇯', 'SB': '🇸🇧', 'VU': '🇻🇺',
+  'NC': '🇳🇨', 'PF': '🇵🇫', 'WS': '🇼🇸', 'TO': '🇹🇴', 'KI': '🇰🇮', 'NR': '🇳🇷',
+  'FM': '🇫🇲', 'MH': '🇲🇭', 'PW': '🇵🇼', 'TV': '🇹🇻', 'CK': '🇨🇰', 'NU': '🇳🇺',
+  'AS': '🇦🇸', 'GU': '🇬🇺',
+  
+  // Africa - North
+  'EG': '🇪🇬', 'DZ': '🇩🇿', 'MA': '🇲🇦', 'TN': '🇹🇳', 'LY': '🇱🇾', 'SD': '🇸🇩', 'SS': '🇸🇸',
+  
+  // Africa - West
+  'NG': '🇳🇬', 'GH': '🇬🇭', 'SN': '🇸🇳', 'CI': '🇨🇮', 'ML': '🇲🇱', 'BF': '🇧🇫',
+  'NE': '🇳🇪', 'TG': '🇹🇬', 'BJ': '🇧🇯', 'MR': '🇲🇷', 'GM': '🇬🇲', 'GN': '🇬🇳',
+  'SL': '🇸🇱', 'LR': '🇱🇷', 'CV': '🇨🇻', 'GW': '🇬🇼',
+  
+  // Africa - East
+  'KE': '🇰🇪', 'TZ': '🇹🇿', 'UG': '🇺🇬', 'RW': '🇷🇼', 'BI': '🇧🇮', 'ET': '🇪🇹',
+  'ER': '🇪🇷', 'DJ': '🇩🇯', 'SO': '🇸🇴', 'MG': '🇲🇬', 'MU': '🇲🇺', 'SC': '🇸🇨',
+  'KM': '🇰🇲', 'RE': '🇷🇪',
+  
+  // Africa - Central
+  'CD': '🇨🇩', 'CG': '🇨🇬', 'CF': '🇨🇫', 'CM': '🇨🇲', 'TD': '🇹🇩', 'GA': '🇬🇦',
+  'GQ': '🇬🇶', 'ST': '🇸🇹', 'AO': '🇦🇴',
+  
+  // Africa - Southern
+  'ZA': '🇿🇦', 'NA': '🇳🇦', 'BW': '🇧🇼', 'ZW': '🇿🇼', 'ZM': '🇿🇲', 'MW': '🇲🇼',
+  'MZ': '🇲🇿', 'LS': '🇱🇸', 'SZ': '🇸🇿', 'SH': '🇸🇭',
+  
+  // Caucasus
+  'GE': '🇬🇪', 'AM': '🇦🇲', 'AZ': '🇦🇿',
+  
+  // Turkey & Cyprus
+  'TR': '🇹🇷', 'CY': '🇨🇾',
+  
+  // Special
+  'XX': '🌐' // International/Maritime
 };
 
 function getCountryFlag(mcc) {
@@ -208,20 +727,29 @@ function getCarrierInfo(mcc, mnc) {
 // Detect expected country based on coordinates
 function getExpectedCountry(lat, lon) {
   // Simple bounding box checks for major regions
-  // This is approximate - for precise detection you'd use a geo library
+  // This is approximate - covers major deployment areas
   
+  // === NORTH AMERICA ===
   // USA (continental)
   if (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -66) return 'US';
   // Alaska
   if (lat >= 51 && lat <= 72 && lon >= -180 && lon <= -129) return 'US';
   // Hawaii
   if (lat >= 18 && lat <= 23 && lon >= -161 && lon <= -154) return 'US';
+  // Puerto Rico
+  if (lat >= 17.5 && lat <= 18.6 && lon >= -68 && lon <= -65) return 'PR';
+  // Guam
+  if (lat >= 13 && lat <= 14 && lon >= 144 && lon <= 145) return 'GU';
   // Canada
   if (lat >= 42 && lat <= 84 && lon >= -141 && lon <= -52) return 'CA';
   // Mexico
   if (lat >= 14 && lat <= 33 && lon >= -118 && lon <= -86) return 'MX';
+  
+  // === EUROPE ===
   // UK
   if (lat >= 49 && lat <= 61 && lon >= -11 && lon <= 2) return 'GB';
+  // Ireland
+  if (lat >= 51 && lat <= 56 && lon >= -11 && lon <= -5) return 'IE';
   // Germany
   if (lat >= 47 && lat <= 55 && lon >= 5 && lon <= 15) return 'DE';
   // France
@@ -232,29 +760,136 @@ function getExpectedCountry(lat, lon) {
   if (lat >= 36 && lat <= 47 && lon >= 6 && lon <= 19) return 'IT';
   // Poland
   if (lat >= 49 && lat <= 55 && lon >= 14 && lon <= 24) return 'PL';
+  // Norway
+  if (lat >= 58 && lat <= 72 && lon >= 4 && lon <= 31) return 'NO';
+  // Sweden
+  if (lat >= 55 && lat <= 70 && lon >= 10 && lon <= 25) return 'SE';
+  // Finland
+  if (lat >= 59 && lat <= 70 && lon >= 20 && lon <= 32) return 'FI';
+  // Denmark
+  if (lat >= 54 && lat <= 58 && lon >= 7 && lon <= 16) return 'DK';
+  // Netherlands
+  if (lat >= 50.5 && lat <= 54 && lon >= 3 && lon <= 7.5) return 'NL';
+  // Belgium
+  if (lat >= 49.5 && lat <= 51.5 && lon >= 2.5 && lon <= 6.5) return 'BE';
+  // Switzerland
+  if (lat >= 45.5 && lat <= 48 && lon >= 5.5 && lon <= 10.5) return 'CH';
+  // Austria
+  if (lat >= 46 && lat <= 49 && lon >= 9 && lon <= 17) return 'AT';
+  // Greece
+  if (lat >= 34 && lat <= 42 && lon >= 19 && lon <= 30) return 'GR';
+  // Turkey
+  if (lat >= 36 && lat <= 42 && lon >= 26 && lon <= 45) return 'TR';
+  // Romania
+  if (lat >= 43 && lat <= 48 && lon >= 20 && lon <= 30) return 'RO';
+  // Ukraine
+  if (lat >= 44 && lat <= 53 && lon >= 22 && lon <= 40) return 'UA';
+  
+  // === MIDDLE EAST ===
+  // Iraq
+  if (lat >= 29 && lat <= 38 && lon >= 38 && lon <= 49) return 'IQ';
+  // Kuwait
+  if (lat >= 28.5 && lat <= 30.5 && lon >= 46 && lon <= 49) return 'KW';
+  // Saudi Arabia
+  if (lat >= 16 && lat <= 33 && lon >= 34 && lon <= 56) return 'SA';
+  // UAE
+  if (lat >= 22 && lat <= 26 && lon >= 51 && lon <= 57) return 'AE';
+  // Qatar
+  if (lat >= 24.5 && lat <= 26.5 && lon >= 50 && lon <= 52) return 'QA';
+  // Bahrain
+  if (lat >= 25.5 && lat <= 26.5 && lon >= 50 && lon <= 51) return 'BH';
+  // Oman
+  if (lat >= 16 && lat <= 27 && lon >= 52 && lon <= 60) return 'OM';
+  // Yemen
+  if (lat >= 12 && lat <= 19 && lon >= 42 && lon <= 55) return 'YE';
+  // Jordan
+  if (lat >= 29 && lat <= 33 && lon >= 34 && lon <= 39) return 'JO';
+  // Israel
+  if (lat >= 29 && lat <= 33.5 && lon >= 34 && lon <= 36) return 'IL';
+  // Syria
+  if (lat >= 32 && lat <= 37.5 && lon >= 35 && lon <= 42.5) return 'SY';
+  // Iran
+  if (lat >= 25 && lat <= 40 && lon >= 44 && lon <= 64) return 'IR';
+  // Afghanistan
+  if (lat >= 29 && lat <= 39 && lon >= 60 && lon <= 75) return 'AF';
+  
+  // === ASIA ===
   // Russia (European part)
   if (lat >= 41 && lat <= 82 && lon >= 19 && lon <= 180) return 'RU';
   // Japan
   if (lat >= 24 && lat <= 46 && lon >= 123 && lon <= 146) return 'JP';
   // South Korea
   if (lat >= 33 && lat <= 39 && lon >= 124 && lon <= 132) return 'KR';
+  // North Korea
+  if (lat >= 37.5 && lat <= 43 && lon >= 124 && lon <= 131) return 'KP';
   // China
   if (lat >= 18 && lat <= 54 && lon >= 73 && lon <= 135) return 'CN';
-  // Australia
-  if (lat >= -44 && lat <= -10 && lon >= 113 && lon <= 154) return 'AU';
-  // India
-  if (lat >= 6 && lat <= 36 && lon >= 68 && lon <= 98) return 'IN';
-  // UAE
-  if (lat >= 22 && lat <= 26 && lon >= 51 && lon <= 57) return 'AE';
-  // Saudi Arabia
-  if (lat >= 16 && lat <= 33 && lon >= 34 && lon <= 56) return 'SA';
-  // Thailand
-  if (lat >= 5 && lat <= 21 && lon >= 97 && lon <= 106) return 'TH';
+  // Taiwan
+  if (lat >= 21.5 && lat <= 26 && lon >= 119 && lon <= 122.5) return 'TW';
   // Philippines
   if (lat >= 4 && lat <= 21 && lon >= 116 && lon <= 127) return 'PH';
+  // Vietnam
+  if (lat >= 8 && lat <= 24 && lon >= 102 && lon <= 110) return 'VN';
+  // Thailand
+  if (lat >= 5 && lat <= 21 && lon >= 97 && lon <= 106) return 'TH';
+  // Singapore
+  if (lat >= 1 && lat <= 1.5 && lon >= 103 && lon <= 104.5) return 'SG';
+  // Malaysia
+  if (lat >= 0.5 && lat <= 8 && lon >= 99 && lon <= 120) return 'MY';
+  // Indonesia
+  if (lat >= -11 && lat <= 6 && lon >= 94 && lon <= 141) return 'ID';
+  // India
+  if (lat >= 6 && lat <= 36 && lon >= 68 && lon <= 98) return 'IN';
+  // Pakistan
+  if (lat >= 23 && lat <= 37 && lon >= 60 && lon <= 77) return 'PK';
+  
+  // === OCEANIA ===
+  // Australia
+  if (lat >= -44 && lat <= -10 && lon >= 113 && lon <= 154) return 'AU';
+  // New Zealand
+  if (lat >= -48 && lat <= -33 && lon >= 165 && lon <= 179) return 'NZ';
+  
+  // === AFRICA ===
+  // Egypt
+  if (lat >= 22 && lat <= 32 && lon >= 24 && lon <= 37) return 'EG';
+  // Libya
+  if (lat >= 19 && lat <= 34 && lon >= 9 && lon <= 25) return 'LY';
+  // Sudan
+  if (lat >= 8 && lat <= 23 && lon >= 21 && lon <= 39) return 'SD';
+  // Somalia
+  if (lat >= -2 && lat <= 12 && lon >= 40 && lon <= 52) return 'SO';
+  // Djibouti
+  if (lat >= 10.5 && lat <= 13 && lon >= 41 && lon <= 44) return 'DJ';
+  // Kenya
+  if (lat >= -5 && lat <= 5 && lon >= 33 && lon <= 42) return 'KE';
+  // South Africa
+  if (lat >= -35 && lat <= -22 && lon >= 16 && lon <= 33) return 'ZA';
+  // Nigeria
+  if (lat >= 4 && lat <= 14 && lon >= 2 && lon <= 15) return 'NG';
+  
+  // === CARIBBEAN ===
+  // Cuba
+  if (lat >= 19.5 && lat <= 23.5 && lon >= -85 && lon <= -74) return 'CU';
+  // Jamaica
+  if (lat >= 17 && lat <= 19 && lon >= -79 && lon <= -76) return 'JM';
+  // Haiti
+  if (lat >= 18 && lat <= 20 && lon >= -75 && lon <= -71) return 'HT';
+  // Dominican Republic
+  if (lat >= 17 && lat <= 20 && lon >= -72 && lon <= -68) return 'DO';
+  
+  // === SOUTH AMERICA ===
+  // Brazil
+  if (lat >= -34 && lat <= 6 && lon >= -74 && lon <= -34) return 'BR';
+  // Colombia
+  if (lat >= -5 && lat <= 14 && lon >= -82 && lon <= -66) return 'CO';
+  // Peru
+  if (lat >= -19 && lat <= 0 && lon >= -82 && lon <= -68) return 'PE';
+  // Argentina
+  if (lat >= -56 && lat <= -21 && lon >= -74 && lon <= -53) return 'AR';
+  // Chile
+  if (lat >= -56 && lat <= -17 && lon >= -76 && lon <= -66) return 'CL';
   
   return null;
-}
 }
 
 function getCarrierInfo(mcc, mnc) {
