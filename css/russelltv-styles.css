@@ -45,22 +45,27 @@ body {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 0 10px rgba(255, 120, 0, 0.45);
+  transition: text-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .rtv-brand-tagline {
-  font-size: 0.78rem;
-  opacity: 0.7;
-}
-
-/* Hover/focus – subtle “pro” glow */
-.rtv-brand-button:hover .rtv-brand-title,
-.rtv-brand-button:focus-visible .rtv-brand-title {
-  text-shadow: 0 0 10px rgba(255, 140, 0, 0.75);
-}
-
-.rtv-brand-button:hover .rtv-brand-tagline,
-.rtv-brand-button:focus-visible .rtv-brand-tagline {
+  font-size: 0.8rem;
+  color: rgba(255, 200, 150, 0.95);
   opacity: 1;
+  text-shadow: 0 0 6px rgba(255, 120, 0, 0.4);
+  transition: text-shadow 0.25s ease, transform 0.25s ease;
+}
+
+/* Fiery hover intensifies */
+.rtv-brand-button:hover .rtv-brand-title,
+.rtv-brand-button:hover .rtv-brand-tagline {
+  text-shadow:
+    0 0 12px rgba(255, 150, 0, 0.75),
+    0 0 18px rgba(255, 80, 0, 0.75),
+    0 0 30px rgba(255, 60, 0, 0.85);
+  transform: translateY(-1px);
 }
 
 /* Channel controls block */
@@ -96,6 +101,7 @@ body {
   transform: translateY(-1px);
 }
 
+/* ---------- Main Layout ---------- */
 main {
   padding: 0.75rem;
   padding-bottom: 2.2rem;
@@ -307,7 +313,7 @@ main {
   border-radius: 8px;
 }
 
-/* Mobile cloned ticker bar */
+/* ---------- Mobile info-bar clone ---------- */
 #info-bar-mobile {
   display: none;
 }
@@ -349,7 +355,7 @@ main {
   display: none;
 }
 
-/* You had this before: hide Single button if you don't want it shown */
+/* Hide Single button if you only want Grid visible */
 #btn-single {
   display: none !important;
 }
