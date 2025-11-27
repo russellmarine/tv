@@ -62,8 +62,13 @@ function getCacheKey(lat, lon, range) {
 
 async function fetchFromOpenCelliD(lat, lon, range) {
   return new Promise((resolve, reject) => {
+    // OpenCelliD limits BBOX to 4,000,000 sq meters (4 km²)
+    // Max safe box is about 2km x 2km, so cap range at 1000m (creates 2km x 2km box)
+    const maxRange = 1000; // 1km radius = 2km x 2km box = 4 km²
+    const effectiveRange = Math.min(range, maxRange);
+    
     // Create bounding box from center point and range (in meters)
-    const rangeKm = range / 1000;
+    const rangeKm = effectiveRange / 1000;
     const latDelta = rangeKm / 111; // ~111km per degree latitude
     const lonDelta = rangeKm / (111 * Math.cos(lat * Math.PI / 180));
     
@@ -72,6 +77,7 @@ async function fetchFromOpenCelliD(lat, lon, range) {
     const apiUrl = `https://opencellid.org/cell/getInArea?key=${OPENCELLID_TOKEN}&BBOX=${bbox}&format=json&limit=50`;
     
     console.log(`[Cell] Fetching: ${apiUrl.replace(OPENCELLID_TOKEN, 'TOKEN')}`);
+    console.log(`[Cell] Range requested: ${range}m, effective: ${effectiveRange}m`);
     
     https.get(apiUrl, {
       headers: {
