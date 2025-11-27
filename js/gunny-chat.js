@@ -10,6 +10,7 @@
   let inputEl = null;
   let formEl = null;
   let statusEl = null;
+  let typingEl = null;
   let isOpen = false;
 
   // ---------- Styles ----------
@@ -109,7 +110,7 @@
       .gunny-chat-status.error {
         color: #ff8080;
       }
-            .gunny-chat-typing {
+      .gunny-chat-typing {
         min-height: 1.1em;
         font-size: 0.7rem;
         color: rgba(220,220,220,0.85);
@@ -126,7 +127,6 @@
       .gunny-chat-typing .dot:nth-child(3) {
         animation-delay: 0.4s;
       }
-
       @keyframes gunny-dots {
         0%, 20%   { opacity: 0.2; transform: translateY(0); }
         50%       { opacity: 1;   transform: translateY(-1px); }
@@ -184,12 +184,11 @@
   }
 
   // ---------- Webex login ----------
-  // Start or resume Webex login for this browser/user
   async function ensureLoggedIn() {
     try {
       const login = await apiJson('/webex/login');
 
-      // If backend says we're already logged in for this browser/user
+      // Already logged in for this browser/user
       if (login && login.logged_in) {
         return true;
       }
@@ -219,6 +218,11 @@
 
   function clearStatus() {
     setStatus('');
+  }
+
+  function setTyping(active) {
+    if (!typingEl) return;
+    typingEl.style.display = active ? 'block' : 'none';
   }
 
   function scrollToBottom() {
@@ -271,6 +275,8 @@
       const logged = await ensureLoggedIn();
       if (!logged) return;
 
+      setTyping(true);
+
       const resp = await apiJson('/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -287,6 +293,8 @@
     } catch (err) {
       console.error('[GunnyChat] send error', err);
       setStatus('Send failed. Check Webex auth or try again.', true);
+    } finally {
+      setTyping(false);
     }
   }
 
@@ -327,6 +335,7 @@
     inputEl    = panelEl.querySelector('.gunny-chat-input');
     formEl     = panelEl.querySelector('.gunny-chat-form');
     statusEl   = panelEl.querySelector('.gunny-chat-status');
+    typingEl   = panelEl.querySelector('.gunny-chat-typing');
 
     const closeBtn = panelEl.querySelector('.gunny-chat-close');
     if (closeBtn) {
@@ -346,11 +355,14 @@
     ensurePanel();
     panelEl.classList.add('open');
     isOpen = true;
+    setTyping(false);
+    clearStatus();
 
     try {
       const logged = await ensureLoggedIn();
       if (!logged) return;
       await loadHistory();
+      if (inputEl) inputEl.focus();
     } catch (err) {
       console.error('[GunnyChat] open error', err);
       setStatus('Auth or API error talking to Gunny.', true);
@@ -361,6 +373,7 @@
     if (!panelEl) return;
     panelEl.classList.remove('open');
     isOpen = false;
+    setTyping(false);
   }
 
   function togglePanel() {
