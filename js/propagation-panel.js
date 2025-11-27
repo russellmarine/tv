@@ -1319,6 +1319,13 @@
           if (input && selectedLocation?.label) {
             input.value = selectedLocation.label;
           }
+          
+          // If this is a custom/search location (not a predefined TIME_ZONE), fetch weather
+          if (parsed.source === 'search' || !window.RussellTV?.InfoBar?.getWeather?.(parsed.label)) {
+            fetchWeatherForCustomLocation(lat, lon).then(() => {
+              updatePanelContent();
+            });
+          }
         } else {
           // Invalid saved location, clear it
           selectedLocation = null;
