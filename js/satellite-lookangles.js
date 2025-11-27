@@ -501,13 +501,26 @@
     return Math.round(Math.sqrt(groundDist**2 + satAlt**2));
   }
 
-  async function fetchAllSatellites() {
+  async function fetchAllSatellites(forceRefresh = false) {
     if (!currentLocation) return;
+
+    const { lat, lon } = currentLocation;
+
+    // Check cache first (unless force refresh)
+    if (!forceRefresh) {
+      const cached = loadFromCache(lat, lon);
+      if (cached) {
+        satelliteData = cached.data;
+        lastFetch = new Date(cached.timestamp);
+        console.log('[SatLookAngles] Loaded from cache, age:', Math.round((Date.now() - cached.timestamp) / 60000), 'minutes');
+        Events.emit('satla:render');
+        return;
+      }
+    }
 
     isLoading = true;
     Events.emit('satla:render');
 
-    const { lat, lon } = currentLocation;
     const newData = {};
 
     for (const [key, constellation] of Object.entries(SATELLITES)) {
@@ -515,9 +528,9 @@
 
       newData[key] = { ...constellation, satellites: [] };
 
-      // Fetch with delays to avoid rate limiting
+      // Fetch with 200ms delays to avoid rate limiting
       const promises = constellation.satellites.map(async (sat, index) => {
-        await new Promise(resolve => setTimeout(resolve, index * 100));
+        await new Promise(resolve => setTimeout(resolve, index * 200));
         const position = await fetchSatellitePosition(sat.id, lat, lon);
         return { ...sat, position };
       });
@@ -528,6 +541,10 @@
     satelliteData = newData;
     lastFetch = new Date();
     isLoading = false;
+
+    // Save to cache
+    saveToCache(lat, lon, newData);
+
     Events.emit('satla:render');
   }
 
@@ -691,8 +708,10 @@
           }
 
           if (lastFetch) {
+            const ageMinutes = Math.round((Date.now() - lastFetch.getTime()) / 60000);
+            const ageText = ageMinutes < 60 ? `${ageMinutes}m ago` : `${Math.round(ageMinutes/60)}h ago`;
             html += `<div class="satla-footer">
-              <span>Updated ${lastFetch.toLocaleTimeString()}</span>
+              <span>Data: ${ageText} (cached 24h)</span>
               <span>Via <a href="https://n2yo.com" target="_blank" rel="noopener noreferrer">N2YO</a></span>
             </div>`;
           }
@@ -815,18 +834,59 @@
   function refresh() {
     if (!currentLocation) { alert('Select a location first'); return; }
     fetchWeatherForLocation(currentLocation.lat, currentLocation.lon);
-    fetchAllSatellites();
+    fetchAllSatellites(true);  // Force refresh, bypass cache
   }
 
   function handleSearch(value) { handleAutocompleteInput(value); }
+
+  // ============ CACHING ============
+  
+  function getCacheKey(lat, lon) {
+    return `satla_${lat.toFixed(2)}_${lon.toFixed(2)}`;
+  }
+
+  function saveToCache(lat, lon, data) {
+    try {
+      const key = getCacheKey(lat, lon);
+      const cacheEntry = {
+        data: data,
+        timestamp: Date.now(),
+        lat: lat,
+        lon: lon
+      };
+      localStorage.setItem(key, JSON.stringify(cacheEntry));
+    } catch (e) {
+      console.warn('[SatLookAngles] Cache save failed:', e);
+    }
+  }
+
+  function loadFromCache(lat, lon) {
+    try {
+      const key = getCacheKey(lat, lon);
+      const cached = localStorage.getItem(key);
+      if (!cached) return null;
+
+      const entry = JSON.parse(cached);
+      const age = Date.now() - entry.timestamp;
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+      if (age > maxAge) {
+        localStorage.removeItem(key);
+        return null;
+      }
+
+      return entry;
+    } catch (e) {
+      return null;
+    }
+  }
 
   function init() {
     const styleEl = document.createElement('style');
     styleEl.textContent = styles;
     document.head.appendChild(styleEl);
 
-    // Auto-refresh every 30 minutes (GEO satellites don't move much)
-    setInterval(() => { if (currentLocation && !isLoading) fetchAllSatellites(); }, 1800000);
+    // No auto-refresh - GEO satellites don't move much, fetch manually only
 
     // Close autocomplete on outside click
     document.addEventListener('click', () => {
@@ -834,7 +894,7 @@
       if (d) d.style.display = 'none';
     });
 
-    console.log('✅ [SatLookAngles] Initialized with MGRS support');
+    console.log('✅ [SatLookAngles] Initialized with MGRS support and 24h caching');
   }
 
   Events.whenReady('core:ready', init);
