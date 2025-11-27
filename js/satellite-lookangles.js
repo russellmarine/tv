@@ -439,7 +439,7 @@
 
     let html = `
       <div class="satla-section">
-        <div class="satla-header" onclick="event.stopPropagation(); window.RussellTV.SatLookAngles.toggleExpand()">
+        <div class="satla-header" onclick="window.RussellTV.SatLookAngles.toggleExpand()">
           <span class="section-title">📡 Satellite Look Angles</span>
           <span class="expand-icon">${isExpanded ? '▼' : '▶'}</span>
         </div>`;
@@ -553,10 +553,11 @@
 
   const styles = `
     .satla-section { margin-top:1rem; border:1px solid rgba(100,150,255,0.3); border-radius:8px; overflow:hidden; }
-    .satla-header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(100,150,255,0.1); cursor:pointer; user-select:none; }
-    .satla-header:hover { background:rgba(100,150,255,0.2); }
-    .satla-header .section-title { font-weight:bold; font-size:0.9rem; }
-    .expand-icon { font-size:0.8rem; opacity:0.7; }
+    .satla-header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(100,150,255,0.1); cursor:pointer; user-select:none; transition:background 0.15s; }
+    .satla-header:hover { background:rgba(100,150,255,0.25); }
+    .satla-header:active { background:rgba(100,150,255,0.35); }
+    .satla-header .section-title { font-weight:bold; font-size:0.9rem; pointer-events:none; }
+    .satla-header .expand-icon { font-size:0.8rem; opacity:0.7; pointer-events:none; transition:transform 0.2s; }
     .satla-content { padding:1rem; }
     .satla-btn { padding:0.35rem 0.5rem; border-radius:4px; border:1px solid rgba(100,150,255,0.5); background:rgba(100,150,255,0.2); color:white; cursor:pointer; font-size:0.8rem; }
     .satla-btn:hover { background:rgba(100,150,255,0.4); }
