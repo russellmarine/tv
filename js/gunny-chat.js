@@ -156,8 +156,7 @@
     return await res.json();
   }
 
-  // Check Webex login status; if not logged in, redirect to FedRAMP Webex login
-  
+  // ---------- Webex login ----------
   // Start or resume Webex login for this browser/user
   async function ensureLoggedIn() {
     try {
@@ -176,21 +175,6 @@
       }
 
       setStatus('Unable to start Webex login flow.', true);
-      return false;
-    } catch (err) {
-      console.error('[GunnyChat] ensureLoggedIn error', err);
-      setStatus('Webex auth check failed. Try again.', true);
-      return false;
-    }
-  }
-
-const login = await apiJson('/webex/login');
-      if (login && login.url) {
-        setStatus('Redirecting to Webex login…', false);
-        window.location.href = login.url;
-      } else {
-        setStatus('Unable to start Webex login flow.', true);
-      }
       return false;
     } catch (err) {
       console.error('[GunnyChat] ensureLoggedIn error', err);
