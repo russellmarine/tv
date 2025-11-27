@@ -34,6 +34,9 @@
         overflow: hidden;
         z-index: 9999;
         font-size: 0.85rem;
+        resize: both;
+        min-width: 320px;
+        min-height: 260px;
       }
       .gunny-chat-panel.open {
         display: flex;
@@ -105,6 +108,29 @@
       }
       .gunny-chat-status.error {
         color: #ff8080;
+      }
+            .gunny-chat-typing {
+        min-height: 1.1em;
+        font-size: 0.7rem;
+        color: rgba(220,220,220,0.85);
+        opacity: 0.9;
+        display: none;
+      }
+      .gunny-chat-typing .dot {
+        display: inline-block;
+        animation: gunny-dots 1.2s infinite ease-in-out;
+      }
+      .gunny-chat-typing .dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .gunny-chat-typing .dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes gunny-dots {
+        0%, 20%   { opacity: 0.2; transform: translateY(0); }
+        50%       { opacity: 1;   transform: translateY(-1px); }
+        100%      { opacity: 0.2; transform: translateY(0); }
       }
       .gunny-chat-form {
         display: flex;
