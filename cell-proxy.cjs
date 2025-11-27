@@ -154,20 +154,126 @@ const ALL_CARRIERS = { ...US_CARRIERS, ...INTL_CARRIERS };
 const MCC_COUNTRIES = {
   '310': 'US', '311': 'US', '312': 'US', '313': 'US', '316': 'US',
   '302': 'CA', '334': 'MX', '722': 'AR', '724': 'BR',
-  '234': 'GB', '262': 'DE', '208': 'FR', '222': 'IT', '214': 'ES',
+  '234': 'GB', '262': 'DE', '208': 'FR', '222': 'IT', '214': 'ES', '260': 'PL',
   '440': 'JP', '450': 'KR', '460': 'CN', '520': 'TH', '515': 'PH',
-  '505': 'AU', '530': 'NZ'
+  '505': 'AU', '530': 'NZ',
+  '250': 'RU', '255': 'UA',
+  '404': 'IN', '405': 'IN',
+  '420': 'SA', '424': 'AE', '425': 'IL',
+  '602': 'EG', '621': 'NG', '655': 'ZA'
 };
+
+// Country code to flag emoji
+const COUNTRY_FLAGS = {
+  'US': '🇺🇸', 'CA': '🇨🇦', 'MX': '🇲🇽', 'AR': '🇦🇷', 'BR': '🇧🇷',
+  'GB': '🇬🇧', 'DE': '🇩🇪', 'FR': '🇫🇷', 'IT': '🇮🇹', 'ES': '🇪🇸', 'PL': '🇵🇱',
+  'JP': '🇯🇵', 'KR': '🇰🇷', 'CN': '🇨🇳', 'TH': '🇹🇭', 'PH': '🇵🇭',
+  'AU': '🇦🇺', 'NZ': '🇳🇿',
+  'RU': '🇷🇺', 'UA': '🇺🇦',
+  'IN': '🇮🇳',
+  'SA': '🇸🇦', 'AE': '🇦🇪', 'IL': '🇮🇱',
+  'EG': '🇪🇬', 'NG': '🇳🇬', 'ZA': '🇿🇦'
+};
+
+function getCountryFlag(mcc) {
+  const country = MCC_COUNTRIES[String(mcc)];
+  return country ? (COUNTRY_FLAGS[country] || '') : '';
+}
+
+function getCountryCode(mcc) {
+  return MCC_COUNTRIES[String(mcc)] || null;
+}
 
 function getCarrierInfo(mcc, mnc) {
   const key = `${mcc}-${mnc}`;
+  const country = getCountryCode(mcc);
+  const flag = getCountryFlag(mcc);
+  
   if (ALL_CARRIERS[key]) {
-    return ALL_CARRIERS[key];
+    return {
+      ...ALL_CARRIERS[key],
+      country,
+      flag
+    };
   }
   // Return generic info with country
   return {
     name: `MCC ${mcc} / MNC ${mnc}`,
-    country: MCC_COUNTRIES[String(mcc)] || 'Unknown',
+    country,
+    flag,
+    bands: []
+  };
+}
+
+// Detect expected country based on coordinates
+function getExpectedCountry(lat, lon) {
+  // Simple bounding box checks for major regions
+  // This is approximate - for precise detection you'd use a geo library
+  
+  // USA (continental)
+  if (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -66) return 'US';
+  // Alaska
+  if (lat >= 51 && lat <= 72 && lon >= -180 && lon <= -129) return 'US';
+  // Hawaii
+  if (lat >= 18 && lat <= 23 && lon >= -161 && lon <= -154) return 'US';
+  // Canada
+  if (lat >= 42 && lat <= 84 && lon >= -141 && lon <= -52) return 'CA';
+  // Mexico
+  if (lat >= 14 && lat <= 33 && lon >= -118 && lon <= -86) return 'MX';
+  // UK
+  if (lat >= 49 && lat <= 61 && lon >= -11 && lon <= 2) return 'GB';
+  // Germany
+  if (lat >= 47 && lat <= 55 && lon >= 5 && lon <= 15) return 'DE';
+  // France
+  if (lat >= 41 && lat <= 51 && lon >= -5 && lon <= 10) return 'FR';
+  // Spain
+  if (lat >= 36 && lat <= 44 && lon >= -10 && lon <= 4) return 'ES';
+  // Italy
+  if (lat >= 36 && lat <= 47 && lon >= 6 && lon <= 19) return 'IT';
+  // Poland
+  if (lat >= 49 && lat <= 55 && lon >= 14 && lon <= 24) return 'PL';
+  // Russia (European part)
+  if (lat >= 41 && lat <= 82 && lon >= 19 && lon <= 180) return 'RU';
+  // Japan
+  if (lat >= 24 && lat <= 46 && lon >= 123 && lon <= 146) return 'JP';
+  // South Korea
+  if (lat >= 33 && lat <= 39 && lon >= 124 && lon <= 132) return 'KR';
+  // China
+  if (lat >= 18 && lat <= 54 && lon >= 73 && lon <= 135) return 'CN';
+  // Australia
+  if (lat >= -44 && lat <= -10 && lon >= 113 && lon <= 154) return 'AU';
+  // India
+  if (lat >= 6 && lat <= 36 && lon >= 68 && lon <= 98) return 'IN';
+  // UAE
+  if (lat >= 22 && lat <= 26 && lon >= 51 && lon <= 57) return 'AE';
+  // Saudi Arabia
+  if (lat >= 16 && lat <= 33 && lon >= 34 && lon <= 56) return 'SA';
+  // Thailand
+  if (lat >= 5 && lat <= 21 && lon >= 97 && lon <= 106) return 'TH';
+  // Philippines
+  if (lat >= 4 && lat <= 21 && lon >= 116 && lon <= 127) return 'PH';
+  
+  return null;
+}
+}
+
+function getCarrierInfo(mcc, mnc) {
+  const key = `${mcc}-${mnc}`;
+  const flag = getCountryFlag(mcc);
+  const country = MCC_COUNTRIES[String(mcc)] || 'Unknown';
+  
+  if (ALL_CARRIERS[key]) {
+    return {
+      ...ALL_CARRIERS[key],
+      flag,
+      country
+    };
+  }
+  // Return generic info with country
+  return {
+    name: `MCC ${mcc} / MNC ${mnc}`,
+    country,
+    flag,
     bands: []
   };
 }
@@ -235,12 +341,25 @@ function processResults(data, centerLat, centerLon) {
   
   const carriers = {};
   const technologies = { '5G': 0, 'LTE': 0, 'UMTS': 0, 'GSM': 0, 'CDMA': 0 };
+  const countriesDetected = new Set();
+  const signals = [];
+  
+  // Get expected country based on coordinates
+  const expectedCountry = getExpectedCountry(centerLat, centerLon);
   
   // Calculate distance for each tower
   const towers = data.cells.map(cell => {
     const distance = haversineDistance(centerLat, centerLon, cell.lat, cell.lon);
     const carrierKey = `${cell.mcc}-${cell.mnc}`;
     const carrierInfo = getCarrierInfo(cell.mcc, cell.mnc);
+    const cellCountry = getCountryCode(cell.mcc);
+    
+    if (cellCountry) countriesDetected.add(cellCountry);
+    
+    // Track signal strength if available
+    if (cell.averageSignalStrength && cell.averageSignalStrength !== 0) {
+      signals.push(cell.averageSignalStrength);
+    }
     
     // Count carriers
     if (!carriers[carrierKey]) {
@@ -273,6 +392,8 @@ function processResults(data, centerLat, centerLon) {
       mcc: cell.mcc,
       mnc: cell.mnc,
       carrier: carrierInfo.name,
+      flag: carrierInfo.flag || '',
+      country: carrierInfo.country,
       radio: cell.radio,
       technology: tech,
       lac: cell.lac || cell.tac,
@@ -294,6 +415,34 @@ function processResults(data, centerLat, centerLon) {
     else coverage = 'limited';
   }
   
+  // Check for roaming (towers from different country than expected)
+  const roamingCountries = [];
+  if (expectedCountry) {
+    for (const country of countriesDetected) {
+      if (country !== expectedCountry) {
+        roamingCountries.push({
+          country,
+          flag: COUNTRY_FLAGS[country] || ''
+        });
+      }
+    }
+  }
+  
+  // Calculate signal strength statistics
+  let signalStats = null;
+  if (signals.length > 0) {
+    const avg = signals.reduce((a, b) => a + b, 0) / signals.length;
+    const min = Math.min(...signals);
+    const max = Math.max(...signals);
+    signalStats = {
+      avg: Math.round(avg),
+      min,
+      max,
+      samples: signals.length,
+      quality: avg >= -70 ? 'excellent' : avg >= -85 ? 'good' : avg >= -100 ? 'fair' : 'poor'
+    };
+  }
+  
   return {
     towers: towers.slice(0, 20), // Return top 20 closest
     carriers: Object.values(carriers).sort((a, b) => b.count - a.count),
@@ -303,7 +452,12 @@ function processResults(data, centerLat, centerLon) {
       coverage,
       nearestTower: towers[0] ? towers[0].distance : null,
       has5G: technologies['5G'] > 0,
-      hasLTE: technologies['LTE'] > 0
+      hasLTE: technologies['LTE'] > 0,
+      expectedCountry,
+      expectedCountryFlag: expectedCountry ? COUNTRY_FLAGS[expectedCountry] : null,
+      roamingWarning: roamingCountries.length > 0,
+      roamingCountries,
+      signalStats
     }
   };
 }
