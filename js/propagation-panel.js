@@ -133,7 +133,11 @@
       margin-bottom: 0.3rem;
     }
 
-    #propagation-panel .location-select {
+    #propagation-panel .location-search-container {
+      position: relative;
+    }
+
+    #propagation-panel .location-search-input {
       width: 100%;
       padding: 0.5rem 0.75rem;
       background: rgba(0, 0, 0, 0.5);
@@ -141,16 +145,118 @@
       border-radius: 8px;
       color: white;
       font-size: 0.9rem;
-      cursor: pointer;
+      box-sizing: border-box;
     }
 
-    #propagation-panel .location-select:focus {
+    #propagation-panel .location-search-input:focus {
       outline: none;
       border-color: rgba(255, 120, 0, 0.8);
     }
 
-    #propagation-panel .location-select option {
-      background: #1a1a1a;
+    #propagation-panel .location-search-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    #propagation-panel .location-autocomplete {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: rgba(20, 20, 30, 0.98);
+      border: 1px solid rgba(255, 120, 0, 0.4);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 1001;
+      display: none;
+    }
+
+    #propagation-panel .location-autocomplete-item {
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    #propagation-panel .location-autocomplete-item:hover {
+      background: rgba(255, 120, 0, 0.2);
+    }
+
+    #propagation-panel .location-autocomplete-item:last-child {
+      border-bottom: none;
+    }
+
+    #propagation-panel .location-autocomplete-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    #propagation-panel .location-autocomplete-detail {
+      font-size: 0.7rem;
+      opacity: 0.6;
+      max-width: 50%;
+      text-align: right;
+    }
+
+    #propagation-panel .location-current {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      padding: 0.4rem 0.6rem;
+      background: rgba(255, 120, 0, 0.1);
+      border-radius: 6px;
+      font-size: 0.75rem;
+    }
+
+    #propagation-panel .location-current-coords {
+      font-family: monospace;
+      font-size: 0.7rem;
+      opacity: 0.7;
+    }
+
+    #propagation-panel .saved-locations-toggle {
+      font-size: 0.7rem;
+      color: rgba(255, 180, 100, 0.8);
+      cursor: pointer;
+      margin-top: 0.4rem;
+      display: inline-block;
+    }
+
+    #propagation-panel .saved-locations-toggle:hover {
+      color: rgba(255, 180, 100, 1);
+      text-decoration: underline;
+    }
+
+    #propagation-panel .saved-locations-dropdown {
+      margin-top: 0.4rem;
+      display: none;
+    }
+
+    #propagation-panel .saved-locations-dropdown.visible {
+      display: block;
+    }
+
+    #propagation-panel .saved-location-btn {
+      display: block;
+      width: 100%;
+      padding: 0.4rem 0.6rem;
+      margin-bottom: 0.25rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: white;
+      font-size: 0.75rem;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    #propagation-panel .saved-location-btn:hover {
+      background: rgba(255, 120, 0, 0.2);
+      border-color: rgba(255, 120, 0, 0.4);
     }
 
     /* Section styling */
@@ -934,6 +1040,132 @@
 
   // ============ PANEL CREATION ============
 
+  // Geocoding state
+  let autocompleteResults = [];
+  let autocompleteTimeout = null;
+  const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+
+  async function searchLocation(query) {
+    if (!query || query.length < 3) { autocompleteResults = []; return []; }
+
+    try {
+      const url = `${NOMINATIM_URL}?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1`;
+      const response = await fetch(url, { headers: { 'User-Agent': 'RussellTV-PropPanel/1.0' } });
+      if (!response.ok) throw new Error('Geocoding failed');
+
+      const results = await response.json();
+      autocompleteResults = results.map(r => {
+        const addr = r.address || {};
+        const city = r.name || addr.city || addr.town || addr.village || '';
+        const state = addr.state || addr.county || addr.region || '';
+        const country = addr.country || '';
+        const postcode = addr.postcode || '';
+
+        let detail = '';
+        if (state) detail += state;
+        if (postcode) detail += (detail ? ', ' : '') + postcode;
+        if (country && country !== state) detail += (detail ? ', ' : '') + country;
+
+        return { 
+          name: r.display_name, 
+          shortName: city || r.display_name.split(',')[0], 
+          detail, 
+          lat: parseFloat(r.lat), 
+          lon: parseFloat(r.lon), 
+          country 
+        };
+      });
+      return autocompleteResults;
+    } catch (error) {
+      console.error('[Propagation] Geocoding error:', error);
+      autocompleteResults = [];
+      return [];
+    }
+  }
+
+  function handleLocationInput(value) {
+    if (autocompleteTimeout) clearTimeout(autocompleteTimeout);
+    autocompleteTimeout = setTimeout(async () => {
+      await searchLocation(value);
+      renderLocationAutocomplete();
+    }, 300);
+  }
+
+  function renderLocationAutocomplete() {
+    const dropdown = document.getElementById('prop-location-autocomplete');
+    if (!dropdown) return;
+    
+    if (autocompleteResults.length === 0) { 
+      dropdown.style.display = 'none'; 
+      return; 
+    }
+
+    const sanitize = window.RussellTV?.sanitize || (s => s);
+    dropdown.innerHTML = autocompleteResults.map((r, i) => `
+      <div class="location-autocomplete-item" onmousedown="event.preventDefault(); window.RussellTV.Propagation.selectLocation(${i})">
+        <span class="location-autocomplete-name">${sanitize(r.shortName)}</span>
+        <span class="location-autocomplete-detail">${sanitize(r.detail)}</span>
+      </div>
+    `).join('');
+    dropdown.style.display = 'block';
+  }
+
+  function selectLocationFromAutocomplete(index) {
+    const result = autocompleteResults[index];
+    if (!result) return;
+
+    selectedLocation = {
+      label: result.shortName + (result.detail ? `, ${result.detail.split(',')[0]}` : ''),
+      coords: { lat: result.lat, lon: result.lon },
+      fullName: result.name,
+      source: 'search'
+    };
+
+    const input = document.getElementById('prop-location-input');
+    if (input) input.value = selectedLocation.label;
+
+    autocompleteResults = [];
+    const dropdown = document.getElementById('prop-location-autocomplete');
+    if (dropdown) dropdown.style.display = 'none';
+
+    // Save to storage
+    if (window.RussellTV?.Storage?.save) {
+      window.RussellTV.Storage.save('propLocation', JSON.stringify(selectedLocation));
+    }
+
+    // Emit event for satellite look angles and other listeners
+    Events.emit('propagation:location-changed', selectedLocation);
+
+    updatePanelContent();
+  }
+
+  function selectSavedLocation(idx) {
+    const loc = window.TIME_ZONES?.[idx];
+    if (!loc || !loc.coords) return;
+
+    selectedLocation = loc;
+
+    const input = document.getElementById('prop-location-input');
+    if (input) input.value = loc.label;
+
+    // Hide saved locations dropdown
+    const savedDropdown = document.getElementById('prop-saved-locations');
+    if (savedDropdown) savedDropdown.classList.remove('visible');
+
+    // Save to storage
+    if (window.RussellTV?.Storage?.save) {
+      window.RussellTV.Storage.save('propLocation', JSON.stringify(selectedLocation));
+    }
+
+    Events.emit('propagation:location-changed', selectedLocation);
+    updatePanelContent();
+  }
+
+  function toggleSavedLocations() {
+    const dropdown = document.getElementById('prop-saved-locations');
+    if (dropdown) dropdown.classList.toggle('visible');
+  }
+
   function createPanel() {
     if (document.getElementById('propagation-panel')) return;
 
@@ -941,11 +1173,12 @@
     styleEl.textContent = styles;
     document.head.appendChild(styleEl);
 
+    // Build saved locations buttons
     const locations = window.TIME_ZONES || [];
-    let locationOptions = '<option value="">-- Select Location --</option>';
+    let savedLocationsHtml = '';
     locations.forEach((loc, idx) => {
-      if (loc.label === 'Zulu') return;
-      locationOptions += `<option value="${idx}">${loc.label}</option>`;
+      if (loc.label === 'Zulu' || !loc.coords) return;
+      savedLocationsHtml += `<button class="saved-location-btn" onclick="window.RussellTV.Propagation.selectSavedLocation(${idx})">${loc.label}</button>`;
     });
 
     panel = document.createElement('div');
@@ -961,7 +1194,23 @@
       <div class="panel-content">
         <div class="location-selector">
           <label>Location</label>
-          <select class="location-select" id="prop-location-select">${locationOptions}</select>
+          <div class="location-search-container">
+            <input type="text" 
+                   id="prop-location-input" 
+                   class="location-search-input"
+                   placeholder="Search city, base, MGRS, or coords..."
+                   oninput="window.RussellTV.Propagation.handleLocationInput(this.value)"
+                   autocomplete="off">
+            <div id="prop-location-autocomplete" class="location-autocomplete"></div>
+          </div>
+          <div id="prop-location-current" class="location-current" style="display: none;">
+            <span id="prop-location-name"></span>
+            <span id="prop-location-coords" class="location-current-coords"></span>
+          </div>
+          <span class="saved-locations-toggle" onclick="window.RussellTV.Propagation.toggleSavedLocations()">📍 Saved locations</span>
+          <div id="prop-saved-locations" class="saved-locations-dropdown">
+            ${savedLocationsHtml}
+          </div>
         </div>
         <div id="prop-content"></div>
       </div>
@@ -983,30 +1232,32 @@
       panel.style.display = 'none';
     });
 
-    // Load saved location
-    const savedIdx = window.RussellTV?.Storage?.load?.('propLocationIdx');
-    if (savedIdx !== null && savedIdx !== '' && window.TIME_ZONES?.[savedIdx]) {
-      selectedLocation = window.TIME_ZONES[parseInt(savedIdx)];
-      panel.querySelector('#prop-location-select').value = savedIdx;
-    }
+    // Close autocomplete on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#prop-location-autocomplete') && !e.target.closest('#prop-location-input')) {
+        const dropdown = document.getElementById('prop-location-autocomplete');
+        if (dropdown) dropdown.style.display = 'none';
+      }
+    });
 
-    attachLocationListener();
+    // Load saved location
+    loadSavedLocation();
     updatePanelContent();
   }
 
-  function attachLocationListener() {
-    const select = panel?.querySelector('#prop-location-select');
-    if (!select || select._hasListener) return;
-    select._hasListener = true;
-    
-    select.addEventListener('change', (e) => {
-      const idx = e.target.value;
-      selectedLocation = idx === '' ? null : window.TIME_ZONES[parseInt(idx)];
-      if (window.RussellTV?.Storage?.save) {
-        window.RussellTV.Storage.save('propLocationIdx', idx);
+  function loadSavedLocation() {
+    try {
+      const saved = window.RussellTV?.Storage?.load?.('propLocation');
+      if (saved) {
+        selectedLocation = JSON.parse(saved);
+        const input = document.getElementById('prop-location-input');
+        if (input && selectedLocation?.label) {
+          input.value = selectedLocation.label;
+        }
       }
-      updatePanelContent();
-    });
+    } catch (e) {
+      console.warn('[Propagation] Failed to load saved location:', e);
+    }
   }
 
   // ============ CONTENT RENDERING ============
@@ -1277,7 +1528,11 @@
   window.RussellTV = window.RussellTV || {};
   window.RussellTV.Propagation = {
     getSelectedLocation: () => selectedLocation,
-    getPanel: () => panel
+    getPanel: () => panel,
+    handleLocationInput,
+    selectLocation: selectLocationFromAutocomplete,
+    selectSavedLocation,
+    toggleSavedLocations
   };
 
 })();
