@@ -5,7 +5,7 @@
  * - Nearby carriers and their technologies (5G, LTE, 3G)
  * - Tower density and coverage quality assessment
  * - Band information for US carriers
- * - VPN/CGNAT considerations for cellular backhaul
+ * - Technology definitions
  * 
  * Data source: OpenCelliD (https://opencellid.org)
  */
@@ -36,13 +36,33 @@
     unknown: '#888888'
   };
 
-  // Technology colors
-  const TECH_COLORS = {
-    '5G': '#00ffcc',
-    'LTE': '#44cc44',
-    'UMTS': '#ffaa00',
-    'GSM': '#ff6644',
-    'CDMA': '#cc66ff'
+  // Technology colors and definitions
+  const TECH_INFO = {
+    '5G': { 
+      color: '#00ffcc', 
+      name: '5G NR',
+      desc: '5th Gen New Radio — Ultra-fast speeds (100+ Mbps), low latency (<10ms)'
+    },
+    'LTE': { 
+      color: '#44cc44', 
+      name: 'LTE/4G',
+      desc: 'Long Term Evolution — Fast data (10-50 Mbps), good for video/VoIP'
+    },
+    'UMTS': { 
+      color: '#ffaa00', 
+      name: 'UMTS/3G',
+      desc: 'Universal Mobile Telecom System — Moderate speeds (1-5 Mbps), reliable voice'
+    },
+    'GSM': { 
+      color: '#ff6644', 
+      name: 'GSM/2G',
+      desc: 'Global System for Mobile — Basic voice/SMS, slow data (up to 200 Kbps)'
+    },
+    'CDMA': { 
+      color: '#cc66ff', 
+      name: 'CDMA',
+      desc: 'Code Division Multiple Access — Legacy US carrier tech (Verizon/Sprint)'
+    }
   };
 
   // ============ STATE ============
@@ -53,77 +73,150 @@
   let lastFetchLocation = null; // Track which location the cached data is for
   let isExpanded = false;
   let isLoading = false;
+  let showTechInfo = false; // Toggle for technology definitions
 
   // ============ STYLES ============
   
   const styles = `
-    .cell-section { margin-top:1rem; border:1px solid rgba(150,100,255,0.3); border-radius:8px; overflow:visible; }
-    .cell-header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(150,100,255,0.1); cursor:pointer; user-select:none; transition:background 0.15s; }
-    .cell-header:hover { background:rgba(150,100,255,0.25); }
-    .cell-header:active { background:rgba(150,100,255,0.35); }
-    .cell-header .section-title { font-weight:bold; font-size:0.9rem; pointer-events:none; }
-    .cell-header .expand-icon { font-size:0.8rem; opacity:0.7; pointer-events:none; }
-    .cell-content { padding:1rem; }
+    .cell-section { 
+      margin-top: 1rem; 
+      border: 1px solid rgba(150,100,255,0.3); 
+      border-radius: 8px; 
+      overflow: hidden;
+    }
+    .cell-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      padding: 0.75rem 1rem; 
+      background: rgba(150,100,255,0.1); 
+      cursor: pointer; 
+      user-select: none; 
+      transition: background 0.15s; 
+    }
+    .cell-header:hover { background: rgba(150,100,255,0.25); }
+    .cell-header:active { background: rgba(150,100,255,0.35); }
+    .cell-header .section-title { font-weight: bold; font-size: 0.9rem; pointer-events: none; }
+    .cell-header .expand-icon { font-size: 0.8rem; opacity: 0.7; pointer-events: none; }
     
-    .cell-summary { display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0.6rem; background:rgba(150,100,255,0.08); border-radius:6px; margin-bottom:0.6rem; }
-    .cell-summary-badge { padding:0.2rem 0.5rem; border-radius:4px; font-size:0.7rem; font-weight:600; text-transform:uppercase; }
-    .cell-summary-text { font-size:0.8rem; }
+    .cell-content { 
+      padding: 1rem; 
+      max-height: 400px; 
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+    }
     
-    .cell-location { display:flex; justify-content:space-between; padding:0.4rem 0.6rem; background:rgba(150,100,255,0.1); border-radius:4px; margin-bottom:0.5rem; font-size:0.8rem; }
-    .cell-location .coords { font-family:monospace; font-size:0.7rem; opacity:0.7; }
+    /* Prevent scroll propagation */
+    .cell-content::-webkit-scrollbar { width: 6px; }
+    .cell-content::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+    .cell-content::-webkit-scrollbar-thumb { background: rgba(150,100,255,0.4); border-radius: 3px; }
+    .cell-content::-webkit-scrollbar-thumb:hover { background: rgba(150,100,255,0.6); }
     
-    .cell-carriers { margin-bottom:0.6rem; }
-    .cell-carriers-title { font-size:0.7rem; text-transform:uppercase; opacity:0.6; margin-bottom:0.3rem; letter-spacing:0.5px; }
-    .cell-carrier { display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0.6rem; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.05); }
-    .cell-carrier:last-child { border-bottom:none; }
-    .cell-carrier-name { font-weight:500; font-size:0.8rem; }
-    .cell-carrier-tech { display:flex; gap:0.3rem; }
-    .cell-carrier-tech span { padding:0.1rem 0.3rem; border-radius:3px; font-size:0.6rem; font-weight:600; }
+    .cell-summary { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.6rem; background: rgba(150,100,255,0.08); border-radius: 6px; margin-bottom: 0.6rem; }
+    .cell-summary-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+    .cell-summary-text { font-size: 0.8rem; }
     
-    .cell-tech-summary { display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.6rem; }
-    .cell-tech-badge { display:flex; align-items:center; gap:0.25rem; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); }
-    .cell-tech-badge .count { opacity:0.7; }
+    .cell-location { display: flex; justify-content: space-between; padding: 0.4rem 0.6rem; background: rgba(150,100,255,0.1); border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.8rem; }
+    .cell-location .coords { font-family: monospace; font-size: 0.7rem; opacity: 0.7; }
     
-    .cell-towers-nearby { margin-bottom:0.6rem; }
-    .cell-towers-title { font-size:0.7rem; text-transform:uppercase; opacity:0.6; margin-bottom:0.3rem; letter-spacing:0.5px; display:flex; justify-content:space-between; align-items:center; }
-    .cell-tower { display:grid; grid-template-columns:60px 1fr 50px 50px; gap:0.3rem; padding:0.3rem 0.5rem; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.03); font-size:0.7rem; }
-    .cell-tower:nth-child(odd) { background:rgba(255,255,255,0.04); }
-    .cell-tower-header { font-weight:600; opacity:0.6; text-transform:uppercase; font-size:0.6rem; }
-    .cell-tower-distance { font-family:monospace; }
-    .cell-tower-signal { font-family:monospace; }
+    .cell-carriers { margin-bottom: 0.6rem; }
+    .cell-carriers-title { font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.3rem; letter-spacing: 0.5px; }
+    .cell-carrier { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .cell-carrier:last-child { border-bottom: none; }
+    .cell-carrier-name { font-weight: 500; font-size: 0.8rem; }
+    .cell-carrier-tech { display: flex; gap: 0.3rem; }
+    .cell-carrier-tech span { padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.6rem; font-weight: 600; }
     
-    .cell-vpn-note { padding:0.5rem 0.6rem; background:rgba(255,200,100,0.1); border:1px solid rgba(255,200,100,0.3); border-radius:6px; margin-top:0.5rem; }
-    .cell-vpn-note-title { font-size:0.75rem; font-weight:600; color:#ffcc88; margin-bottom:0.3rem; display:flex; align-items:center; gap:0.3rem; }
-    .cell-vpn-note-text { font-size:0.7rem; opacity:0.85; line-height:1.4; }
+    .cell-tech-summary { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.6rem; }
+    .cell-tech-badge { display: flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: help; }
+    .cell-tech-badge .count { opacity: 0.7; }
     
-    .cell-bands { margin-top:0.5rem; padding:0.4rem 0.6rem; background:rgba(100,150,255,0.08); border-radius:4px; }
-    .cell-bands-title { font-size:0.65rem; text-transform:uppercase; opacity:0.6; margin-bottom:0.25rem; }
-    .cell-bands-list { display:flex; flex-wrap:wrap; gap:0.25rem; }
-    .cell-band { padding:0.1rem 0.3rem; background:rgba(100,150,255,0.2); border-radius:3px; font-size:0.6rem; font-family:monospace; }
-    .cell-band.nr { background:rgba(0,255,200,0.2); color:#00ffcc; }
+    .cell-tech-info { 
+      margin-bottom: 0.6rem; 
+      padding: 0.5rem 0.6rem; 
+      background: rgba(100,150,255,0.08); 
+      border: 1px solid rgba(100,150,255,0.2); 
+      border-radius: 6px; 
+    }
+    .cell-tech-info-title { 
+      font-size: 0.7rem; 
+      font-weight: 600; 
+      margin-bottom: 0.4rem; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+    }
+    .cell-tech-info-toggle { 
+      font-size: 0.65rem; 
+      color: rgba(150,180,255,0.9); 
+      cursor: pointer; 
+      text-decoration: underline; 
+    }
+    .cell-tech-def { 
+      display: flex; 
+      align-items: flex-start; 
+      gap: 0.4rem; 
+      padding: 0.3rem 0; 
+      border-bottom: 1px solid rgba(255,255,255,0.05); 
+      font-size: 0.7rem; 
+    }
+    .cell-tech-def:last-child { border-bottom: none; }
+    .cell-tech-def-name { font-weight: 600; min-width: 55px; }
+    .cell-tech-def-desc { opacity: 0.85; line-height: 1.3; }
     
-    .cell-loading { display:flex; align-items:center; justify-content:center; gap:0.6rem; padding:1.5rem; font-size:0.8rem; }
-    .cell-loading-spinner { width:18px; height:18px; border:2px solid rgba(150,100,255,0.3); border-top-color:rgba(150,100,255,1); border-radius:50%; animation:cell-spin 1s linear infinite; }
-    @keyframes cell-spin { to { transform:rotate(360deg); } }
+    .cell-towers-nearby { margin-bottom: 0.6rem; }
+    .cell-towers-title { font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.3rem; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
+    .cell-tower { display: grid; grid-template-columns: 60px 1fr 50px 60px; gap: 0.3rem; padding: 0.3rem 0.5rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.7rem; }
+    .cell-tower:nth-child(odd) { background: rgba(255,255,255,0.04); }
+    .cell-tower-header { font-weight: 600; opacity: 0.6; text-transform: uppercase; font-size: 0.6rem; }
+    .cell-tower-distance { font-family: monospace; }
+    .cell-tower-signal { font-family: monospace; font-size: 0.65rem; }
+    .cell-tower-signal.strong { color: #00ff88; }
+    .cell-tower-signal.good { color: #88cc44; }
+    .cell-tower-signal.fair { color: #ffcc00; }
+    .cell-tower-signal.weak { color: #ff6644; }
     
-    .cell-no-data { text-align:center; padding:1.2rem; opacity:0.6; font-size:0.75rem; }
+    .cell-bands { margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(100,150,255,0.08); border-radius: 4px; }
+    .cell-bands-title { font-size: 0.65rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.25rem; }
+    .cell-bands-list { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+    .cell-band { padding: 0.1rem 0.3rem; background: rgba(100,150,255,0.2); border-radius: 3px; font-size: 0.6rem; font-family: monospace; }
+    .cell-band.nr { background: rgba(0,255,200,0.2); color: #00ffcc; }
     
-    .cell-footer { display:flex; justify-content:space-between; padding-top:0.4rem; margin-top:0.4rem; border-top:1px solid rgba(255,255,255,0.1); font-size:0.6rem; opacity:0.6; }
-    .cell-footer a { color:rgba(150,180,255,0.9); }
+    .cell-loading { display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 1.5rem; font-size: 0.8rem; }
+    .cell-loading-spinner { width: 18px; height: 18px; border: 2px solid rgba(150,100,255,0.3); border-top-color: rgba(150,100,255,1); border-radius: 50%; animation: cell-spin 1s linear infinite; }
+    @keyframes cell-spin { to { transform: rotate(360deg); } }
     
-    .cell-btn { padding:0.25rem 0.4rem; border-radius:4px; border:1px solid rgba(150,100,255,0.5); background:rgba(150,100,255,0.2); color:white; cursor:pointer; font-size:0.7rem; }
-    .cell-btn:hover { background:rgba(150,100,255,0.4); }
+    .cell-no-data { text-align: center; padding: 1.2rem; opacity: 0.6; font-size: 0.75rem; }
     
-    .cell-roaming-warning { display:flex; align-items:flex-start; gap:0.5rem; padding:0.6rem; background:rgba(255,100,100,0.15); border:1px solid rgba(255,100,100,0.4); border-radius:6px; margin-bottom:0.6rem; }
-    .cell-roaming-icon { font-size:1.2rem; }
-    .cell-roaming-text { font-size:0.75rem; line-height:1.4; }
-    .cell-roaming-text small { opacity:0.8; }
+    .cell-footer { display: flex; justify-content: space-between; padding-top: 0.4rem; margin-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.6rem; opacity: 0.6; }
+    .cell-footer a { color: rgba(150,180,255,0.9); }
     
-    .cell-signal-stats { padding:0.5rem 0.6rem; background:rgba(100,200,255,0.08); border-radius:6px; margin-bottom:0.6rem; }
-    .cell-signal-title { font-size:0.7rem; font-weight:600; margin-bottom:0.4rem; }
-    .cell-signal-bar { height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; margin-bottom:0.3rem; }
-    .cell-signal-fill { height:100%; border-radius:4px; transition:width 0.3s; }
-    .cell-signal-details { display:flex; gap:0.8rem; font-size:0.65rem; opacity:0.85; }
+    .cell-btn { padding: 0.25rem 0.4rem; border-radius: 4px; border: 1px solid rgba(150,100,255,0.5); background: rgba(150,100,255,0.2); color: white; cursor: pointer; font-size: 0.7rem; }
+    .cell-btn:hover { background: rgba(150,100,255,0.4); }
+    
+    .cell-roaming-warning { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.6rem; background: rgba(255,100,100,0.15); border: 1px solid rgba(255,100,100,0.4); border-radius: 6px; margin-bottom: 0.6rem; }
+    .cell-roaming-icon { font-size: 1.2rem; }
+    .cell-roaming-text { font-size: 0.75rem; line-height: 1.4; }
+    .cell-roaming-text small { opacity: 0.8; }
+    
+    .cell-signal-stats { padding: 0.5rem 0.6rem; background: rgba(100,200,255,0.08); border-radius: 6px; margin-bottom: 0.6rem; }
+    .cell-signal-title { font-size: 0.7rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .cell-signal-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-bottom: 0.3rem; }
+    .cell-signal-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .cell-signal-details { display: flex; gap: 0.8rem; font-size: 0.65rem; opacity: 0.85; }
+    
+    .cell-signal-legend { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 0.5rem; 
+      margin-top: 0.4rem; 
+      padding-top: 0.4rem; 
+      border-top: 1px solid rgba(255,255,255,0.1); 
+      font-size: 0.6rem; 
+      opacity: 0.7; 
+    }
+    .cell-signal-legend span { display: flex; align-items: center; gap: 0.2rem; }
   `;
 
   // ============ DATA FETCHING ============
@@ -181,6 +274,56 @@
     
     isLoading = false;
     Events.emit('cell:render');
+  }
+
+  // ============ SIGNAL STRENGTH HELPERS ============
+  
+  function getSignalClass(dbm) {
+    if (dbm == null || isNaN(dbm)) return '';
+    if (dbm >= -70) return 'strong';
+    if (dbm >= -85) return 'good';
+    if (dbm >= -100) return 'fair';
+    return 'weak';
+  }
+
+  function formatSignal(signal) {
+    // Handle various signal formats from API
+    if (signal == null || signal === '' || signal === 0) {
+      return { display: '—', class: '' };
+    }
+    
+    let dbm = signal;
+    
+    // If it's a string, try to parse
+    if (typeof signal === 'string') {
+      dbm = parseInt(signal, 10);
+    }
+    
+    // OpenCelliD sometimes returns signal as positive number or range values
+    // Valid dBm for cellular is typically -30 to -120
+    if (dbm > 0) {
+      // Might be ASU (Arbitrary Strength Unit) - convert to dBm
+      // ASU for GSM: dBm = 2 × ASU − 113
+      if (dbm <= 31) {
+        dbm = 2 * dbm - 113;
+      } else if (dbm <= 97) {
+        // LTE RSRP ASU: dBm = ASU - 140
+        dbm = dbm - 140;
+      } else {
+        // Unknown format, return as-is with question
+        return { display: `${signal}?`, class: '' };
+      }
+    }
+    
+    // Validate range
+    if (dbm < -140 || dbm > -20) {
+      return { display: '—', class: '' };
+    }
+    
+    return { 
+      display: `${dbm} dBm`, 
+      class: getSignalClass(dbm) 
+    };
   }
 
   // ============ UI RENDERING ============
@@ -261,23 +404,55 @@
                 <span>Avg: ${stats.avg} dBm</span>
                 <span>Range: ${stats.min} to ${stats.max} dBm</span>
               </div>
+              <div class="cell-signal-legend">
+                <span><span style="color:#00ff88;">●</span> Strong (≥-70)</span>
+                <span><span style="color:#88cc44;">●</span> Good (-85 to -70)</span>
+                <span><span style="color:#ffcc00;">●</span> Fair (-100 to -85)</span>
+                <span><span style="color:#ff6644;">●</span> Weak (&lt;-100)</span>
+              </div>
             </div>`; 
         }
 
-        // Technology summary
+        // Technology summary with info toggle
         if (cellData.technologies && Object.keys(cellData.technologies).length > 0) {
+          const detectedTechs = [];
           html += `<div class="cell-tech-summary">`;
           const techOrder = ['5G', 'LTE', 'UMTS', 'GSM', 'CDMA'];
           for (const tech of techOrder) {
             const count = cellData.technologies[tech] || 0;
             if (count > 0) {
-              const color = TECH_COLORS[tech] || '#888';
+              detectedTechs.push(tech);
+              const info = TECH_INFO[tech] || { color: '#888' };
               html += `
-                <div class="cell-tech-badge" style="border-color:${color}44;">
-                  <span style="color:${color};">●</span>
+                <div class="cell-tech-badge" style="border-color:${info.color}44;" title="${info.desc || ''}">
+                  <span style="color:${info.color};">●</span>
                   <span>${tech}</span>
                   <span class="count">×${count}</span>
                 </div>`;
+            }
+          }
+          html += `</div>`;
+          
+          // Technology definitions panel
+          html += `
+            <div class="cell-tech-info">
+              <div class="cell-tech-info-title">
+                <span>📡 Technology Reference</span>
+                <span class="cell-tech-info-toggle" onclick="event.stopPropagation(); window.RussellTV.CellCoverage.toggleTechInfo()">
+                  ${showTechInfo ? 'Hide' : 'Show'}
+                </span>
+              </div>`;
+          
+          if (showTechInfo) {
+            for (const tech of detectedTechs) {
+              const info = TECH_INFO[tech];
+              if (info) {
+                html += `
+                  <div class="cell-tech-def">
+                    <span class="cell-tech-def-name" style="color:${info.color};">${info.name}</span>
+                    <span class="cell-tech-def-desc">${info.desc}</span>
+                  </div>`;
+              }
             }
           }
           html += `</div>`;
@@ -300,8 +475,8 @@
             const techOrder = ['5G', 'LTE', 'UMTS', 'GSM', 'CDMA'];
             for (const tech of techOrder) {
               if (carrier.technologies && carrier.technologies[tech]) {
-                const color = TECH_COLORS[tech] || '#888';
-                html += `<span style="background:${color}33; color:${color};">${tech}</span>`;
+                const info = TECH_INFO[tech] || { color: '#888' };
+                html += `<span style="background:${info.color}33; color:${info.color};">${tech}</span>`;
               }
             }
             
@@ -342,34 +517,21 @@
               </div>`;
           
           for (const tower of cellData.towers.slice(0, 8)) {
-            const techColor = TECH_COLORS[tower.technology] || '#888';
+            const techInfo = TECH_INFO[tower.technology] || TECH_INFO[tower.radio] || { color: '#888' };
             const flag = tower.flag || '';
+            const signal = formatSignal(tower.signal || tower.averageSignal || tower.samples?.[0]?.signal);
+            
             html += `
               <div class="cell-tower">
                 <span style="font-size:0.65rem;">${flag} ${escapeHtml(tower.carrier?.split(' ')[0] || 'Unknown')}</span>
-                <span style="color:${techColor};">${tower.technology || tower.radio || '?'}</span>
+                <span style="color:${techInfo.color};">${tower.technology || tower.radio || '?'}</span>
                 <span class="cell-tower-distance">${tower.distance}m</span>
-                <span class="cell-tower-signal">${tower.signal ? tower.signal + ' dBm' : '—'}</span>
+                <span class="cell-tower-signal ${signal.class}">${signal.display}</span>
               </div>`;
           }
           
           html += `</div>`;
         }
-
-        // VPN/CGNAT note
-        html += `
-          <div class="cell-vpn-note">
-            <div class="cell-vpn-note-title">⚠️ VPN Considerations</div>
-            <div class="cell-vpn-note-text">
-              Most cellular carriers use <strong>CGNAT</strong> (Carrier-Grade NAT), which can affect VPN connectivity:
-              <ul style="margin:0.3rem 0 0 1rem; padding:0;">
-                <li>Use <strong>UDP-based VPNs</strong> (WireGuard, OpenVPN UDP) for better NAT traversal</li>
-                <li>Avoid TCP-based VPNs which may have connection issues</li>
-                <li>Consider <strong>split tunneling</strong> for bandwidth-sensitive applications</li>
-                <li>5G networks may have better throughput but similar NAT limitations</li>
-              </ul>
-            </div>
-          </div>`;
 
         // Footer
         html += `
@@ -388,6 +550,28 @@
     html += `</div>`; // end cell-section
 
     containerEl.innerHTML = html;
+    
+    // Add scroll isolation to prevent parent scrolling
+    const contentEl = containerEl.querySelector('.cell-content');
+    if (contentEl) {
+      contentEl.addEventListener('wheel', (e) => {
+        const { scrollTop, scrollHeight, clientHeight } = contentEl;
+        const isAtTop = scrollTop === 0;
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+        
+        // If scrolling up at top or down at bottom, prevent propagation
+        if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+          // At boundary - let it propagate naturally but don't over-scroll
+          if (scrollHeight > clientHeight) {
+            // Has scrollable content, stop at boundary
+            e.preventDefault();
+          }
+        } else if (scrollHeight > clientHeight) {
+          // Has scrollable content and not at boundary - stop propagation
+          e.stopPropagation();
+        }
+      }, { passive: false });
+    }
   }
 
   function escapeHtml(str) {
@@ -452,6 +636,11 @@
     Events.emit('cell:render'); 
   }
 
+  function toggleTechInfo() {
+    showTechInfo = !showTechInfo;
+    Events.emit('cell:render');
+  }
+
   function refresh() {
     if (currentLocation) {
       // Force refresh by clearing cache
@@ -472,15 +661,51 @@
     document.head.appendChild(styleEl);
   }
 
-  // Helper function to ensure container exists
-  function ensureCellContainer() {
-    let cellContainer = document.getElementById('cell-container');
-    if (cellContainer) return cellContainer;
-    
-    // Container doesn't exist yet - the propagation panel creates it
-    // We'll wait for it to be created
-    console.log('[Cellular] Container not ready yet');
-    return null;
+  function loadLocationFromStorage() {
+    try {
+      // Try propagation panel API first
+      let propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
+      
+      // Fallback to storage
+      if (!propLocation || (!propLocation.coords && propLocation.lat == null)) {
+        const Storage = window.RussellTV?.Storage;
+        if (Storage) {
+          const saved = Storage.load('propLocation');
+          if (saved) {
+            propLocation = typeof saved === 'string' ? JSON.parse(saved) : saved;
+            console.log('[Cellular] Loaded location from storage:', propLocation);
+          }
+        }
+      }
+      
+      if (propLocation) {
+        const lat = propLocation.coords?.lat ?? propLocation.lat;
+        const lon = propLocation.coords?.lon ?? propLocation.lon;
+        
+        if (lat != null && lon != null && !isNaN(lat) && !isNaN(lon)) {
+          currentLocation = {
+            lat: parseFloat(lat),
+            lon: parseFloat(lon),
+            name: propLocation.label || 'Saved Location'
+          };
+          console.log('[Cellular] Set location from storage:', currentLocation);
+          fetchCellData(currentLocation.lat, currentLocation.lon);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('[Cellular] Error loading location:', e);
+    }
+    return false;
+  }
+
+  function ensureAndRender() {
+    const container = document.getElementById('cell-container');
+    if (container) {
+      renderCellularCoverage(container);
+      return true;
+    }
+    return false;
   }
 
   function init() {
@@ -489,10 +714,7 @@
 
     // Listen for render events
     Events.on('cell:render', () => {
-      const container = document.getElementById('cell-container');
-      if (container) {
-        renderCellularCoverage(container);
-      }
+      ensureAndRender();
     });
 
     // Listen for location changes from propagation panel - THIS IS THE PRIMARY HANDLER
@@ -501,83 +723,48 @@
       updateLocation(location);
     });
 
-    // Listen for propagation panel content updates (container may now exist)
+    // Listen for propagation panel content updates to render ourselves
     Events.on('spaceweather:data-updated', () => {
-      // Small delay to let propagation panel render first
       setTimeout(() => {
-        const container = document.getElementById('cell-container');
-        if (container) {
-          renderCellularCoverage(container);
+        // Check if we need to load location from storage
+        if (!currentLocation) {
+          loadLocationFromStorage();
         }
-      }, 50);
+        ensureAndRender();
+      }, 100);
     });
 
-    // Initial setup when propagation panel is ready
-    Events.whenReady('propagation:ready', () => {
-      console.log('[Cellular] Propagation panel ready, checking for saved location');
-      
-      // Use a slightly longer delay to ensure propagation panel has fully rendered
-      setTimeout(() => {
-        // Only load from storage/API if we don't already have a location
-        if (currentLocation) {
-          console.log('[Cellular] Already have location, just rendering');
-          const container = document.getElementById('cell-container');
-          if (container) renderCellularCoverage(container);
-          return;
-        }
-        
-        // Try to get location from propagation panel's public API
-        let propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
-        console.log('[Cellular] Got location from Propagation API:', propLocation);
-        
-        // Fallback: check localStorage
-        if (!propLocation || (!propLocation.coords && propLocation.lat == null)) {
-          try {
-            const Storage = window.RussellTV?.Storage;
-            if (Storage) {
-              const saved = Storage.load('propLocation');
-              if (saved) {
-                const parsed = typeof saved === 'string' ? JSON.parse(saved) : saved;
-                console.log('[Cellular] Loaded from storage:', parsed);
-                propLocation = parsed;
-              }
-            }
-          } catch (e) {
-            console.warn('[Cellular] Error reading saved location:', e);
-          }
-        }
-        
-        if (propLocation) {
-          updateLocation(propLocation);
-        }
-        
-        // Render (even if no location - will show prompt)
-        const container = document.getElementById('cell-container');
-        if (container) {
-          renderCellularCoverage(container);
-        }
-      }, 500); // Longer delay to ensure propagation panel has rendered
-    });
+    // Try to load location and render immediately
+    loadLocationFromStorage();
+    
+    // Retry render a few times to catch container creation
+    setTimeout(ensureAndRender, 100);
+    setTimeout(ensureAndRender, 300);
+    setTimeout(ensureAndRender, 600);
+    setTimeout(ensureAndRender, 1000);
 
     Events.emit('cell:ready', null, { sticky: true });
     console.log('✅ [Cellular] Coverage panel initialized');
   }
 
-  // Wait for dependencies
-  if (Events.whenReady) {
-    Events.whenReady('propagation:ready', init);
+  // Start initialization immediately - don't wait for propagation:ready
+  // The propagation panel creates the container, but we should be ready to render
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    window.addEventListener('load', () => setTimeout(init, 1000));
+    init();
   }
 
   // ============ EXPORT PUBLIC API ============
   window.RussellTV = window.RussellTV || {};
   window.RussellTV.CellCoverage = {
     toggleExpand,
+    toggleTechInfo,
     refresh,
     getData: () => cellData,
     getLocation: () => currentLocation,
-    updateLocation // Expose for external calls if needed
+    updateLocation,
+    render: ensureAndRender
   };
 
 })();
