@@ -38,7 +38,7 @@ window.CHANNELS = {
   aljazeera: { type: "hls", label: "Al Jazeera",    url: window.YT_CHANNELS.aljazeera },
   abc:       { type: "hls", label: "ABC News",      url: window.YT_CHANNELS.abc },
   trt:       { type: "hls", label: "TRT World",     url: window.YT_CHANNELS.trt },
-  asianone:  { type: "hls", label: "Asian One News", url: window.YT_CHANNELS.asianone }
+  asianone:  { type: "hls", label: "AsiaOne News", url: window.YT_CHANNELS.asianone }
 };
 
 window.CHANNEL_ORDER = [
