@@ -50,6 +50,7 @@
   let currentLocation = null;
   let cellData = null;
   let lastFetch = null;
+  let lastFetchLocation = null; // Track which location the cached data is for
   let isExpanded = false;
   let isLoading = false;
 
@@ -128,12 +129,23 @@
   // ============ DATA FETCHING ============
   
   async function fetchCellData(lat, lon) {
-    // Skip if we already have recent data for this location
-    if (cellData && lastFetch && (Date.now() - lastFetch < CACHE_TTL) && currentLocation &&
-        Math.abs(currentLocation.lat - lat) < 0.001 && Math.abs(currentLocation.lon - lon) < 0.001) {
-      console.log('[Cellular] Using cached data');
+    // Check if we have valid cached data for THIS EXACT location
+    const isSameLocation = lastFetchLocation && 
+      Math.abs(lastFetchLocation.lat - lat) < 0.001 && 
+      Math.abs(lastFetchLocation.lon - lon) < 0.001;
+    
+    if (cellData && lastFetch && isSameLocation && (Date.now() - lastFetch < CACHE_TTL)) {
+      console.log('[Cellular] Using cached data for', lat.toFixed(4), lon.toFixed(4));
       Events.emit('cell:render');
       return;
+    }
+    
+    // Clear old data when fetching for new location
+    if (!isSameLocation) {
+      console.log('[Cellular] Location changed, clearing cache');
+      cellData = null;
+      lastFetch = null;
+      lastFetchLocation = null;
     }
     
     isLoading = true;
@@ -151,8 +163,9 @@
       const data = await response.json();
       cellData = data;
       lastFetch = Date.now();
+      lastFetchLocation = { lat, lon }; // Track which location this data is for
       
-      console.log(`[Cellular] Received ${data.summary?.total || 0} towers, coverage: ${data.summary?.coverage}`);
+      console.log(`[Cellular] Received ${data.summary?.total || 0} towers for ${lat.toFixed(4)}, ${lon.toFixed(4)}, coverage: ${data.summary?.coverage}`);
       
     } catch (error) {
       console.error('[Cellular] Fetch error:', error);
@@ -163,6 +176,7 @@
         summary: { total: 0, coverage: 'unknown' },
         error: error.message
       };
+      lastFetchLocation = { lat, lon }; // Still track location even on error
     }
     
     isLoading = false;
@@ -173,26 +187,6 @@
   
   function renderCellularCoverage(containerEl) {
     if (!containerEl) return;
-    
-    // Get location from propagation panel
-    const propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
-    if (propLocation && propLocation.coords) {
-      const newLat = propLocation.coords.lat;
-      const newLon = propLocation.coords.lon;
-      
-      // Check if location changed
-      if (!currentLocation || 
-          Math.abs(currentLocation.lat - newLat) > 0.001 || 
-          Math.abs(currentLocation.lon - newLon) > 0.001) {
-        currentLocation = {
-          lat: newLat,
-          lon: newLon,
-          name: propLocation.label
-        };
-        // Fetch new data
-        fetchCellData(newLat, newLon);
-      }
-    }
 
     let html = `
       <div class="cell-section">
@@ -402,6 +396,55 @@
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // ============ LOCATION HANDLING ============
+  
+  /**
+   * Update current location and fetch new data if needed
+   * This is the single source of truth for location updates
+   */
+  function updateLocation(location) {
+    if (!location) return false;
+    
+    // Normalize location format - handle both {coords: {lat, lon}} and {lat, lon}
+    const lat = location.coords?.lat ?? location.lat;
+    const lon = location.coords?.lon ?? location.lon;
+    const label = location.label || location.name || 'Unknown';
+    
+    if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
+      console.warn('[Cellular] Invalid location:', location);
+      return false;
+    }
+    
+    const newLat = parseFloat(lat);
+    const newLon = parseFloat(lon);
+    
+    // Check if this is actually a new location
+    const isNewLocation = !currentLocation || 
+      Math.abs(currentLocation.lat - newLat) > 0.001 || 
+      Math.abs(currentLocation.lon - newLon) > 0.001;
+    
+    if (isNewLocation) {
+      console.log('[Cellular] Setting new location:', label, newLat.toFixed(4), newLon.toFixed(4));
+      
+      // Clear cached data for old location
+      cellData = null;
+      lastFetch = null;
+      lastFetchLocation = null;
+      
+      currentLocation = {
+        lat: newLat,
+        lon: newLon,
+        name: label
+      };
+      
+      // Fetch data for new location
+      fetchCellData(newLat, newLon);
+      return true;
+    }
+    
+    return false;
+  }
+
   // ============ PUBLIC API ============
   
   function toggleExpand() { 
@@ -411,7 +454,10 @@
 
   function refresh() {
     if (currentLocation) {
+      // Force refresh by clearing cache
       cellData = null;
+      lastFetch = null;
+      lastFetchLocation = null;
       fetchCellData(currentLocation.lat, currentLocation.lon);
     }
   }
@@ -426,6 +472,17 @@
     document.head.appendChild(styleEl);
   }
 
+  // Helper function to ensure container exists
+  function ensureCellContainer() {
+    let cellContainer = document.getElementById('cell-container');
+    if (cellContainer) return cellContainer;
+    
+    // Container doesn't exist yet - the propagation panel creates it
+    // We'll wait for it to be created
+    console.log('[Cellular] Container not ready yet');
+    return null;
+  }
+
   function init() {
     console.log('[Cellular] Initializing coverage panel');
     injectStyles();
@@ -438,95 +495,51 @@
       }
     });
 
-    // Listen for location changes from propagation panel
+    // Listen for location changes from propagation panel - THIS IS THE PRIMARY HANDLER
     Events.on('propagation:location-changed', (location) => {
-      console.log('[Cellular] Location changed event:', location);
-      
-      if (location) {
-        // Handle both formats: {coords: {lat, lon}} and {lat, lon}
-        const newLat = location.coords?.lat ?? location.lat;
-        const newLon = location.coords?.lon ?? location.lon;
-        
-        if (newLat != null && newLon != null && !isNaN(newLat) && !isNaN(newLon)) {
-          const lat = parseFloat(newLat);
-          const lon = parseFloat(newLon);
-          
-          if (!currentLocation || 
-              Math.abs(currentLocation.lat - lat) > 0.001 || 
-              Math.abs(currentLocation.lon - lon) > 0.001) {
-            currentLocation = {
-              lat: lat,
-              lon: lon,
-              name: location.label || 'Unknown'
-            };
-            
-            console.log('[Cellular] New location set:', currentLocation);
-            // Always pre-fetch data when location changes (cache will handle duplicates)
-            fetchCellData(lat, lon);
-          }
-        }
-      }
+      console.log('[Cellular] Location changed event received:', location);
+      updateLocation(location);
     });
 
-    // Helper function to ensure container exists
-    function ensureCellContainer() {
-      let cellContainer = document.getElementById('cell-container');
-      if (!cellContainer) {
-        cellContainer = document.createElement('div');
-        cellContainer.id = 'cell-container';
-        
-        // Try to insert after satellite look angles section
-        const satlaSection = document.querySelector('.satla-section');
-        if (satlaSection && satlaSection.parentNode) {
-          satlaSection.parentNode.insertBefore(cellContainer, satlaSection.nextSibling);
-        } else {
-          // Fallback: append to prop-content
-          const propContent = document.getElementById('prop-content');
-          if (propContent) {
-            propContent.appendChild(cellContainer);
-          }
-        }
-      }
-      return cellContainer;
-    }
-
-    // Listen for satellite look angles render to inject our section
-    Events.on('satla:render', () => {
+    // Listen for propagation panel content updates (container may now exist)
+    Events.on('spaceweather:data-updated', () => {
+      // Small delay to let propagation panel render first
       setTimeout(() => {
-        const container = ensureCellContainer();
-        if (container) renderCellularCoverage(container);
+        const container = document.getElementById('cell-container');
+        if (container) {
+          renderCellularCoverage(container);
+        }
       }, 50);
     });
 
-    // Initial render when propagation panel is ready
+    // Initial setup when propagation panel is ready
     Events.whenReady('propagation:ready', () => {
+      console.log('[Cellular] Propagation panel ready, checking for saved location');
+      
+      // Use a slightly longer delay to ensure propagation panel has fully rendered
       setTimeout(() => {
-        // Get location from propagation panel's public API first
-        let propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
+        // Only load from storage/API if we don't already have a location
+        if (currentLocation) {
+          console.log('[Cellular] Already have location, just rendering');
+          const container = document.getElementById('cell-container');
+          if (container) renderCellularCoverage(container);
+          return;
+        }
         
-        // Fallback: check localStorage using RussellTV Storage API
+        // Try to get location from propagation panel's public API
+        let propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
+        console.log('[Cellular] Got location from Propagation API:', propLocation);
+        
+        // Fallback: check localStorage
         if (!propLocation || (!propLocation.coords && propLocation.lat == null)) {
           try {
             const Storage = window.RussellTV?.Storage;
             if (Storage) {
-              // The propagation panel saves to 'propLocation' 
-              // Storage.load automatically adds 'russelltv.' prefix
               const saved = Storage.load('propLocation');
               if (saved) {
-                // Handle double-stringified case
                 const parsed = typeof saved === 'string' ? JSON.parse(saved) : saved;
                 console.log('[Cellular] Loaded from storage:', parsed);
-                
-                // Handle both formats: {coords: {lat, lon}} and {lat, lon}
-                const lat = parsed.coords?.lat ?? parsed.lat;
-                const lon = parsed.coords?.lon ?? parsed.lon;
-                
-                if (lat != null && lon != null && !isNaN(lat) && !isNaN(lon)) {
-                  propLocation = {
-                    coords: { lat: parseFloat(lat), lon: parseFloat(lon) },
-                    label: parsed.label || 'Saved Location'
-                  };
-                }
+                propLocation = parsed;
               }
             }
           } catch (e) {
@@ -535,46 +548,15 @@
         }
         
         if (propLocation) {
-          // Normalize the location format
-          const lat = propLocation.coords?.lat ?? propLocation.lat;
-          const lon = propLocation.coords?.lon ?? propLocation.lon;
-          
-          if (lat != null && lon != null && !isNaN(lat) && !isNaN(lon)) {
-            currentLocation = {
-              lat: parseFloat(lat),
-              lon: parseFloat(lon),
-              name: propLocation.label || 'Unknown'
-            };
-            console.log('[Cellular] Using location:', currentLocation);
-            // Pre-fetch data for cached location
-            fetchCellData(currentLocation.lat, currentLocation.lon);
-          }
+          updateLocation(propLocation);
         }
         
-        // Ensure container exists and render
-        const container = ensureCellContainer();
-        if (container) renderCellularCoverage(container);
-      }, 300);
-    });
-
-    // Also listen for propagation panel render to ensure we always show
-    Events.on('propagation:render', () => {
-      setTimeout(() => {
-        // Check for location again in case it wasn't ready before
-        if (!currentLocation) {
-          const propLocation = window.RussellTV?.Propagation?.getSelectedLocation?.();
-          if (propLocation && propLocation.coords) {
-            currentLocation = {
-              lat: propLocation.coords.lat,
-              lon: propLocation.coords.lon,
-              name: propLocation.label
-            };
-            fetchCellData(currentLocation.lat, currentLocation.lon);
-          }
+        // Render (even if no location - will show prompt)
+        const container = document.getElementById('cell-container');
+        if (container) {
+          renderCellularCoverage(container);
         }
-        const container = ensureCellContainer();
-        if (container) renderCellularCoverage(container);
-      }, 100);
+      }, 500); // Longer delay to ensure propagation panel has rendered
     });
 
     Events.emit('cell:ready', null, { sticky: true });
@@ -594,7 +576,8 @@
     toggleExpand,
     refresh,
     getData: () => cellData,
-    getLocation: () => currentLocation
+    getLocation: () => currentLocation,
+    updateLocation // Expose for external calls if needed
   };
 
 })();
