@@ -2009,10 +2009,7 @@
             <div class="location-mode-tab" data-mode="maidenhead" onclick="window.RussellTV.Propagation.setLocationMode('maidenhead')">📻 Grid</div>
           </div>
           <div id="prop-location-input-area" class="location-input-area"></div>
-          <span class="saved-locations-toggle" onclick="window.RussellTV.Propagation.toggleSavedLocations()">📍 Preset locations</span>
-          <div id="prop-saved-locations" class="saved-locations-dropdown">
-            ${savedLocationsHtml}
-          </div>
+          
         </div>
         <div id="prop-content"></div>
       </div>
@@ -2030,8 +2027,9 @@
     initDrag(panel);
 
     // Close button
-    panel.querySelector('.panel-close').addEventListener('click', () => {
-      panel.classList.remove('visible');
+    panel.querySelector('.panel-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      hidePanel();
     });
 
     // Close autocomplete on outside click

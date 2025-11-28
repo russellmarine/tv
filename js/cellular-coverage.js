@@ -101,17 +101,7 @@
     
     .cell-content { 
       padding: 1rem; 
-      max-height: 400px; 
-      overflow-y: auto;
-      overflow-x: hidden;
-      overscroll-behavior: contain;
     }
-    
-    /* Prevent scroll propagation */
-    .cell-content::-webkit-scrollbar { width: 6px; }
-    .cell-content::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
-    .cell-content::-webkit-scrollbar-thumb { background: rgba(150,100,255,0.4); border-radius: 3px; }
-    .cell-content::-webkit-scrollbar-thumb:hover { background: rgba(150,100,255,0.6); }
     
     .cell-summary { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.6rem; background: rgba(150,100,255,0.08); border-radius: 6px; margin-bottom: 0.6rem; }
     .cell-summary-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
@@ -167,7 +157,7 @@
     
     .cell-towers-nearby { margin-bottom: 0.6rem; }
     .cell-towers-title { font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.3rem; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
-    .cell-tower { display: grid; grid-template-columns: 60px 1fr 50px 60px; gap: 0.3rem; padding: 0.3rem 0.5rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.7rem; }
+    .cell-tower { display: grid; grid-template-columns: 70px 1fr 60px; gap: 0.3rem; padding: 0.3rem 0.5rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.7rem; }
     .cell-tower:nth-child(odd) { background: rgba(255,255,255,0.04); }
     .cell-tower-header { font-weight: 600; opacity: 0.6; text-transform: uppercase; font-size: 0.6rem; }
     .cell-tower-distance { font-family: monospace; }
@@ -513,7 +503,7 @@
                 <span>Carrier</span>
                 <span>Technology</span>
                 <span>Distance</span>
-                <span>Signal</span>
+                
               </div>`;
           
           for (const tower of cellData.towers.slice(0, 8)) {
@@ -526,7 +516,6 @@
                 <span style="font-size:0.65rem;">${flag} ${escapeHtml(tower.carrier?.split(' ')[0] || 'Unknown')}</span>
                 <span style="color:${techInfo.color};">${tower.technology || tower.radio || '?'}</span>
                 <span class="cell-tower-distance">${tower.distance}m</span>
-                <span class="cell-tower-signal ${signal.class}">${signal.display}</span>
               </div>`;
           }
           
