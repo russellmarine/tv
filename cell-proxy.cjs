@@ -264,6 +264,255 @@ const INTL_CARRIERS = {
   '621-30': { name: 'MTN Nigeria', bands: ['B3', 'B7', 'B8'] },
   '621-50': { name: 'Glo Nigeria', bands: ['B3', 'B8'] },
   '621-60': { name: '9mobile', bands: ['B3', 'B8'] },
+  // Liberia (MCC 618)
+  '618-1': { name: 'Lonestar Cell', bands: ['B3', 'B8'] },
+  '618-2': { name: 'Libercell', bands: ['B3', 'B8'] },
+  '618-4': { name: 'Comium Liberia', bands: ['B3', 'B8'] },
+  '618-7': { name: 'Orange Liberia', bands: ['B3', 'B8'] },
+  '618-20': { name: 'LIBTELCO', bands: ['B3', 'B8'] },
+
+  // Sierra Leone (MCC 619)
+  '619-1': { name: 'Airtel SL', bands: ['B3', 'B8'] },
+  '619-2': { name: 'Africell SL', bands: ['B3', 'B8'] },
+  '619-3': { name: 'Comium SL', bands: ['B3', 'B8'] },
+  '619-5': { name: 'Africell SL', bands: ['B3', 'B8'] },
+  '619-25': { name: 'Orange SL', bands: ['B3', 'B8'] },
+
+  // Ghana (MCC 620)
+  '620-1': { name: 'MTN Ghana', bands: ['B3', 'B7', 'B8', 'B20'] },
+  '620-2': { name: 'Vodafone Ghana', bands: ['B3', 'B7', 'B8'] },
+  '620-3': { name: 'AirtelTigo', bands: ['B3', 'B8'] },
+  '620-4': { name: 'Expresso Ghana', bands: ['B3', 'B8'] },
+  '620-6': { name: 'AirtelTigo', bands: ['B3', 'B8'] },
+  '620-7': { name: 'Globacom Ghana', bands: ['B3', 'B8'] },
+
+  // Gambia (MCC 607)
+  '607-1': { name: 'Gamcel', bands: ['B3', 'B8'] },
+  '607-2': { name: 'Africell GM', bands: ['B3', 'B8'] },
+  '607-3': { name: 'Comium GM', bands: ['B3', 'B8'] },
+  '607-4': { name: 'QCell', bands: ['B3', 'B8'] },
+
+  // Senegal (MCC 608)
+  '608-1': { name: 'Orange Senegal', bands: ['B3', 'B7', 'B8', 'B20'] },
+  '608-2': { name: 'Free Senegal', bands: ['B3', 'B8'] },
+  '608-3': { name: 'Expresso SN', bands: ['B3', 'B8'] },
+
+  // Mauritania (MCC 609)
+  '609-1': { name: 'Mattel', bands: ['B3', 'B8'] },
+  '609-2': { name: 'Chinguitel', bands: ['B3', 'B8'] },
+  '609-10': { name: 'Mauritel', bands: ['B3', 'B8'] },
+
+  // Mali (MCC 610)
+  '610-1': { name: 'Malitel', bands: ['B3', 'B8'] },
+  '610-2': { name: 'Orange Mali', bands: ['B3', 'B8'] },
+  '610-3': { name: 'Telecel Mali', bands: ['B3', 'B8'] },
+
+  // Guinea (MCC 611)
+  '611-1': { name: 'Orange Guinea', bands: ['B3', 'B8'] },
+  '611-2': { name: 'Sotelgui', bands: ['B3', 'B8'] },
+  '611-3': { name: 'Telecel Guinea', bands: ['B3', 'B8'] },
+  '611-4': { name: 'MTN Guinea', bands: ['B3', 'B8'] },
+  '611-5': { name: 'Cellcom Guinea', bands: ['B3', 'B8'] },
+
+  // Ivory Coast (MCC 612)
+  '612-1': { name: 'Cora de Comstar', bands: ['B3', 'B8'] },
+  '612-2': { name: 'Moov CI', bands: ['B3', 'B8'] },
+  '612-3': { name: 'Orange CI', bands: ['B3', 'B7', 'B8'] },
+  '612-4': { name: 'KoZ', bands: ['B3', 'B8'] },
+  '612-5': { name: 'MTN CI', bands: ['B3', 'B7', 'B8'] },
+  '612-6': { name: 'GreenN', bands: ['B3', 'B8'] },
+
+  // Burkina Faso (MCC 613)
+  '613-1': { name: 'Onatel', bands: ['B3', 'B8'] },
+  '613-2': { name: 'Orange BF', bands: ['B3', 'B8'] },
+  '613-3': { name: 'Telecel BF', bands: ['B3', 'B8'] },
+
+  // Niger (MCC 614)
+  '614-1': { name: 'SahelCom', bands: ['B3', 'B8'] },
+  '614-2': { name: 'Airtel Niger', bands: ['B3', 'B8'] },
+  '614-3': { name: 'Moov Niger', bands: ['B3', 'B8'] },
+  '614-4': { name: 'Orange Niger', bands: ['B3', 'B8'] },
+
+  // Togo (MCC 615)
+  '615-1': { name: 'Togo Telecom', bands: ['B3', 'B8'] },
+  '615-2': { name: 'Moov Togo', bands: ['B3', 'B8'] },
+  '615-3': { name: 'TogoCel', bands: ['B3', 'B8'] },
+
+  // Benin (MCC 616)
+  '616-1': { name: 'Libercom', bands: ['B3', 'B8'] },
+  '616-2': { name: 'Moov Benin', bands: ['B3', 'B8'] },
+  '616-3': { name: 'MTN Benin', bands: ['B3', 'B8'] },
+  '616-4': { name: 'BBCOM', bands: ['B3', 'B8'] },
+  '616-5': { name: 'Glo Benin', bands: ['B3', 'B8'] },
+
+  // Mauritius (MCC 617)
+  '617-1': { name: 'Orange MU', bands: ['B3', 'B7', 'B8'] },
+  '617-2': { name: 'MTML', bands: ['B3', 'B8'] },
+  '617-10': { name: 'Emtel', bands: ['B3', 'B7', 'B8'] },
+
+  // Chad (MCC 622)
+  '622-1': { name: 'Airtel Chad', bands: ['B3', 'B8'] },
+  '622-2': { name: 'Tigo Chad', bands: ['B3', 'B8'] },
+  '622-3': { name: 'Salam Chad', bands: ['B3', 'B8'] },
+  '622-4': { name: 'Sotel Chad', bands: ['B3', 'B8'] },
+
+  // Central African Republic (MCC 623)
+  '623-1': { name: 'Centrafrique Tel', bands: ['B3', 'B8'] },
+  '623-2': { name: 'Telecel CAR', bands: ['B3', 'B8'] },
+  '623-3': { name: 'Orange CAR', bands: ['B3', 'B8'] },
+  '623-4': { name: 'Nationlink CAR', bands: ['B3', 'B8'] },
+
+  // Cameroon (MCC 624)
+  '624-1': { name: 'MTN Cameroon', bands: ['B3', 'B7', 'B8'] },
+  '624-2': { name: 'Orange Cameroon', bands: ['B3', 'B7', 'B8'] },
+  '624-4': { name: 'Nexttel', bands: ['B3', 'B8'] },
+
+  // Cape Verde (MCC 625)
+  '625-1': { name: 'CVMovel', bands: ['B3', 'B8'] },
+  '625-2': { name: 'T+ Telecom', bands: ['B3', 'B8'] },
+
+  // Sao Tome (MCC 626)
+  '626-1': { name: 'CSTmovel', bands: ['B3', 'B8'] },
+
+  // Equatorial Guinea (MCC 627)
+  '627-1': { name: 'Orange GQ', bands: ['B3', 'B8'] },
+  '627-3': { name: 'Muni', bands: ['B3', 'B8'] },
+
+  // Gabon (MCC 628)
+  '628-1': { name: 'Libertis', bands: ['B3', 'B8'] },
+  '628-2': { name: 'Moov Gabon', bands: ['B3', 'B8'] },
+  '628-3': { name: 'Airtel Gabon', bands: ['B3', 'B8'] },
+  '628-4': { name: 'Azur Gabon', bands: ['B3', 'B8'] },
+
+  // Congo Republic (MCC 629)
+  '629-1': { name: 'Airtel Congo', bands: ['B3', 'B8'] },
+  '629-7': { name: 'Warid Congo', bands: ['B3', 'B8'] },
+  '629-10': { name: 'MTN Congo', bands: ['B3', 'B8'] },
+
+  // DR Congo (MCC 630)
+  '630-1': { name: 'Vodacom DRC', bands: ['B3', 'B8'] },
+  '630-2': { name: 'Airtel DRC', bands: ['B3', 'B8'] },
+  '630-4': { name: 'Cellco', bands: ['B3', 'B8'] },
+  '630-5': { name: 'Supercell', bands: ['B3', 'B8'] },
+  '630-86': { name: 'Orange DRC', bands: ['B3', 'B8'] },
+  '630-89': { name: 'Tigo DRC', bands: ['B3', 'B8'] },
+
+  // Angola (MCC 631)
+  '631-2': { name: 'Unitel Angola', bands: ['B3', 'B7', 'B8'] },
+  '631-4': { name: 'Movicel', bands: ['B3', 'B8'] },
+
+  // Guinea-Bissau (MCC 632)
+  '632-1': { name: 'Guinetel', bands: ['B3', 'B8'] },
+  '632-2': { name: 'MTN Bissau', bands: ['B3', 'B8'] },
+  '632-3': { name: 'Orange Bissau', bands: ['B3', 'B8'] },
+
+  // Seychelles (MCC 633)
+  '633-1': { name: 'Cable & Wireless SC', bands: ['B3', 'B8'] },
+  '633-2': { name: 'Mediatech', bands: ['B3', 'B8'] },
+  '633-10': { name: 'Airtel SC', bands: ['B3', 'B8'] },
+
+  // Rwanda (MCC 635)
+  '635-10': { name: 'MTN Rwanda', bands: ['B3', 'B7', 'B8', 'B28'] },
+  '635-12': { name: 'Airtel Rwanda', bands: ['B3', 'B8'] },
+  '635-13': { name: 'Tigo Rwanda', bands: ['B3', 'B8'] },
+  '635-14': { name: 'Airtel Rwanda', bands: ['B3', 'B8'] },
+  '635-17': { name: 'Olleh Rwanda', bands: ['B3', 'B8'] },
+
+  // Ethiopia (MCC 636)
+  '636-1': { name: 'Ethio Telecom', bands: ['B3', 'B8', 'B28'] },
+  '636-2': { name: 'Safaricom ET', bands: ['B3', 'B8'] },
+
+  // Tanzania (MCC 640)
+  '640-2': { name: 'Tigo Tanzania', bands: ['B3', 'B8'] },
+  '640-3': { name: 'Zantel', bands: ['B3', 'B8'] },
+  '640-4': { name: 'Vodacom TZ', bands: ['B3', 'B7', 'B8'] },
+  '640-5': { name: 'Airtel TZ', bands: ['B3', 'B8'] },
+  '640-6': { name: 'Sasatel', bands: ['B3', 'B8'] },
+  '640-7': { name: 'TTCL', bands: ['B3', 'B8'] },
+  '640-8': { name: 'Benson Online', bands: ['B3', 'B8'] },
+  '640-9': { name: 'Halotel', bands: ['B3', 'B8'] },
+  '640-11': { name: 'SmileCom', bands: ['B3', 'B8'] },
+
+  // Uganda (MCC 641)
+  '641-1': { name: 'Airtel Uganda', bands: ['B3', 'B8'] },
+  '641-6': { name: 'Africell UG', bands: ['B3', 'B8'] },
+  '641-10': { name: 'MTN Uganda', bands: ['B3', 'B7', 'B8'] },
+  '641-11': { name: 'Uganda Telecom', bands: ['B3', 'B8'] },
+  '641-14': { name: 'Africell UG', bands: ['B3', 'B8'] },
+  '641-18': { name: 'Smart Uganda', bands: ['B3', 'B8'] },
+  '641-22': { name: 'Airtel Uganda', bands: ['B3', 'B8'] },
+  '641-33': { name: 'Smile UG', bands: ['B3', 'B8'] },
+  '641-66': { name: 'i-Tel UG', bands: ['B3', 'B8'] },
+
+  // Burundi (MCC 642)
+  '642-1': { name: 'Spacetel', bands: ['B3', 'B8'] },
+  '642-2': { name: 'Africell BI', bands: ['B3', 'B8'] },
+  '642-3': { name: 'Onatel', bands: ['B3', 'B8'] },
+  '642-7': { name: 'Smart Burundi', bands: ['B3', 'B8'] },
+  '642-8': { name: 'Lumitel', bands: ['B3', 'B8'] },
+  '642-82': { name: 'Econet Leo', bands: ['B3', 'B8'] },
+
+  // Mozambique (MCC 643)
+  '643-1': { name: 'mCel', bands: ['B3', 'B8'] },
+  '643-3': { name: 'Movitel', bands: ['B3', 'B8'] },
+  '643-4': { name: 'Vodacom MZ', bands: ['B3', 'B7', 'B8'] },
+
+  // Zambia (MCC 645)
+  '645-1': { name: 'Airtel Zambia', bands: ['B3', 'B8'] },
+  '645-2': { name: 'MTN Zambia', bands: ['B3', 'B7', 'B8'] },
+  '645-3': { name: 'Zamtel', bands: ['B3', 'B8'] },
+
+  // Madagascar (MCC 646)
+  '646-1': { name: 'Airtel MG', bands: ['B3', 'B8'] },
+  '646-2': { name: 'Orange MG', bands: ['B3', 'B8'] },
+  '646-3': { name: 'Sacel', bands: ['B3', 'B8'] },
+  '646-4': { name: 'Telma', bands: ['B3', 'B8'] },
+
+  // Reunion (MCC 647)
+  '647-0': { name: 'Orange Reunion', bands: ['B3', 'B7', 'B8', 'B20'] },
+  '647-2': { name: 'SFR Reunion', bands: ['B3', 'B7', 'B8'] },
+  '647-10': { name: 'Free Reunion', bands: ['B3', 'B7'] },
+
+  // Zimbabwe (MCC 648)
+  '648-1': { name: 'Net*One', bands: ['B3', 'B8'] },
+  '648-3': { name: 'Telecel ZW', bands: ['B3', 'B8'] },
+  '648-4': { name: 'Econet ZW', bands: ['B3', 'B7', 'B8'] },
+
+  // Namibia (MCC 649)
+  '649-1': { name: 'MTC Namibia', bands: ['B3', 'B7', 'B8'] },
+  '649-2': { name: 'Telecom Namibia', bands: ['B3', 'B8'] },
+  '649-3': { name: 'Paratus Telecom', bands: ['B3', 'B8'] },
+
+  // Malawi (MCC 650)
+  '650-1': { name: 'TNM', bands: ['B3', 'B8'] },
+  '650-10': { name: 'Airtel Malawi', bands: ['B3', 'B8'] },
+
+  // Lesotho (MCC 651)
+  '651-1': { name: 'Vodacom Lesotho', bands: ['B3', 'B8'] },
+  '651-2': { name: 'Econet Lesotho', bands: ['B3', 'B8'] },
+
+  // Botswana (MCC 652)
+  '652-1': { name: 'Mascom', bands: ['B3', 'B7', 'B8'] },
+  '652-2': { name: 'Orange BW', bands: ['B3', 'B8'] },
+  '652-4': { name: 'beMobile', bands: ['B3', 'B8'] },
+
+  // Eswatini (MCC 653)
+  '653-1': { name: 'Eswatini MTN', bands: ['B3', 'B8'] },
+  '653-2': { name: 'Swazi Mobile', bands: ['B3', 'B8'] },
+  '653-10': { name: 'Eswatini Mobile', bands: ['B3', 'B8'] },
+
+  // Comoros (MCC 654)
+  '654-1': { name: 'Comores Telecom', bands: ['B3', 'B8'] },
+  '654-2': { name: 'Telma Comoros', bands: ['B3', 'B8'] },
+
+  // Eritrea (MCC 657)
+  '657-1': { name: 'Eritel', bands: ['B3', 'B8'] },
+
+  // South Sudan (MCC 659)
+  '659-2': { name: 'MTN South Sudan', bands: ['B3', 'B8'] },
+  '659-3': { name: 'Gemtel', bands: ['B3', 'B8'] },
+  '659-4': { name: 'Vivacell', bands: ['B3', 'B8'] },
+  '659-6': { name: 'Zain SS', bands: ['B3', 'B8'] },
   
   // New Zealand (MCC 530)
   '530-1': { name: 'Vodafone NZ', bands: ['B1', 'B3', 'B7', 'B28', 'n78'] },

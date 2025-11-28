@@ -255,7 +255,9 @@
       color: #ffcc88;
       font-size: 0.8rem;
       cursor: pointer;
-      margin-top: 1rem;
+      margin-top: 0;
+      align-self: flex-end;
+      height: 32px;
       transition: all 0.2s;
     }
 
