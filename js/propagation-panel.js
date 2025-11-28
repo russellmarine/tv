@@ -1545,7 +1545,7 @@
     const recent = recentSearches[idx];
     if (!recent) return;
     
-    applyLocation(recent.label, recent.coords.lat, recent.coords.lon, recent.source || 'recent');
+    applyLocation(recent.label, recent.coords.lat, recent.coords.lon, 'recent');
   }
 
   // ============ LOCATION APPLICATION ============
@@ -1557,8 +1557,11 @@
       source: source || 'manual'
     };
 
-    // Add to recent searches
-    addToRecentSearches(selectedLocation);
+    // Add to recent searches (but don't reshuffle if this came from 'recent')
+    const src = source || 'manual';
+    if (src !== 'recent') {
+      addToRecentSearches(selectedLocation);
+    }
 
     // Save to storage
     if (window.RussellTV?.Storage?.save) {
