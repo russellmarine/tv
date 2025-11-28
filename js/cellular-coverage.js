@@ -167,11 +167,82 @@
     .cell-tower-signal.fair { color: #ffcc00; }
     .cell-tower-signal.weak { color: #ff6644; }
     
-    .cell-bands { margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(100,150,255,0.08); border-radius: 4px; }
-    .cell-bands-title { font-size: 0.65rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.25rem; }
-    .cell-bands-list { display: flex; flex-wrap: wrap; gap: 0.25rem; }
-    .cell-band { padding: 0.1rem 0.3rem; background: rgba(100,150,255,0.2); border-radius: 3px; font-size: 0.6rem; font-family: monospace; }
-    .cell-band.nr { background: rgba(0,255,200,0.2); color: #00ffcc; }
+    .cell-bands { 
+      margin: 0.15rem 0 0.4rem 0;
+      padding: 0.35rem 0.6rem;
+      background: rgba(100,150,255,0.08);
+      border-radius: 4px;
+    }
+    .cell-bands-title { 
+      font-size: 0.65rem; 
+      text-transform: uppercase; 
+      opacity: 0.6; 
+      margin-bottom: 0.25rem; 
+    }
+    .cell-bands-list { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 0.25rem; 
+    }
+    .cell-band { 
+      padding: 0.1rem 0.3rem; 
+      border-radius: 3px; 
+      font-size: 0.6rem; 
+      font-family: monospace; 
+      background: rgba(100,150,255,0.2);
+    }
+    .cell-band.nr { 
+      background: rgba(0,255,200,0.2); 
+      color: #00ffcc; 
+    }
+    .cell-band.lte {
+      background: rgba(68,204,68,0.20);
+      color: #44cc44;     /* LTE / 4G green */
+    }
+    .cell-band.umts {
+      background: rgba(255,170,0,0.20);
+      color: #ffaa00;     /* UMTS / 3G yellow/orange */
+    }
+    .cell-band.gsm {
+      background: rgba(255,102,68,0.20);
+      color: #ff6644;     /* GSM / 2G red */
+    }
+
+    .cell-band-legend {
+      margin-top: 0.5rem;
+      padding: 0.4rem 0.6rem;
+      background: rgba(255,255,255,0.03);
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.65rem;
+    }
+    .cell-band-legend-title {
+      text-transform: uppercase;
+      opacity: 0.6;
+      margin-bottom: 0.3rem;
+      letter-spacing: 0.5px;
+    }
+    .cell-band-legend-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .cell-band-legend-items span {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      opacity: 0.9;
+    }
+    .cell-band-legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+    .cell-band-legend-dot.lte { background: #44cc44; }     /* LTE / 4G (green) */
+    .cell-band-legend-dot.umts { background: #ffaa00; }   /* UMTS / 3G (yellow/orange) */
+    .cell-band-legend-dot.gsm { background: #ff6644; }    /* GSM / 2G (red) */
+    .cell-band-legend-dot.nr { background: #00ffcc; }     /* 5G NR (cyan) */
     
     .cell-loading { display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 1.5rem; font-size: 0.8rem; }
     .cell-loading-spinner { width: 18px; height: 18px; border: 2px solid rgba(150,100,255,0.3); border-top-color: rgba(150,100,255,1); border-radius: 50%; animation: cell-spin 1s linear infinite; }
@@ -474,21 +545,46 @@
                 </div>
               </div>`;
             
-            // Show bands for US carriers
+            // Show bands for this carrier
             if (carrier.bands && carrier.bands.length > 0) {
               html += `
                 <div class="cell-bands">
                   <div class="cell-bands-title">Typical Bands for ${escapeHtml(carrier.name)}</div>
                   <div class="cell-bands-list">`;
-              for (const band of carrier.bands) {
-                const isNR = band.startsWith('n');
-                html += `<span class="cell-band${isNR ? ' nr' : ''}">${band}</span>`;
+              for (const bandRaw of carrier.bands) {
+                const band = String(bandRaw);
+                let cls = '';
+                if (band.startsWith('n')) {
+                  cls = ' nr';          // 5G NR
+                } else if (band.startsWith('B')) {
+                  cls = ' lte';         // LTE / 4G
+                } else if (/^\d+$/.test(band)) {
+                  const num = parseInt(band, 10);
+                  // crude: lower freqs ~GSM, higher often 3G-ish
+                  if (num <= 900) cls = ' gsm';
+                  else cls = ' umts';
+                }
+                html += `<span class="cell-band${cls}">${band}</span>`;
               }
               html += `</div></div>`;
             }
           }
           
           html += `</div>`;
+        }
+
+        // Band legend (notation for bands across carriers)
+        if (cellData.carriers && cellData.carriers.some(c => c.bands && c.bands.length)) {
+          html += `
+            <div class="cell-band-legend">
+              <div class="cell-band-legend-title">Band Legend</div>
+              <div class="cell-band-legend-items">
+                <span><span class="cell-band-legend-dot lte"></span> LTE / 4G bands (Bxx)</span>
+                <span><span class="cell-band-legend-dot umts"></span> UMTS / 3G bands</span>
+                <span><span class="cell-band-legend-dot gsm"></span> GSM / 2G bands (often 900 / 1800 MHz)</span>
+                <span><span class="cell-band-legend-dot nr"></span> 5G NR bands (nxx)</span>
+              </div>
+            </div>`;
         }
 
         // Nearest towers table
