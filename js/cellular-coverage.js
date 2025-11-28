@@ -734,6 +734,15 @@
       }, 100);
     });
 
+    // Listen for propagation panel content rendered (container now exists)
+    Events.on('propagation:content-rendered', () => {
+      console.log('[Cellular] Propagation content rendered, checking container');
+      if (!currentLocation) {
+        loadLocationFromStorage();
+      }
+      ensureAndRender();
+    });
+
     // Try to load location and render immediately
     loadLocationFromStorage();
     
