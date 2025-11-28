@@ -19,7 +19,8 @@ window.YT_CHANNELS = {
   euronews:  "/yt/euronews/index.m3u8",
   aljazeera: "/yt/aljazeera/index.m3u8",
   abc:       "/yt/abc/index.m3u8",
-  trt:       "/yt/trt/index.m3u8"
+  trt:       "/yt/trt/index.m3u8",
+  asianone:  "/yt/asianone/index.m3u8"
 };
 
 window.CHANNELS = {
@@ -36,7 +37,8 @@ window.CHANNELS = {
   euronews:  { type: "hls", label: "Euronews",      url: window.YT_CHANNELS.euronews },
   aljazeera: { type: "hls", label: "Al Jazeera",    url: window.YT_CHANNELS.aljazeera },
   abc:       { type: "hls", label: "ABC News",      url: window.YT_CHANNELS.abc },
-  trt:       { type: "hls", label: "TRT World",     url: window.YT_CHANNELS.trt }
+  trt:       { type: "hls", label: "TRT World",     url: window.YT_CHANNELS.trt },
+  asianone:  { type: "hls", label: "Asian One News", url: window.YT_CHANNELS.asianone }
 };
 
 window.CHANNEL_ORDER = [
@@ -52,6 +54,7 @@ window.CHANNEL_ORDER = [
   "gijoe",
   "euronews",
   "aljazeera",
+  "asianone",
   "trt"
 ];
 

@@ -49,6 +49,9 @@ run "euronews"  "https://www.euronews.com/rss?format=mrss&level=theme&name=news"
 
 run "aljazeera" "https://www.aljazeera.com/xml/rss/all.xml"         "Al Jazeera English" 10
 
+# AsiaOne regional
+run "asiaone"   "https://asiaone24.rssing.com/chan-61444450/index-latest.php" "AsiaOne" 10
+
 # Fox Nation "national" feed
 run "fox-news"  "https://moxie.foxnews.com/google-publisher/latest.xml" "Fox News"       10
 

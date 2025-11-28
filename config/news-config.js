@@ -52,6 +52,10 @@ window.CHANNEL_NEWS_CONFIG = {
     label: "Al Jazeera Headlines",
     file: "aljazeera.json"
   },
+  asianone: {
+    label: "Asian One News – Regional Headlines",
+    file: "asiaone.json"
+  },
   trt: {
     label: "TRT World – Global Headlines",
     file: "trt-world.json"
