@@ -2333,6 +2333,14 @@
     if (lastUpdate && lastUpdateEl) {
       lastUpdateEl.textContent = ` · Updated ${formatTimeAgo(lastUpdate)}`;
     }
+
+    // Notify cellular module that container exists and trigger render
+    setTimeout(() => {
+      Events.emit('propagation:content-rendered');
+      if (window.RussellTV?.CellCoverage?.render) {
+        window.RussellTV.CellCoverage.render();
+      }
+    }, 50);   
   }
 
   // ============ INITIALIZATION ============
