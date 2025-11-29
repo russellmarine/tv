@@ -140,15 +140,116 @@
       overflow-y: auto;
       flex: 1;
       min-height: 0;
+
+      /* Fiery tactical scrollbar */
+      scrollbar-width: thin;
+      scrollbar-color: #ff9a3c rgba(10, 5, 0, 0.95);
+    }
+
+    #propagation-panel .panel-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #propagation-panel .panel-content::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.65);
+      border-radius: 999px;
+    }
+
+    #propagation-panel .panel-content::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #ffb347, #ff7a18);
+      border-radius: 999px;
+      box-shadow: 0 0 8px rgba(255, 140, 0, 0.9);
+    }
+
+    #propagation-panel .panel-content::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #ffd27f, #ff8c3f);
     }
 
     /* Satellite look angles header inside propagation panel */
     #propagation-panel .satla-header {
       cursor: pointer !important;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+      background: rgba(10, 5, 0, 0.9);
+      border-radius: 8px;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid rgba(255, 140, 0, 0.7);
+      color: rgba(255, 190, 120, 0.95);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-shadow:
+        0 0 6px rgba(255, 120, 0, 0.8),
+        0 0 14px rgba(255, 80, 0, 0.75),
+        0 0 20px rgba(255, 40, 0, 0.7);
+      box-shadow: 0 0 10px rgba(255, 100, 0, 0.4);
+      transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.12s ease;
+    }
+
+    #propagation-panel .satla-header:hover {
+      background: rgba(20, 8, 0, 0.98);
+      box-shadow:
+        0 0 14px rgba(255, 150, 0, 0.9),
+        0 0 26px rgba(255, 90, 0, 0.85);
+      transform: translateY(-1px);
     }
 
     #propagation-panel .satla-header * {
       pointer-events: none;
+    }
+
+    #propagation-panel .satla-header .chevron,
+    #propagation-panel .satla-header .toggle-icon {
+      color: rgba(255, 180, 100, 0.95);
+    }
+
+    #propagation-panel .satla-header .chevron::before,
+    #propagation-panel .satla-header .toggle-icon::before {
+      text-shadow:
+        0 0 6px rgba(255, 140, 0, 0.9),
+        0 0 12px rgba(255, 80, 0, 0.8);
+    }
+
+    /* Fiery theme for Cellular Coverage header (if present) */
+    #propagation-panel .cellcov-header,
+    #propagation-panel .cell-header {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+      background: rgba(10, 5, 0, 0.9);
+      border-radius: 8px;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid rgba(255, 140, 0, 0.7);
+      color: rgba(255, 190, 120, 0.95);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-shadow:
+        0 0 6px rgba(255, 120, 0, 0.8),
+        0 0 14px rgba(255, 80, 0, 0.75),
+        0 0 20px rgba(255, 40, 0, 0.7);
+      box-shadow: 0 0 10px rgba(255, 100, 0, 0.4);
+      transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.12s ease;
+    }
+
+    #propagation-panel .cellcov-header:hover,
+    #propagation-panel .cell-header:hover {
+      background: rgba(20, 8, 0, 0.98);
+      box-shadow:
+        0 0 14px rgba(255, 150, 0, 0.9),
+        0 0 26px rgba(255, 90, 0, 0.85);
+      transform: translateY(-1px);
+    }
+
+    #propagation-panel .cellcov-header .chevron,
+    #propagation-panel .cell-header .chevron {
+      color: rgba(255, 180, 100, 0.95);
     }
 
     /* Location selector */
@@ -837,6 +938,64 @@
     #propagation-panel .inline-link:hover {
       color: #ff9900;
       border-bottom-color: #ff9900;
+    }
+
+    /* 🔥 Tactical Fiery Styling (Minimal Glow) */
+    /* Body cards for SATLA + Cellular inside propagation panel */
+    #propagation-panel #satla-container > div,
+    #propagation-panel #satla-container .satla-card,
+    #propagation-panel #satla-container .section-box,
+    #propagation-panel #cell-container > div,
+    #propagation-panel #cell-container .cellcov-card,
+    #propagation-panel #cell-container .section-box {
+      background: rgba(12, 8, 0, 0.96);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 120, 0, 0.55);
+      box-shadow: 0 0 10px rgba(255, 110, 0, 0.28);
+    }
+
+    #propagation-panel #satla-container > div + div,
+    #propagation-panel #cell-container > div + div {
+      margin-top: 0.5rem;
+    }
+    #propagation-panel .section-box {
+      background: rgba(12, 8, 0, 0.88);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 115, 0, 0.45);
+      margin-bottom: 0.75rem;
+      box-shadow: 0 0 8px rgba(255, 100, 0, 0.25);
+    }
+
+    #propagation-panel .satla-header,
+    #propagation-panel .cellcov-header,
+    #propagation-panel .cell-header {
+      cursor: pointer;
+      background: rgba(25, 14, 0, 0.92);
+      border-bottom: 1px solid rgba(255, 115, 0, 0.5);
+      border-radius: 10px 10px 0 0;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: rgba(255, 165, 90, 0.95);
+      text-shadow: 0 0 4px rgba(255, 110, 0, 0.4);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #propagation-panel .satla-header .chevron,
+    #propagation-panel .cell-header .chevron,
+    #propagation-panel .cellcov-header .chevron {
+      color: rgba(255, 160, 60, 0.85);
+    }
+
+    #propagation-panel .satla-header:hover,
+    #propagation-panel .cell-header:hover,
+    #propagation-panel .cellcov-header:hover {
+      background: rgba(35, 18, 0, 0.98);
+      border-color: rgba(255, 150, 50, 0.75);
     }
   `;
 
