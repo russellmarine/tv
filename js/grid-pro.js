@@ -177,6 +177,7 @@
     '1x2': { rows: 1, cols: 2, cells: 2, label: '2 Wide' },
     '2x2': { rows: 2, cols: 2, cells: 4, label: '4 Square' },
     '1x3': { rows: 1, cols: 3, cells: 3, label: '3 Wide' },
+    '3x1': { rows: 3, cols: 1, cells: 3, label: '3 Stack' },
     '2x3': { rows: 2, cols: 3, cells: 6, label: '6 Grid' },
     '1x4': { rows: 1, cols: 4, cells: 4, label: '4 Wide' }
   };
@@ -186,6 +187,20 @@
   let audioCell = 1;   // Which cell has audio active
   let allMuted = true; // Start with everything muted
   let fullscreenCell = null; // Which cell is in browser fullscreen (if any)
+
+  function ensureGridMode() {
+    // Build / refresh grid structure
+    if (window.enterGridMode) {
+      window.enterGridMode();
+    }
+
+    // Actually switch the view to grid
+    if (window.RussellTV &&
+        window.RussellTV.ViewManager &&
+        typeof window.RussellTV.ViewManager.showGrid === 'function') {
+      window.RussellTV.ViewManager.showGrid();
+    }
+  }
 
   // Replace the grid button with a dropdown version
   function replaceGridButton() {
@@ -227,13 +242,8 @@
       }
 
       option.onclick = () => {
-        // First, switch to grid view if not already there
-        const gridView = document.getElementById('grid-view');
-        if (gridView && gridView.style.display === 'none') {
-          if (window.enterGridMode) {
-            window.enterGridMode();
-          }
-        }
+        // Always ensure we are actually in grid mode
+        ensureGridMode();
 
         // Then change the layout
         changeLayout(key);
@@ -256,14 +266,9 @@
       dropdown.classList.toggle('show');
     };
 
-    // Main button enters grid mode - build grid first
+    // Main button enters grid mode - build grid + show view
     mainBtn.onclick = () => {
-      if (window.enterGridMode) {
-        window.enterGridMode();
-      }
-      if (window.RussellTV && window.RussellTV.ViewManager) {
-        window.RussellTV.ViewManager.showGrid();
-      }
+      ensureGridMode();
     };
 
     // Close dropdown when clicking outside
