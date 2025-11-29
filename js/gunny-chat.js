@@ -11,8 +11,13 @@
   let formEl = null;
   let statusEl = null;
   let typingEl = null;
+  let loginEl = null;
+  let loginBtnEl = null;
+
   let isOpen = false;
   let historyTimer = null;
+  let authPollTimer = null;
+  let authRequired = false;
 
   // ---------- Styles ----------
   function injectStyles() {
@@ -80,7 +85,6 @@
         gap: 0.35rem;
         overscroll-behavior: contain;
         touch-action: pan-y;
-        position: relative; /* for embedded resize handle */
         scrollbar-width: thin;
         scrollbar-color: #ff6a00 rgba(20,20,20,0.9); /* Firefox */
       }
@@ -99,7 +103,7 @@
         background: linear-gradient(180deg, #ffd54f, #ff9100, #ff5722);
       }
 
-      /* Embedded corner resize grip, visually part of panel */
+      /* Corner resize grip embedded into panel border */
       .gunny-chat-resize-handle {
         position: absolute;
         width: 20px;
@@ -178,7 +182,7 @@
 
       .gunny-chat-footer {
         border-top: 1px solid rgba(255,255,255,0.1);
-        padding: 0.35rem 0.4rem 1.3rem;
+        padding: 0.35rem 0.4rem 1.3rem; /* extra bottom for corner grip */
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
@@ -213,6 +217,37 @@
 
       .gunny-chat-typing .dot:nth-child(3) {
         animation-delay: 0.4s;
+      }
+
+      /* In-panel Webex login prompt */
+      .gunny-chat-login {
+        display: none; /* shown only when auth is required */
+        margin-top: 0.15rem;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: rgba(230,230,230,0.9);
+      }
+      .gunny-chat-login-btn {
+        border-radius: 999px;
+        border: none;
+        padding: 0.25rem 0.8rem;
+        font-size: 0.78rem;
+        cursor: pointer;
+        background: linear-gradient(135deg, #ff8800, #ff4500); /* match Send button */
+        color: #000;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .gunny-chat-login-btn:hover {
+        filter: brightness(1.1);
+      }
+      .gunny-chat-login-hint {
+        flex: 1 1 auto;
+        min-width: 0;
+        opacity: 0.8;
       }
 
       @keyframes gunny-dots {
@@ -282,12 +317,15 @@
       const login = await apiJson('/webex/login');
 
       if (login && login.logged_in) {
+        authRequired = false;
+        if (loginEl) loginEl.style.display = 'none';
+        if (formEl) formEl.style.display = 'flex';
         return true;
       }
 
       if (login && login.url) {
-        setStatus('Redirecting to Webex login…', false);
-        window.location.href = login.url;
+        authRequired = true;
+        showLoginPrompt(login.url);
         return false;
       }
 
@@ -297,6 +335,72 @@
       console.error('[GunnyChat] ensureLoggedIn error', err);
       setStatus('Webex auth check failed. Try again.', true);
       return false;
+    }
+  }
+
+  function showLoginPrompt(loginUrl) {
+    if (!panelEl || !loginEl || !loginBtnEl) return;
+
+    if (typingEl) typingEl.style.display = 'none';
+    if (formEl) formEl.style.display = 'none';
+    loginEl.style.display = 'flex';
+    setStatus('Login with Webex to chat with Gunny.', false);
+
+    loginBtnEl.onclick = () => {
+      try {
+        window.open(loginUrl, '_blank');
+      } catch (e) {
+        window.location.href = loginUrl;
+      }
+      setStatus('Complete Webex login in the new tab, then return here.', false);
+      startAuthPoll();
+    };
+  }
+
+  function startAuthPoll() {
+    if (authPollTimer) {
+      clearInterval(authPollTimer);
+      authPollTimer = null;
+    }
+    let attempts = 0;
+    const maxAttempts = 90; // ~3 minutes at 2s
+
+    authPollTimer = setInterval(async () => {
+      attempts++;
+      if (!isOpen || attempts > maxAttempts) {
+        clearInterval(authPollTimer);
+        authPollTimer = null;
+        if (isOpen && attempts > maxAttempts) {
+          setStatus('Still not seeing a Webex login. Try again.', true);
+        }
+        return;
+      }
+
+      try {
+        const login = await apiJson('/webex/login');
+        if (login && login.logged_in) {
+          clearInterval(authPollTimer);
+          authPollTimer = null;
+          authRequired = false;
+          unlockChatAfterAuth();
+        }
+      } catch (err) {
+        console.error('[GunnyChat] auth poll error', err);
+      }
+    }, 2000);
+  }
+
+  async function unlockChatAfterAuth() {
+    if (!panelEl) return;
+    if (loginEl) loginEl.style.display = 'none';
+    if (formEl) formEl.style.display = 'flex';
+    if (typingEl) typingEl.style.display = 'none';
+    setStatus('Authenticated with Webex. Gunny is ready.', false);
+    try {
+      await loadHistory();
+      startHistoryPolling();
+    } catch (err) {
+      console.error('[GunnyChat] unlockChatAfterAuth error', err);
     }
   }
 
@@ -400,6 +504,17 @@
     }
   }
 
+  function startHistoryPolling() {
+    if (historyTimer) {
+      clearInterval(historyTimer);
+      historyTimer = null;
+    }
+    historyTimer = setInterval(() => {
+      if (!isOpen) return;
+      loadHistory(true);
+    }, 10000);
+  }
+
   // ---------- Sending ----------
   async function onSend(e) {
     e.preventDefault();
@@ -490,8 +605,8 @@
   }
 
   // ---------- Resize handling ----------
-  function makeResizable(panel, messages) {
-    if (!panel || !messages) return;
+  function makeResizable(panel) {
+    if (!panel) return;
 
     let handle = panel.querySelector('.gunny-chat-resize-handle');
     if (!handle) {
@@ -563,6 +678,12 @@
           <div class="gunny-chat-typing">
             GunnyGPT is thinking<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
           </div>
+          <div class="gunny-chat-login">
+            <button class="gunny-chat-login-btn" type="button">Login with Webex</button>
+            <div class="gunny-chat-login-hint">
+              A Webex window will open. After you finish, return here and Gunny will be ready.
+            </div>
+          </div>
           <form class="gunny-chat-form">
             <input class="gunny-chat-input" type="text"
                    placeholder="Ask Gunny about your comm plan…"
@@ -579,6 +700,8 @@
     formEl     = panelEl.querySelector('.gunny-chat-form');
     statusEl   = panelEl.querySelector('.gunny-chat-status');
     typingEl   = panelEl.querySelector('.gunny-chat-typing');
+    loginEl    = panelEl.querySelector('.gunny-chat-login');
+    loginBtnEl = panelEl.querySelector('.gunny-chat-login-btn');
 
     const closeBtn = panelEl.querySelector('.gunny-chat-close');
     if (closeBtn) {
@@ -593,7 +716,7 @@
 
     const headerEl = panelEl.querySelector('.gunny-chat-header');
     makeDraggable(panelEl, headerEl);
-    makeResizable(panelEl, messagesEl);
+    makeResizable(panelEl);
 
     console.log('✅ [GunnyChat] panel initialized');
   }
@@ -605,15 +728,12 @@
 
     try {
       const logged = await ensureLoggedIn();
-      if (!logged) return;
+      if (!logged) {
+        // Login prompt is shown; history loads after auth
+        return;
+      }
       await loadHistory();
-
-      // Start polling history while panel is open
-      if (historyTimer) clearInterval(historyTimer);
-      historyTimer = setInterval(() => {
-        if (!isOpen) return;
-        loadHistory(true);  // silent refresh
-      }, 10000);
+      startHistoryPolling();
     } catch (err) {
       console.error('[GunnyChat] open error', err);
       setStatus('Auth or API error talking to Gunny.', true);
@@ -627,6 +747,10 @@
     if (historyTimer) {
       clearInterval(historyTimer);
       historyTimer = null;
+    }
+    if (authPollTimer) {
+      clearInterval(authPollTimer);
+      authPollTimer = null;
     }
   }
 
@@ -654,5 +778,16 @@
     isOpen: function() { return !!isOpen; },
   };
 
+
   console.log('✅ [GunnyChat] globals ready (window.GunnyChat + RussellTV.GunnyChat)');
+
+  // Listen for auth success from Webex callback tab
+  window.addEventListener('message', (event) => {
+    if (event && event.data && event.data.webexAuthSuccess) {
+      console.log('[GunnyChat] Webex auth success message received');
+      if (window.GunnyChat && typeof GunnyChat.isOpen === 'function' && GunnyChat.isOpen()) {
+        GunnyChat.open(); // re-check auth + reload history
+      }
+    }
+  });
 })();

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Authentication Complete</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at center,
+      rgba(255,120,0,0.35),
+      rgba(0,0,0,0.95)
+    );
+    color: #ff8a33;
+    font-family: Arial, sans-serif;
+    text-align: center;
+  }
+  .msg-box {
+    padding: 1.4rem 2rem;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,120,0,0.5);
+    border-radius: 10px;
+    box-shadow: 0 0 12px rgba(255,120,0,0.4);
+    max-width: 360px;
+  }
+  h1 {
+    font-size: 1.2rem;
+    margin-bottom: 0.8rem;
+    color: #ffb04f;
+  }
+</style>
+</head>
+
+<body>
+<div class="msg-box">
+  <h1>🔥 Webex Login Complete</h1>
+  <p>You may now close this tab and return to GunnyGPT.</p>
+</div>
+
+<script>
+try {
+  // Notify original RussellTV tab that auth finished
+  if (window.opener) {
+    window.opener.postMessage({ webexAuthSuccess: true }, "*");
+  }
+
+  // Attempt auto-close (works in most browsers for script-opened windows)
+  window.close();
+} catch (e) {}
+
+// Fallback: if the browser blocks close(), keep a clear message visible
+setTimeout(() => {
+  const box = document.querySelector('.msg-box');
+  if (box) {
+    box.innerHTML =
+      "<h1>🔥 Auth Done</h1><p>You may now close this tab and return to RussellTV.</p>";
+  }
+}, 600);
+</script>
+</body>
+</html>
