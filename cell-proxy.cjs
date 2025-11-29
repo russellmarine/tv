@@ -128,10 +128,13 @@ function processResults(data, centerLat, centerLon) {
     if (!carriers[carrierKey].technologies[tech]) carriers[carrierKey].technologies[tech] = 0;
     carriers[carrierKey].technologies[tech]++;
 
+    const bearingDeg = computeBearingDeg(centerLat, centerLon, cell.lat, cell.lon);
+
     return {
       lat: cell.lat,
       lon: cell.lon,
       distance: Math.round(distance),
+      bearingDeg: Math.round(bearingDeg),
       mcc: cell.mcc,
       mnc: cell.mnc,
       carrier: carrierInfo.name,
@@ -214,6 +217,23 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
             Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
+}
+
+function computeBearingDeg(lat1, lon1, lat2, lon2) {
+  const toRad = d => d * Math.PI / 180;
+  const toDeg = r => r * 180 / Math.PI;
+
+  const phi1 = toRad(lat1);
+  const phi2 = toRad(lat2);
+  const deltaLon = toRad(lon2 - lon1);
+
+  const y = Math.sin(deltaLon) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) -
+            Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLon);
+
+  const theta = Math.atan2(y, x);
+  const bearing = (toDeg(theta) + 360) % 360;
+  return bearing;
 }
 
 const server = http.createServer(async (req, res) => {

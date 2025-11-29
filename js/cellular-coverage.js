@@ -157,10 +157,10 @@
     
     .cell-towers-nearby { margin-bottom: 0.6rem; }
     .cell-towers-title { font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.3rem; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
-    .cell-tower { display: grid; grid-template-columns: 70px 1fr 60px; gap: 0.3rem; padding: 0.3rem 0.5rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.7rem; }
+    .cell-tower { display: grid; grid-template-columns: 70px 1fr 60px 70px; gap: 0.3rem; padding: 0.3rem 0.5rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.7rem; }
     .cell-tower:nth-child(odd) { background: rgba(255,255,255,0.04); }
     .cell-tower-header { font-weight: 600; opacity: 0.6; text-transform: uppercase; font-size: 0.6rem; }
-    .cell-tower-distance { font-family: monospace; }
+    .cell-tower-distance, .cell-tower-bearing { font-family: monospace; }
     .cell-tower-signal { font-family: monospace; font-size: 0.65rem; }
     .cell-tower-signal.strong { color: #00ff88; }
     .cell-tower-signal.good { color: #88cc44; }
@@ -599,19 +599,24 @@
                 <span>Carrier</span>
                 <span>Technology</span>
                 <span>Distance</span>
-                
+                <span>Bearing (°T)</span>
               </div>`;
           
           for (const tower of cellData.towers.slice(0, 8)) {
             const techInfo = TECH_INFO[tower.technology] || TECH_INFO[tower.radio] || { color: '#888' };
             const flag = tower.flag || '';
             const signal = formatSignal(tower.signal || tower.averageSignal || tower.samples?.[0]?.signal);
+
+            const bearingText = (typeof tower.bearingDeg === 'number' && !Number.isNaN(tower.bearingDeg))
+              ? `${tower.bearingDeg}°T`
+              : '—';
             
             html += `
               <div class="cell-tower">
                 <span style="font-size:0.65rem;">${flag} ${escapeHtml(tower.carrier?.split(' ')[0] || 'Unknown')}</span>
                 <span style="color:${techInfo.color};">${tower.technology || tower.radio || '?'}</span>
                 <span class="cell-tower-distance">${tower.distance}m</span>
+                <span class="cell-tower-bearing">${bearingText}</span>
               </div>`;
           }
           
