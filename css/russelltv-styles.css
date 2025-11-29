@@ -555,3 +555,62 @@ main {
   display: none !important;
 }
 
+
+
+
+/* ===== Fiery scrollbars for news panels ===== */
+#channel-headlines-list,
+#marines-headlines-list {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #ff8800 rgba(0,0,0,0.6);
+}
+
+#channel-headlines-list::-webkit-scrollbar,
+#marines-headlines-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+#channel-headlines-list::-webkit-scrollbar-track,
+#marines-headlines-list::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.5);
+}
+
+#channel-headlines-list::-webkit-scrollbar-thumb,
+#marines-headlines-list::-webkit-scrollbar-thumb {
+  background-image: linear-gradient(180deg, #ffb34a, #ff5a00);
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.6);
+}
+
+#channel-headlines-list::-webkit-scrollbar-thumb:hover,
+#marines-headlines-list::-webkit-scrollbar-thumb:hover {
+  background-image: linear-gradient(180deg, #ffc766, #ff7a1a);
+}
+
+
+
+/* ===== Fiery scrollbars for single-side panel (news column) ===== */
+.single-side-panel {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #ff8800 rgba(0,0,0,0.6);
+}
+
+.single-side-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.single-side-panel::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.5);
+}
+
+.single-side-panel::-webkit-scrollbar-thumb {
+  background-image: linear-gradient(180deg, #ffb34a, #ff5a00);
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.6);
+}
+
+.single-side-panel::-webkit-scrollbar-thumb:hover {
+  background-image: linear-gradient(180deg, #ffc766, #ff7a1a);
+}
