@@ -12,6 +12,7 @@
   let statusEl = null;
   let typingEl = null;
   let isOpen = false;
+  let historyTimer = null;
 
   // ---------- Styles ----------
   function injectStyles() {
@@ -35,10 +36,42 @@
         overflow: hidden;
         z-index: 9999;
         font-size: 0.85rem;
-        resize: both;
+        resize: none; /* custom resize handle instead of tiny native grip */
         min-width: 320px;
         min-height: 260px;
       }
+
+      .gunny-chat-resize-handle {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        right: 6px;
+        bottom: 6px;
+        border-radius: 4px;
+        background: radial-gradient(circle at top left,
+          rgba(255, 200, 120, 0.9),
+          rgba(255, 80, 0, 0.95));
+        box-shadow: 0 0 4px rgba(0,0,0,0.8);
+        cursor: nwse-resize;
+        opacity: 0.9;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+        pointer-events: auto;
+      }
+      .gunny-chat-resize-handle::before {
+        content: '';
+        width: 70%;
+        height: 70%;
+        border-bottom: 2px solid rgba(0,0,0,0.7);
+        border-right: 2px solid rgba(0,0,0,0.7);
+        border-radius: 2px;
+        opacity: 0.85;
+      }
+      .gunny-chat-resize-handle:hover {
+        opacity: 1;
+      }
+
       .gunny-chat-panel.open {
         display: flex;
       }
@@ -74,7 +107,23 @@
         gap: 0.35rem;
         overscroll-behavior: contain;
         touch-action: pan-y;
+        scrollbar-width: thin;
+        scrollbar-color: #ff6a00 rgba(20,20,20,0.9); /* Firefox */
       }
+      .gunny-chat-messages::-webkit-scrollbar {
+        width: 8px;
+      }
+      .gunny-chat-messages::-webkit-scrollbar-track {
+        background: rgba(10,10,10,0.95);
+      }
+      .gunny-chat-messages::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #ffb300, #ff6a00, #ff3d00);
+        border-radius: 4px;
+      }
+      .gunny-chat-messages::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, #ffd54f, #ff9100, #ff5722);
+      }
+
       .gunny-chat-msg {
         padding: 0.35rem 0.5rem;
         border-radius: 8px;
@@ -95,14 +144,14 @@
       }
       .gunny-chat-msg.from-me {
         align-self: flex-end;
-        background: rgba(255,140,0,0.85); /* 🔥 Marine-orange */
+        background: rgba(255,140,0,0.85);
         color: #000;
         border: 1px solid rgba(255,180,60,0.9);
       }
       .gunny-chat-msg.from-gunny {
         align-self: flex-start;
-        background: rgba(50,50,50,0.95); /* dark radio-chatter */
-        color: #ff9d42; /* tactical amber text */
+        background: rgba(50,50,50,0.95);
+        color: #ff9d42;
         border: 1px solid rgba(255,120,0,0.6);
       }
       .gunny-chat-msg.from-other {
@@ -111,7 +160,7 @@
       }
       .gunny-chat-footer {
         border-top: 1px solid rgba(255,255,255,0.1);
-        padding: 0.35rem 0.4rem 0.45rem;
+        padding: 0.35rem 0.4rem 1.2rem;
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
@@ -257,7 +306,7 @@
       minute: '2-digit',
       hour12: false,
     });
-    return `${dateStr} ${timeStr}`;
+    return dateStr + ' ' + timeStr;
   }
 
   function renderMessage(msg) {
@@ -273,7 +322,7 @@
     textDiv.className = 'gunny-chat-msg-text';
     textDiv.textContent = msg.text || '';
 
-    const tsRaw = msg.timestamp || msg.ts || msg.createdAt || Date.now();
+    const tsRaw = msg.timestamp || msg.ts || msg.createdAt || msg.created_at || Date.now();
     const tsStr = formatTimestamp(tsRaw);
 
     wrapper.appendChild(textDiv);
@@ -289,20 +338,39 @@
   }
 
   // ---------- History ----------
-  async function loadHistory() {
+  async function loadHistory(silent = false) {
     try {
-      setStatus('Loading history…');
-      const data = await apiJson('/chat/history');
+      if (!silent) setStatus('Loading history…');
+      const data = await apiJson('/rtv/history');
+      if (!messagesEl) return;
       messagesEl.innerHTML = '';
-      const list = (data && data.messages) || [];
-      for (const m of list) {
-        renderMessage(m);
+      const raw = (data && data.messages) || [];
+
+      for (const m of raw) {
+        const text = m.text || m.markdown || m.content || '';
+        if (!text) continue;
+
+        const role = m.role || '';
+        const source = m.source || '';
+
+        const fromGunny = role === 'assistant';
+        const fromMe = !fromGunny && role === 'user';
+
+        renderMessage({
+          text,
+          fromMe,
+          fromGunny,
+          timestamp: m.timestamp || m.ts || m.createdAt || m.created_at,
+        });
       }
+
       scrollToBottom();
-      clearStatus();
+      if (!silent) clearStatus();
     } catch (err) {
       console.error('[GunnyChat] history error', err);
-      setStatus('Unable to load history. Try again, Devil Dog.', true);
+      if (!silent) {
+        setStatus('Unable to load history. Try again, Devil Dog.', true);
+      }
     }
   }
 
@@ -365,7 +433,6 @@
       dragging = true;
 
       const rect = panel.getBoundingClientRect();
-      // Switch to top/left positioning when dragging
       panel.style.top = rect.top + 'px';
       panel.style.left = rect.left + 'px';
       panel.style.bottom = 'auto';
@@ -394,6 +461,58 @@
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     }
+  }
+
+  // ---------- Resize handling ----------
+  function makeResizable(panel) {
+    if (!panel) return;
+
+    let handle = panel.querySelector('.gunny-chat-resize-handle');
+    if (!handle) {
+      handle = document.createElement('div');
+      handle.className = 'gunny-chat-resize-handle';
+      panel.appendChild(handle);
+    }
+
+    let resizing = false;
+    let startX = 0;
+    let startY = 0;
+    let startW = 0;
+    let startH = 0;
+
+    function onMove(e) {
+      if (!resizing) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      const newW = Math.max(320, startW + dx);
+      const newH = Math.max(260, startH + dy);
+
+      panel.style.width = newW + 'px';
+      panel.style.height = newH + 'px';
+    }
+
+    function onUp() {
+      if (!resizing) return;
+      resizing = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // don't trigger drag
+
+      const rect = panel.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      startW = rect.width;
+      startH = rect.height;
+      resizing = true;
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
   }
 
   // ---------- Panel ----------
@@ -448,6 +567,7 @@
 
     const headerEl = panelEl.querySelector('.gunny-chat-header');
     makeDraggable(panelEl, headerEl);
+    makeResizable(panelEl);
 
     console.log('✅ [GunnyChat] panel initialized');
   }
@@ -461,6 +581,13 @@
       const logged = await ensureLoggedIn();
       if (!logged) return;
       await loadHistory();
+
+      // Start polling history while panel is open
+      if (historyTimer) clearInterval(historyTimer);
+      historyTimer = setInterval(() => {
+        if (!isOpen) return;
+        loadHistory(true);  // silent refresh
+      }, 10000);
     } catch (err) {
       console.error('[GunnyChat] open error', err);
       setStatus('Auth or API error talking to Gunny.', true);
@@ -471,6 +598,10 @@
     if (!panelEl) return;
     panelEl.classList.remove('open');
     isOpen = false;
+    if (historyTimer) {
+      clearInterval(historyTimer);
+      historyTimer = null;
+    }
   }
 
   function togglePanel() {
