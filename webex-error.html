@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Webex Login Error</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #000; /* full black */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Same emblem treatment as success page */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      #000
+      url('background.png') center center no-repeat;
+    background-size: contain; /* keep circular shape */
+    opacity: 0.22;
+    pointer-events: none;
+  }
+
+  .msg-box {
+    position: relative;
+    z-index: 1;
+    background: rgba(0,0,0,0.65);
+    border: 1px solid rgba(255,120,0,0.45);
+    border-radius: 12px;
+    box-shadow: 0 0 12px rgba(255,120,0,0.25);
+    padding: 1rem 1.4rem;
+    width: 320px;
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 1.05rem;
+    margin-bottom: 0.6rem;
+    color: #ff9940;
+    opacity: 0.9;
+    text-shadow: 0 0 4px rgba(255,120,0,0.7);
+  }
+
+  p {
+    font-size: 0.9rem;
+    color: #dcdcdc;
+    opacity: 0.85;
+    line-height: 1.3rem;
+  }
+
+  .hint {
+    margin-top: 0.6rem;
+    font-size: 0.8rem;
+    opacity: 0.8;
+  }
+
+  .btn-row {
+    margin-top: 0.75rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-close {
+    border-radius: 999px;
+    border: none;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+    background: linear-gradient(135deg, #ff8800, #ff4500);
+    color: #000;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="msg-box">
+  <h1>⚠️ Webex Login Failed</h1>
+  <p>Something went wrong while trying to authenticate with Webex.</p>
+  <p class="hint">
+    Close this tab and click <strong>“Login with Webex”</strong> in GunnyGPT again to retry.
+  </p>
+  <div class="btn-row">
+    <button class="btn-close" id="btn-close" type="button">Close This Tab</button>
+  </div>
+</div>
+
+<script>
+// Optional: tell opener that auth failed so it can show a nicer status later
+if (window.opener) {
+  try {
+    window.opener.postMessage({ webexAuthError: true }, "*");
+  } catch (e) {}
+}
+
+(function() {
+  const btn = document.getElementById('btn-close');
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
+    // Try to close the tab
+    window.close();
+
+    // If browser blocks window.close(), update button text so user knows
+    setTimeout(() => {
+      if (!window.closed) {
+        btn.textContent = 'Please close this tab manually';
+      }
+    }, 500);
+  });
+})();
+</script>
+</body>
+</html>

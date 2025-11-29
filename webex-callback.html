@@ -4,61 +4,90 @@
 <meta charset="utf-8" />
 <title>Authentication Complete</title>
 <style>
-  body {
+  html, body {
     margin: 0;
-    height: 100vh;
+    padding: 0;
+    height: 100%;
+    background: #000; /* full black */
     display: flex;
     justify-content: center;
     align-items: center;
-    background: radial-gradient(circle at center,
-      rgba(255,120,0,0.35),
-      rgba(0,0,0,0.95)
-    );
-    color: #ff8a33;
     font-family: Arial, sans-serif;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Full-screen layer with centered, non-stretched circular image */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      #000
+      url('background.png') center center no-repeat;
+    background-size: contain; /* keep circular shape, no stretching */
+    opacity: 0.22;            /* subtle so text stays readable */
+    pointer-events: none;
+  }
+
+  .msg-box {
+    position: relative;
+    z-index: 1;
+    background: rgba(0,0,0,0.65); /* lighter transparency */
+    border: 1px solid rgba(255,120,0,0.45);
+    border-radius: 12px;
+    box-shadow: 0 0 12px rgba(255,120,0,0.25);
+    padding: 1rem 1.4rem;
+    width: 300px;
     text-align: center;
   }
-  .msg-box {
-    padding: 1.4rem 2rem;
-    background: rgba(0,0,0,0.6);
-    border: 1px solid rgba(255,120,0,0.5);
-    border-radius: 10px;
-    box-shadow: 0 0 12px rgba(255,120,0,0.4);
-    max-width: 360px;
-  }
   h1 {
-    font-size: 1.2rem;
-    margin-bottom: 0.8rem;
-    color: #ffb04f;
+    font-size: 1.05rem;
+    margin-bottom: 0.55rem;
+    color: #ff9940;
+    opacity: 0.85; /* slight fade */
+    text-shadow: 0 0 4px rgba(255,120,0,0.5);
+  }
+  p {
+    font-size: 0.88rem;
+    color: #dcdcdc;
+    opacity: 0.8; /* softer copy text */
+    line-height: 1.25rem;
+  }
+    text-shadow: 0 0 6px rgba(255,120,0,0.9);
+  }
+
+  p {
+    font-size: 0.9rem;
+    color: #efefef;
+    line-height: 1.3;
   }
 </style>
 </head>
-
 <body>
 <div class="msg-box">
   <h1>🔥 Webex Login Complete</h1>
-  <p>You may now close this tab and return to GunnyGPT.</p>
+  <p>You may now close this tab<br>and return to GunnyGPT.</p>
 </div>
 
 <script>
-try {
-  // Notify original RussellTV tab that auth finished
-  if (window.opener) {
-    window.opener.postMessage({ webexAuthSuccess: true }, "*");
-  }
+// Notify main RussellTV tab
+if (window.opener) {
+  window.opener.postMessage({ webexAuthSuccess: true }, "*");
+}
 
-  // Attempt auto-close (works in most browsers for script-opened windows)
-  window.close();
-} catch (e) {}
+// Try to auto-close
+window.close();
 
-// Fallback: if the browser blocks close(), keep a clear message visible
+// Fallback in case close() is blocked
 setTimeout(() => {
-  const box = document.querySelector('.msg-box');
-  if (box) {
-    box.innerHTML =
-      "<h1>🔥 Auth Done</h1><p>You may now close this tab and return to RussellTV.</p>";
+  const msg = document.querySelector('.msg-box');
+  if (msg) {
+    msg.innerHTML =
+      "<h1>🔥 Auth Complete</h1><p>You may close this tab now and return to RussellTV.</p>";
   }
-}, 600);
+}, 700);
 </script>
 </body>
 </html>
