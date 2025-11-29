@@ -36,45 +36,15 @@
         overflow: hidden;
         z-index: 9999;
         font-size: 0.85rem;
-        resize: none; /* custom resize handle instead of tiny native grip */
+        resize: none; /* custom resize via handle */
         min-width: 320px;
         min-height: 260px;
-      }
-
-      .gunny-chat-resize-handle {
-        position: absolute;
-        width: 14px;
-        height: 14px;
-        right: 6px;
-        bottom: 6px;
-        border-radius: 4px;
-        background: radial-gradient(circle at top left,
-          rgba(255, 200, 120, 0.9),
-          rgba(255, 80, 0, 0.95));
-        box-shadow: 0 0 4px rgba(0,0,0,0.8);
-        cursor: nwse-resize;
-        opacity: 0.9;
-        display: flex;
-        align-items: flex-end;
-        justify-content: flex-end;
-        pointer-events: auto;
-      }
-      .gunny-chat-resize-handle::before {
-        content: '';
-        width: 70%;
-        height: 70%;
-        border-bottom: 2px solid rgba(0,0,0,0.7);
-        border-right: 2px solid rgba(0,0,0,0.7);
-        border-radius: 2px;
-        opacity: 0.85;
-      }
-      .gunny-chat-resize-handle:hover {
-        opacity: 1;
       }
 
       .gunny-chat-panel.open {
         display: flex;
       }
+
       .gunny-chat-header {
         padding: 0.4rem 0.6rem;
         display: flex;
@@ -87,10 +57,12 @@
         cursor: move;
         user-select: none;
       }
+
       .gunny-chat-title {
         font-weight: 600;
         font-size: 0.8rem;
       }
+
       .gunny-chat-close {
         background: transparent;
         border: none;
@@ -98,6 +70,7 @@
         cursor: pointer;
         font-size: 0.9rem;
       }
+
       .gunny-chat-messages {
         padding: 0.5rem 0.6rem;
         flex: 1 1 auto;
@@ -107,9 +80,11 @@
         gap: 0.35rem;
         overscroll-behavior: contain;
         touch-action: pan-y;
+        position: relative; /* for embedded resize handle */
         scrollbar-width: thin;
         scrollbar-color: #ff6a00 rgba(20,20,20,0.9); /* Firefox */
       }
+
       .gunny-chat-messages::-webkit-scrollbar {
         width: 8px;
       }
@@ -124,6 +99,43 @@
         background: linear-gradient(180deg, #ffd54f, #ff9100, #ff5722);
       }
 
+      /* Embedded corner resize grip, visually part of panel */
+      .gunny-chat-resize-handle {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        right: 0;
+        bottom: 0;
+        cursor: nwse-resize;
+        pointer-events: auto;
+        border-bottom-right-radius: 12px; /* match panel corner */
+        overflow: hidden;
+      }
+      .gunny-chat-resize-handle::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(135deg,
+            transparent 0%,
+            transparent 55%,
+            rgba(255, 180, 80, 0.95) 55%,
+            rgba(255, 180, 80, 0.95) 60%,
+            transparent 60%,
+            transparent 100%);
+        opacity: 0.9;
+      }
+      .gunny-chat-resize-handle:hover::before {
+        background:
+          linear-gradient(135deg,
+            transparent 0%,
+            transparent 50%,
+            rgba(255, 210, 120, 1) 50%,
+            rgba(255, 210, 120, 1) 60%,
+            transparent 60%,
+            transparent 100%);
+      }
+
       .gunny-chat-msg {
         padding: 0.35rem 0.5rem;
         border-radius: 8px;
@@ -134,45 +146,54 @@
         flex-direction: column;
         gap: 2px;
       }
+
       .gunny-chat-msg-text {
         white-space: pre-wrap;
       }
+
       .gunny-chat-msg-meta {
         font-size: 0.65rem;
         opacity: 0.65;
         text-align: right;
       }
+
       .gunny-chat-msg.from-me {
         align-self: flex-end;
         background: rgba(255,140,0,0.85);
         color: #000;
         border: 1px solid rgba(255,180,60,0.9);
       }
+
       .gunny-chat-msg.from-gunny {
         align-self: flex-start;
         background: rgba(50,50,50,0.95);
         color: #ff9d42;
         border: 1px solid rgba(255,120,0,0.6);
       }
+
       .gunny-chat-msg.from-other {
         align-self: flex-start;
         background: rgba(80,80,80,0.9);
       }
+
       .gunny-chat-footer {
         border-top: 1px solid rgba(255,255,255,0.1);
-        padding: 0.35rem 0.4rem 1.2rem;
+        padding: 0.35rem 0.4rem 1.3rem;
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
       }
+
       .gunny-chat-status {
         min-height: 1.1em;
         font-size: 0.7rem;
         color: rgba(220,220,220,0.8);
       }
+
       .gunny-chat-status.error {
         color: #ff8080;
       }
+
       .gunny-chat-typing {
         min-height: 1.1em;
         font-size: 0.7rem;
@@ -180,13 +201,16 @@
         opacity: 0.9;
         display: none;
       }
+
       .gunny-chat-typing .dot {
         display: inline-block;
         animation: gunny-dots 1.2s infinite ease-in-out;
       }
+
       .gunny-chat-typing .dot:nth-child(2) {
         animation-delay: 0.2s;
       }
+
       .gunny-chat-typing .dot:nth-child(3) {
         animation-delay: 0.4s;
       }
@@ -201,6 +225,7 @@
         display: flex;
         gap: 0.35rem;
       }
+
       .gunny-chat-input {
         flex: 1 1 auto;
         border-radius: 999px;
@@ -210,11 +235,13 @@
         padding: 0.25rem 0.6rem;
         font-size: 0.8rem;
       }
+
       .gunny-chat-input:focus {
         outline: none;
         border-color: rgba(255,120,0,0.85);
         box-shadow: 0 0 4px rgba(255,120,0,0.8);
       }
+
       .gunny-chat-send {
         border-radius: 999px;
         border: none;
@@ -225,6 +252,7 @@
         color: #000;
         font-weight: 600;
       }
+
       .gunny-chat-send:hover {
         filter: brightness(1.1);
       }
@@ -351,8 +379,6 @@
         if (!text) continue;
 
         const role = m.role || '';
-        const source = m.source || '';
-
         const fromGunny = role === 'assistant';
         const fromMe = !fromGunny && role === 'user';
 
@@ -464,8 +490,8 @@
   }
 
   // ---------- Resize handling ----------
-  function makeResizable(panel) {
-    if (!panel) return;
+  function makeResizable(panel, messages) {
+    if (!panel || !messages) return;
 
     let handle = panel.querySelector('.gunny-chat-resize-handle');
     if (!handle) {
@@ -567,7 +593,7 @@
 
     const headerEl = panelEl.querySelector('.gunny-chat-header');
     makeDraggable(panelEl, headerEl);
-    makeResizable(panelEl);
+    makeResizable(panelEl, messagesEl);
 
     console.log('✅ [GunnyChat] panel initialized');
   }
