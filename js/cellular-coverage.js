@@ -198,7 +198,20 @@
     .cell-tower { display: grid; grid-template-columns: 70px 1fr 60px 70px; gap: 0.3rem; padding: 0.3rem 0.5rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.7rem; }
     .cell-tower:nth-child(odd) { background: rgba(255,255,255,0.04); }
     .cell-tower-header { font-weight: 600; opacity: 0.6; text-transform: uppercase; font-size: 0.6rem; }
-    .cell-tower-distance, .cell-tower-bearing { font-family: monospace; }
+    .cell-tower-distance, .cell-tower-bearing { 
+      font-family: monospace; 
+    }
+    .cell-tower-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.15rem;
+      color: rgba(150,200,255,0.95);
+      text-decoration: none;
+      font-family: monospace;
+    }
+    .cell-tower-link:hover {
+      text-decoration: underline;
+    }
     .cell-tower-signal { font-family: monospace; font-size: 0.65rem; }
     .cell-tower-signal.strong { color: #00ff88; }
     .cell-tower-signal.good { color: #88cc44; }
@@ -685,10 +698,20 @@
                 const tBearing = (typeof t.bearingDeg === 'number' && !Number.isNaN(t.bearingDeg))
                   ? `${t.bearingDeg}°T`
                   : '—';
+                const tHasCoords = (t.lat != null && t.lon != null && !Number.isNaN(t.lat) && !Number.isNaN(t.lon));
+                const tMapsUrl = tHasCoords
+                  ? `https://www.google.com/maps/search/?api=1&query=${t.lat},${t.lon}`
+                  : null;
+
                 towerListHtml += '<div class="cell-carrier-tower-row">';
                 towerListHtml += `<span class="tower-tech" style="color:${tTechInfo.color};">${tTechLabel}</span>`;
-                towerListHtml += `<span class="tower-distance">${tDist}</span>`;
-                towerListHtml += `<span class="tower-bearing">${tBearing}</span>`;
+                if (tMapsUrl) {
+                  towerListHtml += `<a href="${tMapsUrl}" target="_blank" rel="noopener" class="cell-tower-link tower-distance">📍 ${tDist}</a>`;
+                  towerListHtml += `<a href="${tMapsUrl}" target="_blank" rel="noopener" class="cell-tower-link tower-bearing">${tBearing}</a>`;
+                } else {
+                  towerListHtml += `<span class="tower-distance">${tDist}</span>`;
+                  towerListHtml += `<span class="tower-bearing">${tBearing}</span>`;
+                }
                 towerListHtml += '</div>';
               }
               towerListHtml += '</div></div>';
@@ -781,13 +804,26 @@
             const bearingText = (typeof tower.bearingDeg === 'number' && !Number.isNaN(tower.bearingDeg))
               ? `${tower.bearingDeg}°T`
               : '—';
+
+            const hasCoords = (tower.lat != null && tower.lon != null && !Number.isNaN(tower.lat) && !Number.isNaN(tower.lon));
+            const mapsUrl = hasCoords
+              ? `https://www.google.com/maps/search/?api=1&query=${tower.lat},${tower.lon}`
+              : null;
             
             html += `
               <div class="cell-tower">
-                <span style="font-size:0.65rem;">${flag} ${escapeHtml(tower.carrier || 'Unknown')}</span>
-                <span style="color:${techInfo.color};">${tower.technology || tower.radio || '?'}</span>
-                <span class="cell-tower-distance">${tower.distance}m</span>
-                <span class="cell-tower-bearing">${bearingText}</span>
+                <span style="font-size:0.65rem;">${flag} ${escapeHtml(tower.carrier?.split(' ')[0] || 'Unknown')}</span>
+                <span style="color:${techInfo.color};">${tower.technology || tower.radio || '?'}</span>`;
+
+            if (mapsUrl) {
+              html += `<a href="${mapsUrl}" target="_blank" rel="noopener" class="cell-tower-link cell-tower-distance">📍 ${tower.distance}m</a>`;
+              html += `<a href="${mapsUrl}" target="_blank" rel="noopener" class="cell-tower-link cell-tower-bearing">${bearingText}</a>`;
+            } else {
+              html += `<span class="cell-tower-distance">${tower.distance}m</span>`;
+              html += `<span class="cell-tower-bearing">${bearingText}</span>`;
+            }
+
+            html += `
               </div>`;
           }
           
