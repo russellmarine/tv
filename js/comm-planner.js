@@ -410,7 +410,7 @@
         '        </div>',
         '      </div>',
         summaryLine.length ? '      <div class="comm-weather-summary-row">' + summaryLine.map(escapeHtml).join('<span>•</span>') + '</div>' : '',
-        '      <div class="comm-weather-meta-row">',
+        '      <div class="comm-weather-meta-row comm-card-micro">',
         '        <span class="comm-weather-source">Data: OpenWeather</span>',
         '        <span class="comm-weather-updated">Updated ' + escapeHtml(updatedLocal) + '</span>',
         '      </div>',
@@ -423,8 +423,8 @@
       if (meta) meta.textContent = 'OpenWeather • Updated ' + updatedLocal;
     } catch (e) {
       console.warn('[CommPlanner] Weather fetch failed:', e);
-      body.textContent = 'Unable to load weather for this location.';
-      if (meta) meta.textContent = 'Error';
+      body.textContent = 'Unable to load weather for this location. Ensure the weather proxy is running with an OpenWeather API key.';
+      if (meta) meta.textContent = 'Weather proxy not reachable';
     }
   }
 
@@ -460,6 +460,9 @@
 
     const kpColor = data.kpIndex >= 5 ? '#ff8800' : (data.kpIndex >= 4 ? '#ffcc00' : '#44cc44');
 
+    const updated = window.RussellTV.SpaceWeather.getLastUpdate();
+    const updatedText = updated ? 'NOAA SWPC • Updated ' + updated.toUTCString() : 'NOAA SWPC';
+
     body.innerHTML = [
       '<div class="spacewx-scales-row">',
       '  <div class="spacewx-scale-card">',
@@ -482,13 +485,11 @@
       '  <span class="label">Kp Index</span>',
       '  <span class="value" style="color:' + kpColor + ';">' + data.kpIndex.toFixed(2) + '</span>',
       '  <span class="status">' + (data.kpIndex >= 5 ? 'Stormy' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet') + '</span>',
-      '</div>'
+      '</div>',
+      '<div class="comm-card-micro">' + escapeHtml(updatedText) + '</div>'
     ].join('');
 
-    if (meta) {
-      const updated = window.RussellTV.SpaceWeather.getLastUpdate();
-      meta.textContent = updated ? 'NOAA SWPC • Updated ' + updated.toUTCString() : 'NOAA SWPC';
-    }
+    if (meta) meta.textContent = updatedText;
   }
 
   // ---------- Init ----------
