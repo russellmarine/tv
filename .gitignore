@@ -8,3 +8,9 @@ dist/
 .env
 .env
 .env
+
+# Generated MCC/MNC datasets (local only, loaded into Postgres)
+cell-data/mcc-mnc.csv
+cell-data/mcc-mnc.json
+cell-data/mcc-mnc-converted.json
+

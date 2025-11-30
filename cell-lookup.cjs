@@ -1,8 +1,10 @@
 // cell-lookup.cjs
 // Centralized MCC/MNC + carrier lookup logic for RussellTV cell panel
+// Now DB-backed (Postgres) with JSON fallback.
 
 const path = require('path');
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 
 // ---------- HELPERS ----------------------------------------------------
 
@@ -16,28 +18,86 @@ function pick(row, ...names) {
   return null;
 }
 
-// ---------- DATA SOURCES -----------------------------------------------
-
-const MCC_MNC_PATH = path.join(__dirname, 'cell-data', 'mcc-mnc.json');
-const mccMncData = JSON.parse(fs.readFileSync(MCC_MNC_PATH, 'utf8'));
-
-let mccMncConverted = [];
-try {
-  mccMncConverted = require('./cell-data/mcc-mnc-converted.json');
-} catch (e) {
-  console.warn('[CellLookup] mcc-mnc-converted.json not found; structured bands will be empty.');
+function isoToFlag(iso2) {
+  if (!iso2 || iso2.length !== 2) return '';
+  const upper = iso2.toUpperCase();
+  const codePoints = [...upper].map(c => 0x1F1E6 + (c.charCodeAt(0) - 65));
+  return String.fromCodePoint(...codePoints);
 }
-
-// ---------- INDEXES ----------------------------------------------------
 
 const MCC_MNC_MAP = new Map();          // "mcc-mnc" (strings)
 const MCC_MNC_NUMERIC_MAP = new Map();  // "mcc-Number(mnc)"
 const MCC_TO_ISO = new Map();           // mcc -> ISO2
-const STRUCTURED_BANDS_MAP = new Map(); // "mcc-Number(mnc)" -> converted row
+const STRUCTURED_BANDS_MAP = new Map(); // "mcc-Number(mnc)" -> row with bands_structured
 
-// Build from canonical dataset
+let mccMncData = [];
+let loadedFromDb = false;
+
+// ---------- PRIMARY DATA LOAD (Postgres, then JSON fallback) ----------
+
+function loadFromDb() {
+  const host = process.env.RTV_DB_HOST || 'localhost';
+  const port = String(process.env.RTV_DB_PORT || 5432);
+  const user = process.env.RTV_DB_USER || 'rtvapp';
+  const db   = process.env.RTV_DB_NAME || 'russelltv';
+
+  const env = Object.assign({}, process.env);
+  if (process.env.RTV_DB_PASSWORD) {
+    env.PGPASSWORD = process.env.RTV_DB_PASSWORD;
+  }
+
+  const sql =
+    "SELECT coalesce(json_agg(row_to_json(t)),'[]'::json) " +
+    "FROM (SELECT mcc,mnc,plmn,region,country,iso,operator,brand,tadig,bands,bands_structured " +
+    "FROM mcc_mnc_carriers) t;";
+
+  const args = [
+    '-h', host,
+    '-p', port,
+    '-U', user,
+    '-d', db,
+    '-At',
+    '-c', sql
+  ];
+
+  const out = execFileSync('psql', args, { encoding: 'utf8', env });
+  const trimmed = (out || '').trim();
+  if (!trimmed) return [];
+
+  const arr = JSON.parse(trimmed);
+  if (!Array.isArray(arr)) {
+    throw new Error('Unexpected JSON from Postgres for MCC/MNC data');
+  }
+  return arr;
+}
+
+try {
+  mccMncData = loadFromDb();
+  loadedFromDb = true;
+  console.log(`[CellLookup] Loaded ${mccMncData.length} MCC/MNC rows from Postgres`);
+} catch (err) {
+  console.warn('[CellLookup] Failed to load MCC/MNC from Postgres, falling back to JSON:', err.message);
+  loadedFromDb = false;
+
+  const MCC_MNC_PATH = path.join(__dirname, 'cell-data', 'mcc-mnc.json');
+  mccMncData = JSON.parse(fs.readFileSync(MCC_MNC_PATH, 'utf8'));
+}
+
+// Optional converted data for fallback / extra structure if DB is not used
+let mccMncConverted = [];
+if (!loadedFromDb) {
+  try {
+    mccMncConverted = require('./cell-data/mcc-mnc-converted.json');
+  } catch (e) {
+    console.warn('[CellLookup] mcc-mnc-converted.json not found; structured bands will be empty.');
+  }
+}
+
+// ---------- INDEXES ----------------------------------------------------
+
+// Build from canonical dataset (DB rows or JSON)
 for (const row of mccMncData) {
-  const mccRaw = pick(row, 'mcc', 'MCC', '\\uFEFFMCC');
+  const mccRaw = pick(row, 'mcc', 'MCC', '\uFEFFMCC');
   const mncRaw = pick(row, 'mnc', 'MNC');
   if (!mccRaw || !mncRaw) continue;
 
@@ -56,24 +116,30 @@ for (const row of mccMncData) {
   if (mccStr && iso && !MCC_TO_ISO.has(mccStr)) {
     MCC_TO_ISO.set(mccStr, String(iso).toUpperCase());
   }
+
+  // If we loaded from DB and have bands_structured on this row, use it
+  if (loadedFromDb && row.bands_structured) {
+    STRUCTURED_BANDS_MAP.set(numKey, row);
+  }
 }
 
-// Build structured bands index (if file exists)
-for (const row of mccMncConverted) {
-  const mccRaw = pick(row, 'mcc', 'MCC', '\\uFEFFMCC');
-  const mncRaw = pick(row, 'mnc', 'MNC');
-  if (!mccRaw || !mncRaw) continue;
+// If not loaded from DB, fall back to converted JSON for structured bands
+if (!loadedFromDb) {
+  for (const row of mccMncConverted) {
+    const mccRaw = pick(row, 'mcc', 'MCC', '\uFEFFMCC');
+    const mncRaw = pick(row, 'mnc', 'MNC');
+    if (!mccRaw || !mncRaw) continue;
 
-  const mccStr = String(mccRaw).trim();
-  const mncNum = Number(mncRaw);
-  const key = `${mccStr}-${mncNum}`;
-  STRUCTURED_BANDS_MAP.set(key, row);
+    const mccStr = String(mccRaw).trim();
+    const mncNum = Number(mncRaw);
+    const key = `${mccStr}-${mncNum}`;
+    STRUCTURED_BANDS_MAP.set(key, row);
+  }
 }
 
 // ---------- CUSTOM OVERRIDES (US etc.) ---------------------------------
 
 const CUSTOM_CARRIERS = {
-  // US examples (you already had these)
   '310-410': { name: 'AT&T', bands: ['B2', 'B4', 'B5', 'B12', 'B14', 'B17', 'B29', 'B30', 'B66', 'n5', 'n77', 'n260'] },
   '310-260': { name: 'T-Mobile', bands: ['B2', 'B4', 'B12', 'B66', 'B71', 'n41', 'n71', 'n258', 'n260', 'n261'] },
   '311-480': { name: 'Verizon', bands: ['B2', 'B4', 'B5', 'B13', 'B66', 'n2', 'n5', 'n77', 'n261'] },
@@ -88,17 +154,9 @@ const CUSTOM_CARRIERS = {
   '311-220': { name: 'US Cellular', bands: ['B2', 'B4', 'B5', 'B12'] },
   '310-990': { name: 'Inland Cellular', bands: ['B2', 'B4', 'B12'] },
   '312-250': { name: 'Cellular One', bands: ['B4', 'B12'] },
-  // Add more hard overrides if you really want to pin specific markets.
 };
 
-// ---------- FLAGS / COUNTRY HELPERS ------------------------------------
-
-function isoToFlag(iso2) {
-  if (!iso2 || iso2.length !== 2) return '';
-  const upper = iso2.toUpperCase();
-  const codePoints = [...upper].map(c => 0x1F1E6 + (c.charCodeAt(0) - 65));
-  return String.fromCodePoint(...codePoints);
-}
+// ---------- COUNTRY HELPERS --------------------------------------------
 
 function getCountryCode(mcc) {
   const key = String(mcc);
@@ -156,7 +214,6 @@ function getCarrierInfo(mcc, mnc) {
     (structured && pick(structured, 'operator', 'Operator')) ||
     null;
 
-  // Name priority: explicit override → Brand/Operator → MCC/MNC fallback
   const name =
     override.name ||
     (brand || operator) ||
@@ -170,7 +227,7 @@ function getCarrierInfo(mcc, mnc) {
 
   if (!bands.length && structured && structured.bands_structured) {
     const flat = [...new Set(
-      Object.values(structured.bands_structured)
+      Object.values(structured.bands_structured || {})
         .flat()
         .map(b => String(b).trim())
         .filter(Boolean)
@@ -192,6 +249,7 @@ function getCarrierInfo(mcc, mnc) {
     (structured && (pick(structured, 'Bands', 'bands') || '')) ||
     (base && (pick(base, 'Bands', 'bands') || '')) ||
     '';
+
   const isMvno = /mvno/i.test(bandsStrAll);
 
   const region =
