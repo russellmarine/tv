@@ -840,6 +840,11 @@
     });
   }
 
+  function toTitleCase(str) {
+    if (!str) return '';
+    return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+  }
+
   function hasSelectedLocation() {
     return !!(selectedLocation && selectedLocation.coords && typeof selectedLocation.coords.lat === 'number' && typeof selectedLocation.coords.lon === 'number');
   }
@@ -1019,6 +1024,43 @@
     return '#44cc44';
   }
 
+  function getSpacewxOverall(data) {
+    const r = data?.scales?.R || 0;
+    const s = data?.scales?.S || 0;
+    const g = data?.scales?.G || 0;
+    const kp = data?.kpIndex || 0;
+
+    const kpScore = kp >= 7 ? 4 : kp >= 6 ? 3 : kp >= 5 ? 2 : kp >= 4 ? 1 : 0;
+    const severityScore = Math.max(r, s, g, kpScore);
+
+    if (severityScore >= 4) {
+      return {
+        className: 'severity-poor',
+        label: 'Severe',
+        desc: 'Strong storms in progress. Expect widespread HF absorption and SATCOM scintillation.'
+      };
+    }
+    if (severityScore >= 3) {
+      return {
+        className: 'severity-watch',
+        label: 'Watch',
+        desc: 'Active disturbances. Monitor HF MUF/LUF shifts and increased SATCOM fading.'
+      };
+    }
+    if (severityScore >= 2) {
+      return {
+        className: 'severity-fair',
+        label: 'Elevated',
+        desc: 'Minor solar activity; slight HF degradation or positioning jitter possible.'
+      };
+    }
+    return {
+      className: 'severity-good',
+      label: 'Calm',
+      desc: 'Nominal conditions. Routine HF, SATCOM, and GPS performance expected.'
+    };
+  }
+
   function getScaleDescription(type, value) {
     const desc = {
       R: ['None', 'Minor', 'Moderate', 'Strong', 'Severe', 'Extreme'],
@@ -1096,6 +1138,8 @@
     const updatedText = updated ? 'Updated ' + updated.toUTCString() : 'Live NOAA SWPC';
     const kpCondition = data.kpIndex >= 5 ? 'Storm' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet';
 
+    const spacewxOverall = getSpacewxOverall(data);
+
     const scaleLinks = {
       R: 'https://www.swpc.noaa.gov/noaa-scales/radio-blackouts-scale',
       S: 'https://www.swpc.noaa.gov/noaa-scales/solar-radiation-storm-scale',
@@ -1116,6 +1160,13 @@
     )).join('');
 
     body.innerHTML = [
+      '<div class="comm-prop-status ' + spacewxOverall.className + ' spacewx-overall">',
+      '  <div class="status-heading">',
+      '    <span class="status-label">Overall</span>',
+      '    <span class="status-value">' + escapeHtml(spacewxOverall.label) + '</span>',
+      '  </div>',
+      '  <p class="status-desc">' + escapeHtml(spacewxOverall.desc) + '</p>',
+      '</div>',
       '<div class="spacewx-scales-row">' + scaleCards + '</div>',
       '<a class="spacewx-kp-row tooltip-target" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(kpTooltip) + '">',
       '  <span class="label">Kp Index</span>',
@@ -1206,7 +1257,7 @@
     const gpsCondition = satAssessment.gps?.label || 'Normal';
 
     const weatherLine = lastWeather
-      ? '<div class="satcom-weather"><div class="weather-icon">' + getWeatherGlyph(lastWeather.main) + '</div><div class="weather-meta"><div>' + escapeHtml((lastWeather.desc || lastWeather.main || '').toLowerCase()) + '</div><div class="weather-sub">' + (lastWeather.temp != null ? escapeHtml(lastWeather.temp + '°F') : '--') + (lastWeather.humidity != null ? ' • ' + escapeHtml(lastWeather.humidity + '% RH') : '') + '</div></div></div>'
+      ? '<div class="satcom-weather"><div class="weather-icon">' + getWeatherGlyph(lastWeather.main) + '</div><div class="weather-meta"><div>' + escapeHtml(toTitleCase(lastWeather.desc || lastWeather.main || 'Weather')) + '</div><div class="weather-sub">' + (lastWeather.temp != null ? escapeHtml(lastWeather.temp + '°F') : '--') + (lastWeather.humidity != null ? ' • ' + escapeHtml(lastWeather.humidity + '% RH') : '') + '</div></div></div>'
       : '<div class="satcom-weather"><div class="weather-meta">Space weather driven assessment</div></div>';
 
     const bandOrder = ['ehf', 'ka', 'ku', 'x', 'c', 'uhf'];
@@ -1239,13 +1290,8 @@
         '    <span class="status-value">' + escapeHtml(gpsCondition) + '</span>',
         '  </div>',
         '  <p class="status-desc">Scintillation: ' + escapeHtml(satAssessment.scintillation || 'Low') + ' · Iono Delay: ' + escapeHtml(satAssessment.ionosphericDelay || 'Minimal') + '</p>',
-        '  <div class="gps-links">',
-        '    <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam Map</a> · ',
-        '    <a class="inline-link" href="https://www.flightradar24.com/blog/gnss-interference-dashboard/" target="_blank" rel="noopener noreferrer">FR24 Interference</a> · ',
-        '    <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN GUIDE</a>',
-        '  </div>',
         '</div>',
-        '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/products/goes-energetic-particle" target="_blank" rel="noopener noreferrer">SWPC</a> • ' + escapeHtml(sourceText) + '</div>'
+        '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/products/goes-energetic-particle" target="_blank" rel="noopener noreferrer">SWPC</a> · <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam Map</a> · <a class="inline-link" href="https://www.flightradar24.com/blog/gnss-interference-dashboard/" target="_blank" rel="noopener noreferrer">FR24 Interference</a> · <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN GUIDE</a> • ' + escapeHtml(sourceText) + '</div>'
       ].join('');
     }
 
@@ -1339,6 +1385,11 @@
     console.log('[CommPlanner] Dashboard initialized');
   }
 
+  window.RussellTV.CommPlanner = {
+    getLastWeather: () => lastWeather,
+    getSelectedLocation: () => selectedLocation
+  };
+
   document.addEventListener('DOMContentLoaded', init);
 
   function metricHtml(label, value, hint, icon) {
@@ -1355,7 +1406,7 @@
   function getWeatherMetricIcon(label) {
     const l = (label || '').toLowerCase();
     if (l.includes('humidity')) {
-      return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="humGradient" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#5ad1ff"/><stop offset="100%" stop-color="#0fa3b1"/></linearGradient></defs><path d="M12 3s-5.5 6.1-5.5 10A5.5 5.5 0 0 0 12 18.5 5.5 5.5 0 0 0 17.5 13C17.5 9.1 12 3 12 3Z" fill="url(#humGradient)" stroke="#a7f0ff" stroke-width="0.6"/><circle cx="9.5" cy="12.5" r="0.8" fill="#e8ffff"/><circle cx="13.8" cy="14.2" r="1" fill="#d0f7ff"/></svg>';
+      return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="humGradient" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#6bd9ff"/><stop offset="60%" stop-color="#2ac6ff"/><stop offset="100%" stop-color="#0fa3b1"/></linearGradient></defs><path d="M12 3s-5.5 6.1-5.5 10A5.5 5.5 0 0 0 12 18.5 5.5 5.5 0 0 0 17.5 13C17.5 9.1 12 3 12 3Z" fill="url(#humGradient)" stroke="#a7f0ff" stroke-width="0.6"/><path d="M8.2 13.4c-.4 1.6.9 3.4 2.7 3.4 1.7 0 3-1.6 2.6-3.2" stroke="#e8ffff" stroke-width="0.7" stroke-linecap="round"/><circle cx="9.3" cy="11.9" r="0.9" fill="#dff8ff"/><circle cx="14" cy="14.6" r="1.05" fill="#c7f3ff"/><circle cx="11.1" cy="16.5" r="0.7" fill="#b9ecff"/></svg>';
     }
     if (l.includes('pressure')) {
       return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="#ffc46b" stroke-width="1.7" fill="rgba(255,200,120,0.12)"/><path d="M12 6v6l3 2" stroke="#ffdba3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -1382,7 +1433,7 @@
     if (!epochSeconds && epochSeconds !== 0) return '';
     const tzOffset = offsetSeconds || 0;
     const date = new Date((epochSeconds + tzOffset) * 1000);
-    const opts = { hour: '2-digit', minute: '2-digit' };
+    const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
     if (includeDate) {
       opts.month = 'short';
       opts.day = 'numeric';
