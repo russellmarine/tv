@@ -4,39 +4,65 @@
   const Events = window.RussellTV?.Events;
   if (!Events) return;
 
-  const MOCK_CELL = {
-    summary: {
-      grade: 'Good',
-      towers: '4 towers within 0.5km · Nearest: 295m'
-    },
-    carriers: [
-      {
-        name: 'AT&T (AT&T Mobility)',
-        flag: '🇺🇸',
-        towers: 3,
-        mccmnc: '310/410',
-        plmn: '310410',
-        nearest: [
-          { tech: 'LTE', distance: '📍 295m · 🔴 1', bearing: '62°T' },
-          { tech: 'UMTS', distance: '📍 323m · 🔴 1', bearing: '127°T' },
-          { tech: 'LTE', distance: '📍 505m · 🔴 1', bearing: '44°T' }
-        ],
-        bands: ['GSM 850', 'GSM 1900', 'UMTS 850', 'UMTS 1900']
-      },
-      {
-        name: 'Verizon (Verizon Wireless)',
-        flag: '🇺🇸',
-        towers: 1,
-        mccmnc: '311/480',
-        plmn: '311480',
-        nearest: [
-          { tech: 'LTE', distance: '📍 362m · 🔴 1', bearing: '46°T' }
-        ],
-        bands: ['LTE 700']
-      }
-    ],
-    bandLegend: ['LTE / 4G bands (Bxx)', 'UMTS / 3G bands', 'GSM / 2G bands (often 900 / 1800 MHz)', '5G NR bands (nxx)']
+  const CELL_API_URL = '/cell';
+  const SEARCH_RADIUS_METERS = 500;
+
+  const TECH_PRIORITY = ['5G', 'LTE', 'NR', 'UMTS', 'HSPA', 'GSM', 'CDMA'];
+  const TECH_COLORS = {
+    '5G': 'severity-good',
+    'NR': 'severity-good',
+    'LTE': 'severity-fair',
+    'HSPA': 'severity-watch',
+    'UMTS': 'severity-watch',
+    'GSM': 'severity-poor',
+    'CDMA': 'severity-poor'
   };
+
+  let cellData = null;
+  let isLoading = false;
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function formatUserClock(dateVal) {
+    const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/:/g, '');
+  }
+
+  function buildMapLink(lat, lon) {
+    if (lat == null || lon == null) return '';
+    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}&basemap=satellite`;
+    return `<a class="cell-map" href="${url}" target="_blank" rel="noopener noreferrer">Map</a>`;
+  }
+
+  function summarizeCoverage(data) {
+    const total = data?.summary?.total || data?.towers?.length || 0;
+    const grade = data?.summary?.coverage || 'Unknown';
+    const nearest = data?.summary?.nearest || null;
+    const nearestText = nearest ? `Nearest: ${Math.round(nearest)}m` : '';
+    return { grade, text: `${total} towers within ${SEARCH_RADIUS_METERS}m${nearestText ? ' · ' + nearestText : ''}` };
+  }
+
+  function renderCarrier(carrier) {
+    const towers = carrier.towers || [];
+    const rows = towers.map(t => {
+      const mapLink = buildMapLink(t.lat, t.lon);
+      return `<div class="cell-near-row"><span>${escapeHtml(t.tech || 'Tech')}</span><span>${t.distance ? escapeHtml(Math.round(t.distance) + 'm') : '—'}</span><span>${t.bearing ? escapeHtml(Math.round(t.bearing) + '°T') : '—'}</span><span>${mapLink}</span></div>`;
+    }).join('');
+    const bandBadges = (carrier.bands || []).sort((a, b) => TECH_PRIORITY.indexOf(a.split(' ')[0]) - TECH_PRIORITY.indexOf(b.split(' ')[0])).map(b => `<span class="cell-band ${TECH_COLORS[b.split(' ')[0]] || ''}">${escapeHtml(b)}</span>`).join('');
+    return [
+      '<div class="cell-carrier">',
+      '  <div class="cell-carrier-head">',
+      '    <div class="cell-carrier-name">' + escapeHtml(carrier.flag ? carrier.flag + ' ' : '') + escapeHtml(carrier.name || 'Carrier') + '</div>',
+      '    <div class="cell-carrier-meta">MCC/MNC: ' + escapeHtml(carrier.mccmnc || carrier.plmn || '—') + (carrier.towers ? ' · Towers: ' + carrier.towers.length : '') + '</div>',
+      '  </div>',
+      rows ? '  <div class="cell-nearest">' + rows + '</div>' : '',
+      bandBadges ? '  <div class="cell-bands">Typical Bands: ' + bandBadges + '</div>' : '',
+      '</div>'
+    ].join('');
+  }
 
   function renderCellular(loc) {
     const body = document.getElementById('comm-cell-body');
@@ -49,42 +75,43 @@
       return;
     }
 
-    const header = '<div class="cell-header"><div class="cell-location">' + escapeHtml(loc.label) + '</div><div class="cell-coords">' + loc.coords.lat.toFixed(4) + '°, ' + loc.coords.lon.toFixed(4) + '°</div></div>';
-
-    const carriersHtml = MOCK_CELL.carriers.map(c => (
-      '<div class="cell-carrier">' +
-      '  <div class="cell-carrier-head">' +
-      '    <div class="cell-carrier-name">' + escapeHtml(c.flag + ' ' + c.name) + '</div>' +
-      '    <div class="cell-carrier-meta">Towers: ' + c.towers + ' · MCC/MNC: ' + escapeHtml(c.mccmnc) + ' · PLMN: ' + escapeHtml(c.plmn) + '</div>' +
-      '  </div>' +
-      '  <div class="cell-nearest">' + c.nearest.map(n => '<div class="cell-near-row"><span>' + escapeHtml(n.tech) + '</span><span>' + escapeHtml(n.distance) + '</span><span>' + escapeHtml(n.bearing) + '</span></div>').join('') + '</div>' +
-      '  <div class="cell-bands">Typical Bands: ' + c.bands.map(escapeHtml).join(' · ') + '</div>' +
-      '</div>'
-    )).join('');
+    const header = `<div class="cell-header"><div class="cell-location">${escapeHtml(loc.label)}</div><div class="cell-coords">${loc.coords.lat.toFixed(4)}°, ${loc.coords.lon.toFixed(4)}°</div></div>`;
+    const coverage = summarizeCoverage(cellData || {});
+    const carriers = (cellData?.carriers || []).map(renderCarrier).join('');
 
     body.innerHTML = [
       header,
       '<div class="cell-summary">',
-      '  <div class="cell-grade">' + escapeHtml(MOCK_CELL.summary.grade) + '</div>',
-      '  <div class="cell-towers">' + escapeHtml(MOCK_CELL.summary.towers) + '</div>',
+      '  <div class="cell-grade">' + escapeHtml(coverage.grade) + '</div>',
+      '  <div class="cell-towers">' + escapeHtml(coverage.text) + '</div>',
       '</div>',
-      '<div class="cell-carrier-section">' + carriersHtml + '</div>',
-      '<div class="cell-legend">Band Legend: ' + MOCK_CELL.bandLegend.map(escapeHtml).join(' · ') + '</div>',
-      '<div class="comm-card-micro">Source: Cell lookup cache</div>'
+      carriers ? '<div class="cell-carrier-section">' + carriers + '</div>' : '<p class="comm-placeholder">' + (isLoading ? 'Loading towers…' : 'No towers reported in range.') + '</p>',
+      '<div class="cell-legend">Source: OpenCellID • Cached ' + escapeHtml(formatUserClock(Date.now())) + '</div>'
     ].join('');
 
-    if (status) status.textContent = MOCK_CELL.summary.grade;
+    if (status) status.textContent = coverage.grade;
   }
 
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
+  async function fetchCellular(loc) {
+    if (!loc) { renderCellular(null); return; }
+    isLoading = true;
+    renderCellular(loc);
+    try {
+      const res = await fetch(`${CELL_API_URL}?lat=${loc.coords.lat}&lon=${loc.coords.lon}&range=${SEARCH_RADIUS_METERS}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      cellData = await res.json();
+    } catch (e) {
+      cellData = cellData || { carriers: [] };
+    }
+    isLoading = false;
+    renderCellular(loc);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     renderCellular(null);
-    Events.on('comm:location-changed', (loc) => renderCellular(loc));
+    Events.on('comm:location-changed', (loc) => {
+      fetchCellular(loc);
+    });
   });
 })();
+
