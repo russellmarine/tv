@@ -41,6 +41,16 @@
     }
   }
 
+  function clearRecent() {
+    recentLocations = [];
+    try {
+      localStorage.removeItem('commRecentLocations');
+    } catch (e) {
+      // ignore
+    }
+    renderRecentList();
+  }
+
   function addRecent(loc) {
     if (!loc || !loc.label || !loc.coords) return;
 
@@ -321,11 +331,15 @@
 
   function renderRecentList() {
     const container = $('#comm-recent-list');
+    const clearBtn = $('#comm-clear-recents');
     if (!container) return;
     if (!recentLocations.length) {
       container.innerHTML = '';
+      if (clearBtn) clearBtn.style.display = 'none';
       return;
     }
+
+    if (clearBtn) clearBtn.style.display = '';
     container.innerHTML = recentLocations.map((r, idx) => (
       '<button type="button" class="recent-location-pill" data-idx="' + idx + '">' +
         escapeHtml(r.label) +
@@ -447,6 +461,32 @@
     return (desc[type] && desc[type][value]) || 'Unknown';
   }
 
+  function getHfSeverityDetails(severity) {
+    switch (severity) {
+      case 'Severe disruption':
+        return { className: 'severity-poor', desc: 'Major flare or geomagnetic storm in progress. HF unreliable and regional blackouts likely.' };
+      case 'Degraded':
+        return { className: 'severity-watch', desc: 'Storm conditions are elevating absorption. Expect fades on mid/high bands; lean on lower bands.' };
+      case 'Fair':
+        return { className: 'severity-fair', desc: 'Space weather is unsettled. Some absorption or noise is possible during disturbed periods.' };
+      default:
+        return { className: 'severity-good', desc: 'Quiet ionosphere. Most amateur and HF bands should be usable with normal reliability.' };
+    }
+  }
+
+  function getSatSeverityDetails(risk) {
+    switch (risk) {
+      case 'High scintillation risk':
+        return { className: 'severity-poor', desc: 'High geomagnetic activity. Expect scintillation, loss of lock, and degraded GEO links.' };
+      case 'Moderate risk':
+        return { className: 'severity-watch', desc: 'Disturbances may cause fades or pointing errors, especially near auroral/low-latitude regions.' };
+      case 'Watch':
+        return { className: 'severity-fair', desc: 'Elevated Kp—keep an eye on outages in polar and equatorial anomaly regions.' };
+      default:
+        return { className: 'severity-good', desc: 'Nominal space weather. Routine SATCOM and GPS performance expected.' };
+    }
+  }
+
   function updateSpaceWeatherCard() {
     const card = $('#comm-card-spacewx');
     if (!card || !window.RussellTV.SpaceWeather || !window.SPACE_WEATHER_CONFIG) return;
@@ -519,16 +559,20 @@
     const nvisNote = kp >= 6 ? 'NVIS unstable above regional ranges.' :
       kp >= 5 ? 'NVIS may fade during substorms.' :
       'NVIS viable for regional links.';
+    const hfInfo = getHfSeverityDetails(hfSeverity);
 
     if (hfBody) {
       hfBody.innerHTML = [
-        '<div class="comm-prop-row accent">',
-        '  <span class="label">HF Condition</span>',
-        '  <span class="value">' + escapeHtml(hfSeverity) + '</span>',
+        '<div class="comm-prop-status ' + hfInfo.className + '">',
+        '  <div class="status-heading">',
+        '    <span class="status-label">HF Condition</span>',
+        '    <span class="status-value">' + escapeHtml(hfSeverity) + '</span>',
+        '  </div>',
+        '  <p class="status-desc">' + escapeHtml(hfInfo.desc) + '</p>',
         '</div>',
-        '<div class="comm-prop-row">',
+        '<div class="comm-prop-row accent">',
         '  <span class="label">Recommended bands</span>',
-        '  <div class="comm-prop-chiprow">' + bands.map(b => '<span class="comm-prop-chip">' + escapeHtml(b) + '</span>').join('') + '</div>',
+        '  <div class="comm-prop-chiprow">' + bands.map(b => '<span class="comm-prop-chip">' + escapeHtml(b) + '</span>').join('", "') + '</div>',
         '</div>',
         '<div class="comm-prop-row">',
         '  <span class="label">NVIS</span>',
@@ -538,35 +582,58 @@
       ].join('');
     }
 
-    if (hfStatus) hfStatus.textContent = hfSeverity;
+    if (hfStatus) {
+      hfStatus.textContent = hfSeverity;
+      hfStatus.className = 'status-pill ' + hfInfo.className;
+    }
+
 
     // SATCOM/GPS
     const satRisk = kp >= 7 ? 'High scintillation risk' : kp >= 6 ? 'Moderate risk' : kp >= 5 ? 'Watch' : 'Nominal';
+    const satInfo = getSatSeverityDetails(satRisk);
+    const gpsCondition = kp >= 7 ? 'High scintillation risk' : kp >= 6 ? 'Moderate risk' : kp >= 5 ? 'Watch' : 'Nominal';
+    const gpsInfo = getSatSeverityDetails(gpsCondition);
     const gpsNote = kp >= 6 ? 'Expect GPS errors at high/low latitudes.' :
       kp >= 5 ? 'Slight GPS degradation possible.' : 'GPS nominal.';
     const satNote = (r >= 3 || g >= 4)
       ? 'Geostationary and UHF links may see fades during storms.'
       : 'Bands operating normally.';
+    const satOps = kp >= 6 ? 'Prioritize elevation above 20° and narrowband modes to ride out scintillation.' :
+      kp >= 5 ? 'Have alternates for polar routes and expect occasional dropouts.' :
+      'Routine operations with standard link budgets.';
 
     if (satBody) {
       satBody.innerHTML = [
-        '<div class="comm-prop-row accent">',
-        '  <span class="label">SATCOM</span>',
-        '  <span class="value">' + escapeHtml(satRisk) + '</span>',
+        '<div class="comm-prop-status ' + satInfo.className + '">',
+        '  <div class="status-heading">',
+        '    <span class="status-label">SATCOM Condition</span>',
+        '    <span class="status-value">' + escapeHtml(satRisk) + '</span>',
+        '  </div>',
+        '  <p class="status-desc">' + escapeHtml(satInfo.desc) + '</p>',
         '</div>',
-        '<div class="comm-prop-row">',
-        '  <span class="label">Guidance</span>',
+        '<div class="comm-prop-row accent">',
+        '  <span class="label">Band outlook</span>',
         '  <span class="hint">' + escapeHtml(satNote) + '</span>',
         '</div>',
         '<div class="comm-prop-row">',
-        '  <span class="label">GPS</span>',
-        '  <span class="hint">' + escapeHtml(gpsNote) + '</span>',
+        '  <span class="label">Ops note</span>',
+        '  <span class="hint">' + escapeHtml(satOps) + '</span>',
+        '</div>',
+        '<div class="comm-prop-status ' + gpsInfo.className + '">',
+        '  <div class="status-heading">',
+        '    <span class="status-label">GPS Reliability</span>',
+        '    <span class="status-value">' + escapeHtml(gpsCondition) + '</span>',
+        '  </div>',
+        '  <p class="status-desc">' + escapeHtml(gpsNote) + '</p>',
         '</div>',
         '<div class="comm-card-micro">Source: ' + escapeHtml(sourceText) + '</div>'
       ].join('');
     }
 
-    if (satStatus) satStatus.textContent = satRisk;
+    if (satStatus) {
+      satStatus.textContent = satRisk;
+      satStatus.className = 'status-pill ' + satInfo.className;
+    }
   }
 
   // ---------- Init ----------
@@ -576,8 +643,14 @@
     if (!card) return;
 
     loadRecent();
+    renderRecentList();
     renderLocationInputArea();
     updateLocationStatus();
+
+    const clearBtn = $('#comm-clear-recents');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', clearRecent);
+    }
 
     // Tabs
     const tabs = card.querySelectorAll('.location-mode-tab');
@@ -596,7 +669,7 @@
           async (pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
-            let label = 'Browser location';
+            let label = 'Current location';
             try {
               // Quick reverse lookup via Nominatim for a nicer label
               const url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' +
@@ -615,13 +688,13 @@
             }
             applyLocation({ label, coords: { lat, lon } });
             browserBtn.disabled = false;
-            browserBtn.textContent = 'Use browser location';
+            browserBtn.textContent = 'Use Current Location';
           },
           (err) => {
             console.warn('[CommPlanner] Geolocation error:', err);
             showLocationError('Browser location failed: ' + err.message);
             browserBtn.disabled = false;
-            browserBtn.textContent = 'Use browser location';
+            browserBtn.textContent = 'Use Current Location';
           }
         );
       });

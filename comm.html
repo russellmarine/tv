@@ -50,12 +50,21 @@
           <button type="button" class="location-mode-tab" data-mode="maiden">Grid</button>
         </div>
         <div id="comm-location-input-area" class="comm-location-input-area"></div>
-        <div class="comm-location-footer-row">
-          <button type="button" id="comm-use-browser" class="location-util-btn">
-            Use browser location
-          </button>
+        <div class="comm-location-footer">
+          <div class="location-action-card">
+            <div class="location-action-copy">
+              <div class="location-action-label">Quick locate</div>
+              <div class="location-action-hint">Drop a pin where you are now.</div>
+            </div>
+            <button type="button" id="comm-use-browser" class="location-util-btn">
+              Use Current Location
+            </button>
+          </div>
           <div class="comm-recent-wrapper">
-            <span class="comm-recent-label">Recent:</span>
+            <div class="comm-recent-header">
+              <span class="comm-recent-label">Recent</span>
+              <button type="button" id="comm-clear-recents" class="comm-recent-clear" aria-label="Clear recent locations">Clear</button>
+            </div>
             <div id="comm-recent-list" class="comm-recent-list"></div>
           </div>
         </div>
