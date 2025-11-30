@@ -26,6 +26,7 @@
 
     <div class="mode-toggle">
       <a href="/" class="btn" title="Back to TV">← TV</a>
+      <button type="button" id="gunny-chat-toggle" class="btn gunny-btn" title="Toggle GunnyGPT">🔥 GunnyGPT</button>
       <span class="btn active" style="pointer-events:none;">Comm</span>
     </div>
   </header>
@@ -85,7 +86,7 @@
           </article>
 
           <!-- Local Weather (right half) -->
-          <article id="comm-card-weather" class="comm-card">
+          <article id="comm-card-weather" class="comm-card comm-span-2">
             <div class="comm-card-header">
               <div class="comm-card-title"><span>Local Weather</span></div>
               <div class="comm-card-meta" id="comm-weather-meta">Select a location</div>
@@ -126,7 +127,7 @@
 
           <article id="comm-card-satangles" class="comm-card">
             <div class="comm-card-header">
-              <div class="comm-card-title"><span>Satellite Look Angles</span></div>
+              <div class="comm-card-title"><span>Satellite Planner</span></div>
               <div class="comm-card-status"><span id="comm-satla-status">n/a</span></div>
             </div>
             <div class="comm-card-body" id="comm-satla-body">
@@ -164,6 +165,24 @@
   <script src="/js/comm-lookangles.js"></script>
   <script src="/js/comm-cellular.js"></script>
   <script src="/js/comm-sat.js"></script>
+  <script src="/js/gunny-chat.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const gunnyBtn = document.getElementById('gunny-chat-toggle');
+      if (gunnyBtn) {
+        gunnyBtn.addEventListener('click', () => {
+          if (window.GunnyChat && typeof window.GunnyChat.toggle === 'function') {
+            window.GunnyChat.toggle();
+          } else if (window.RussellTV?.GunnyChat && typeof window.RussellTV.GunnyChat.toggle === 'function') {
+            window.RussellTV.GunnyChat.toggle();
+          } else {
+            console.warn('[Comm] GunnyChat module not ready yet');
+          }
+        });
+      }
+    });
+  </script>
 
   <!-- Brand click mailto handler -->
   <script>

@@ -873,7 +873,7 @@
     const swData = window.RussellTV?.SpaceWeather?.getCurrentData?.();
     if (swData) {
       const updated = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
-      const updatedText = updated ? 'Updated ' + formatUserClock(updated) : 'Live NOAA SWPC';
+      const updatedText = updated ? formatUserStamp(updated) : 'Live NOAA SWPC';
       updatePropagationCards(swData, updatedText);
     }
     const weatherMeta = $('#comm-weather-meta');
@@ -969,10 +969,20 @@
       const sunrise = wx.sys ? wx.sys.sunrise : null;
       const sunset = wx.sys ? wx.sys.sunset : null;
       const timezone = wx.timezone || 0;
-      const updatedLocal = wx.dt ? formatUserClock(wx.dt * 1000) : 'Just now';
+      const updatedLocal = wx.dt ? formatUserStamp(wx.dt * 1000) : 'Just now';
       const localTime = formatLocalClock(Date.now() / 1000, timezone, false);
       const localDate = formatLocalDate(Date.now() / 1000, timezone);
       const weatherSeverity = getWeatherSeverityClass(main.main, humidity);
+
+      let forecast = null;
+      try {
+        const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
+        if (forecastRes.ok) {
+          forecast = await forecastRes.json();
+        }
+      } catch (err) {
+        console.warn('[CommPlanner] Forecast fetch failed', err);
+      }
 
       lastWeather = {
         main: main.main,
@@ -1008,6 +1018,9 @@
       if (sunrise) metrics.push(metricHtml('Sunrise', formatLocalTime(sunrise, timezone), null, getWeatherMetricIcon('Sunrise')));
       if (sunset) metrics.push(metricHtml('Sunset', formatLocalTime(sunset, timezone), null, getWeatherMetricIcon('Sunset')));
 
+      const radarBlock = buildRadarBlock(lat, lon);
+      const forecastBlock = buildForecastHtml(forecast);
+
       body.innerHTML = [
         '<div class="comm-weather-body">',
         '  <div class="' + heroClass + '" style="--weather-accent:' + (accent || '') + ';">',
@@ -1025,14 +1038,15 @@
         '    </div>',
         '  </div>',
         metrics.length ? '  <div class="comm-weather-grid">' + metrics.join('') + '</div>' : '',
-        '<div class="comm-card-micro weather-footer">Source: <a class="inline-link" href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeather</a> • Updated ' + escapeHtml(updatedLocal) + '</div>',
+        (radarBlock || forecastBlock) ? '  <div class="weather-extended">' + radarBlock + forecastBlock + '</div>' : '',
+        '<div class="comm-card-micro weather-footer">Source: <a class="inline-link" href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeather</a> • ' + escapeHtml(updatedLocal) + '</div>',
         '</div>'
       ].join('');
 
       const swRefresh = window.RussellTV?.SpaceWeather?.getCurrentData?.();
       if (swRefresh) {
         const updatedSw = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
-        const updatedLabel = updatedSw ? 'Updated ' + formatUserClock(updatedSw) : 'Live NOAA SWPC';
+        const updatedLabel = updatedSw ? formatUserStamp(updatedSw) : 'Live NOAA SWPC';
         updatePropagationCards(swRefresh, updatedLabel);
       }
 
@@ -1152,7 +1166,61 @@
     return 'severity-good';
   }
 
-  function updateSpaceWeatherCard() {
+  let sunspotSeries = [];
+  let sunspotPromise = null;
+
+  async function ensureSunspotSeries() {
+    if (sunspotSeries.length) return sunspotSeries;
+    if (sunspotPromise) return sunspotPromise;
+
+    sunspotPromise = (async () => {
+      try {
+        const res = await fetch('https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json');
+        if (!res.ok) return [];
+        const data = await res.json();
+        const mapped = (data || []).map(entry => {
+          const dateRaw = entry.time_tag || entry.date || entry.timestamp || entry[0];
+          const valueRaw = entry.ssn ?? entry.sunspot_number ?? entry.smoothed_ssn ?? entry.observed_ssn ?? entry[1];
+          const value = Number(valueRaw);
+          if (!dateRaw || !isFinite(value)) return null;
+          return { date: new Date(dateRaw), value };
+        }).filter(Boolean).sort((a, b) => a.date - b.date);
+        sunspotSeries = mapped.slice(-48); // recent window to keep sparkline compact
+        return sunspotSeries;
+      } catch (e) {
+        return [];
+      }
+    })();
+
+    return sunspotPromise;
+  }
+
+  function renderSunspotSparkline(series) {
+    if (!series || !series.length) return '';
+    const values = series.map(p => p.value).filter(v => isFinite(v));
+    if (!values.length) return '';
+
+    const recent = values.slice(-32);
+    const width = 160;
+    const height = 46;
+    const max = Math.max(...recent);
+    const min = Math.min(...recent);
+    const span = Math.max(max - min, 1);
+    const step = recent.length > 1 ? (width / (recent.length - 1)) : width;
+
+    const points = recent.map((v, idx) => {
+      const x = idx * step;
+      const y = height - ((v - min) / span) * height;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+
+    return '<svg class="sunspot-spark" viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none">'
+      + '<defs><linearGradient id="sunspotGrad" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#ffa94d" stop-opacity="0.9"/><stop stop-color="#ff7f32" stop-opacity="0.25"/></linearGradient></defs>'
+      + '<polyline points="' + points + '" fill="none" stroke="url(#sunspotGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />'
+      + '</svg>';
+  }
+
+  async function updateSpaceWeatherCard() {
     const card = $('#comm-card-spacewx');
     if (!card || !window.RussellTV.SpaceWeather || !window.SPACE_WEATHER_CONFIG) return;
 
@@ -1166,10 +1234,13 @@
     const kpColor = data.kpIndex >= 5 ? '#ff8800' : (data.kpIndex >= 4 ? '#ffcc00' : '#44cc44');
 
     const updated = window.RussellTV.SpaceWeather.getLastUpdate();
-    const updatedText = updated ? 'Updated ' + formatUserClock(updated) : 'Live NOAA SWPC';
+    const updatedText = updated ? formatUserStamp(updated) : 'Live NOAA SWPC';
     const kpCondition = data.kpIndex >= 5 ? 'Storm' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet';
 
     const spacewxOverall = getSpacewxOverall(data);
+    const sunspots = await ensureSunspotSeries();
+    const latestSunspot = sunspots.length ? Math.round(sunspots[sunspots.length - 1].value) : null;
+    const sunspotSpark = renderSunspotSparkline(sunspots);
 
     const scaleLinks = {
       R: 'https://www.swpc.noaa.gov/noaa-scales/radio-blackouts-scale',
@@ -1190,13 +1261,30 @@
       '</a>'
     )).join('');
 
+    const sunspotBlock = sunspotSpark
+      ? '<div class="spacewx-sunspot-block">'
+        + '  <div class="sunspot-meta">'
+        + '    <div class="sunspot-label">Sunspot Number</div>'
+        + '    <div class="sunspot-value">' + escapeHtml(latestSunspot ?? '—') + '</div>'
+        + '  </div>'
+        + '  <div class="sunspot-chart">' + sunspotSpark + '</div>'
+        + '</div>'
+      : '';
+
     body.innerHTML = [
-      '<div class="spacewx-scales-row">' + scaleCards + '</div>',
+      '<div class="spacewx-topline">'
+      + ' <div class="spacewx-scales-row">' + scaleCards + '</div>'
+      + ' <div class="spacewx-summary">'
+      + '   <div class="spacewx-pill ' + spacewxOverall.className + '">' + escapeHtml(spacewxOverall.label) + '</div>'
+      + '   <div class="spacewx-summary-desc">' + escapeHtml(spacewxOverall.desc) + '</div>'
+      + ' </div>'
+      + '</div>',
       '<a class="spacewx-kp-row tooltip-target" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(kpTooltip) + '">',
       '  <span class="label">Kp Index</span>',
       '  <span class="value" style="color:' + kpColor + ';">' + data.kpIndex.toFixed(2) + '</span>',
       '  <span class="status">' + kpCondition + '</span>',
       '</a>',
+      sunspotBlock,
       '<div class="spacewx-footnote">R = HF Radio Blackouts · S = Solar Radiation · G = Geomagnetic Storms</div>',
       '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank" rel="noopener noreferrer">NOAA SWPC</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">NOAA Scales</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer">Kp Source</a> • ' + escapeHtml(updatedText) + '</div>'
     ].join('');
@@ -1282,11 +1370,21 @@
       ? '<div class="satcom-weather"><div class="weather-icon">' + getWeatherGlyph(lastWeather.main) + '</div><div class="weather-meta"><div>' + escapeHtml(toTitleCase(lastWeather.desc || lastWeather.main || 'Weather')) + '</div><div class="weather-sub">' + (lastWeather.temp != null ? escapeHtml(lastWeather.temp + '°F') : '--') + (lastWeather.humidity != null ? ' • ' + escapeHtml(lastWeather.humidity + '% RH') : '') + '</div></div></div>'
       : '<div class="satcom-weather"><div class="weather-meta">Space weather driven assessment</div></div>';
 
-    const bandOrder = ['ehf', 'ka', 'ku', 'x', 'c', 'uhf'];
+    const bandOrder = ['aehf', 'ehf', 'ka', 'ku', 'x', 'c', 'uhf'];
+    const bandTooltips = {
+      aehf: 'AEHF protected EHF links for survivable comms.',
+      ehf: '30-300 GHz: high capacity, heavy rain fade sensitivity.',
+      ka: '26.5-40 GHz: broadband SATCOM, moderate rain fade risk.',
+      ku: '12-18 GHz: commercial/mil GEO links, some rain attenuation.',
+      x: '8-12 GHz: military hardened band with stable performance.',
+      c: '4-8 GHz: resilient to weather, reliable GEO services.',
+      uhf: '300-3000 MHz: MUOS/legacy narrowband, best foliage penetration.'
+    };
     const bandRows = bandOrder.map(key => {
       const band = satAssessment[key];
       if (!band) return '';
-      return '<div class="sat-band-row ' + satBandClass(band.status) + '">' +
+      const tip = bandTooltips[key] || '';
+      return '<div class="sat-band-row ' + satBandClass(band.status) + ' tooltip-target"' + (tip ? ' data-tooltip="' + escapeHtml(tip) + '"' : '') + '>' +
         '<div class="band-name">' + escapeHtml(key.toUpperCase()) + '</div>' +
         '<div class="band-freq">' + escapeHtml(band.freq || '') + '</div>' +
         '<div class="band-label">' + escapeHtml(band.label || '') + '</div>' +
@@ -1482,9 +1580,19 @@
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
-  function formatUserClock(dateVal) {
+  function formatUserClock(dateVal, includeSeconds) {
     const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
-    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/:/g, '');
+    const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
+    if (includeSeconds) opts.second = '2-digit';
+    return d.toLocaleTimeString(undefined, opts).replace(/:/g, '');
+  }
+
+  function formatUserStamp(dateVal) {
+    if (!dateVal && dateVal !== 0) return '';
+    const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+    const time = formatUserClock(d, false);
+    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `${time} • ${date}`;
   }
 
   function tempToAccent(tempF) {
@@ -1519,6 +1627,62 @@
 
     const alt = (main || 'Weather') + ' icon';
     return '<img src="/icons/weather/' + icon + '.svg" alt="' + escapeHtml(alt) + '" loading="lazy" />';
+  }
+
+  function weatherCodeToMain(code) {
+    const c = Number(code);
+    if ([71, 73, 75, 77, 85, 86].includes(c)) return 'snow';
+    if ([51, 53, 55, 56, 57].includes(c)) return 'drizzle';
+    if ([61, 63, 65, 80, 81, 82].includes(c)) return 'rain';
+    if ([45, 48].includes(c)) return 'fog';
+    if ([95, 96, 99].includes(c)) return 'thunderstorm';
+    if (c === 0) return 'clear';
+    if ([1, 2, 3].includes(c)) return 'clouds';
+    return 'clouds';
+  }
+
+  function buildForecastHtml(forecast) {
+    if (!forecast || !forecast.daily || !forecast.daily.time) return '';
+    const days = forecast.daily.time;
+    const highs = forecast.daily.temperature_2m_max || [];
+    const lows = forecast.daily.temperature_2m_min || [];
+    const codes = forecast.daily.weathercode || [];
+
+    const items = days.slice(0, 7).map((dateStr, idx) => {
+      const dt = new Date(dateStr);
+      const label = dt.toLocaleDateString(undefined, { weekday: 'short' });
+      const main = weatherCodeToMain(codes[idx]);
+      const icon = getWeatherGlyph(main);
+      const high = highs[idx] != null ? Math.round(highs[idx]) + '°' : '—';
+      const low = lows[idx] != null ? Math.round(lows[idx]) + '°' : '—';
+      return '<div class="forecast-card">'
+        + '  <div class="forecast-day">' + escapeHtml(label) + '</div>'
+        + '  <div class="forecast-icon">' + icon + '</div>'
+        + '  <div class="forecast-temps"><span>' + escapeHtml(high) + '</span><span>' + escapeHtml(low) + '</span></div>'
+        + '</div>';
+    }).join('');
+
+    if (!items) return '';
+    return '<div class="weather-forecast"><div class="forecast-head">7-Day Outlook</div><div class="forecast-row">' + items + '</div></div>';
+  }
+
+  function getRadarSnapshotUrl(lat, lon) {
+    if (lat == null || lon == null) return '';
+    return 'https://tilecache.rainviewer.com/v2/radar/last/512/' + lat.toFixed(2) + '/' + lon.toFixed(2) + '/7/0/0_0.png';
+  }
+
+  function buildRadarBlock(lat, lon) {
+    const url = getRadarSnapshotUrl(lat, lon);
+    if (!url) return '';
+    return [
+      '<div class="weather-radar">',
+      '  <div class="weather-radar-head">Local Radar</div>',
+      '  <div class="weather-radar-frame">',
+      '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" onerror="this.classList.add(\'img-error\')">',
+      '    <div class="radar-fallback">Radar preview unavailable</div>',
+      '  </div>',
+      '</div>'
+    ].join('');
   }
 
   function getWeatherSeverityClass(main, humidity) {

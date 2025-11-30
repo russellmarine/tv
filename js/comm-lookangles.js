@@ -6,6 +6,7 @@
 
   const API_PROXY = '/api/n2yo';
   const MIN_ELEV_FILTER = 5;
+  const CONSTELLATION_ORDER = ['aehf', 'wgs', 'muos', 'intelsat', 'eutelsat', 'ses', 'telesat', 'mena', 'asia'];
 
   const CONSTELLATIONS = {
     wgs: { name: 'WGS (Wideband Global)', band: 'X/Ka', satellites: [{ id: 32258, name: 'WGS-1' }, { id: 33055, name: 'WGS-2' }, { id: 39168, name: 'WGS-5' }, { id: 42075, name: 'WGS-9' }] },
@@ -26,7 +27,7 @@
     intelsat: [{ name: 'IS 34', az: 144.8, el: 43.5, range: '36k km' }, { name: 'IS 37e', az: 108.6, el: 16.5, range: '37k km' }]
   };
 
-  let selectedConstellations = new Set(Object.keys(CONSTELLATIONS));
+  let selectedConstellations = new Set(CONSTELLATION_ORDER.filter(key => !!CONSTELLATIONS[key]));
   let hideBelowFive = true;
   let lastLocation = null;
   let constellationData = [];
@@ -37,9 +38,18 @@
     return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  function formatUserClock(dateVal) {
+  function formatUserClock(dateVal, includeSeconds) {
     const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
-    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/:/g, '');
+    const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
+    if (includeSeconds) opts.second = '2-digit';
+    return d.toLocaleTimeString(undefined, opts).replace(/:/g, '');
+  }
+
+  function formatUserStamp(dateVal) {
+    const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+    const time = formatUserClock(d, false);
+    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `${time} • ${date}`;
   }
 
   function severityClass(el) {
@@ -79,17 +89,19 @@
   }
 
   function renderControls() {
-    const toggles = Object.keys(CONSTELLATIONS).map(key => {
+    const toggles = CONSTELLATION_ORDER.filter(key => CONSTELLATIONS[key]).map(key => {
       const checked = selectedConstellations.has(key) ? 'checked' : '';
       return `<label class="look-toggle"><input type="checkbox" data-constellation="${key}" ${checked}>${escapeHtml(CONSTELLATIONS[key].name)}</label>`;
     }).join('');
     const lowLabel = hideBelowFive ? 'Hiding <5°' : 'Show <5°';
-    return `<div class="look-controls">${toggles}<label class="look-toggle secondary"><input type="checkbox" id="look-toggle-low" ${hideBelowFive ? 'checked' : ''}>${lowLabel}</label></div>`;
+    return `<div class="look-controls">${toggles}<label class="look-toggle secondary"><input type="checkbox" id="look-toggle-low" ${hideBelowFive ? 'checked' : ''}>${lowLabel}</label><button class="look-refresh" type="button" id="look-refresh">↻ Refresh</button></div>`;
   }
 
   function renderSection(section) {
     if (!section || !section.sats || !section.sats.length) return '';
-    const sats = section.sats.filter(s => !hideBelowFive || (s.el ?? 0) >= MIN_ELEV_FILTER);
+    const sats = section.sats
+      .filter(s => !hideBelowFive || (s.el ?? 0) >= MIN_ELEV_FILTER)
+      .sort((a, b) => (b.el || 0) - (a.el || 0));
     if (!sats.length) return '';
     const rows = sats.map(s => {
       const cls = severityClass(s.el || 0);
@@ -112,6 +124,19 @@
     ].join('');
   }
 
+  function renderAvailability() {
+    const providers = [
+      { label: 'Starlink', status: 'severity-good', desc: 'Available' },
+      { label: 'OneWeb', status: 'severity-fair', desc: 'Available' },
+      { label: 'Iridium', status: 'severity-good', desc: 'Polar capable' },
+      { label: 'Project Kuiper', status: 'severity-watch', desc: 'Pre-launch' }
+    ];
+
+    return '<div class="look-availability">' + providers.map(p =>
+      '<span class="look-pill ' + p.status + '">' + escapeHtml(p.label + ': ' + p.desc) + '</span>'
+    ).join('') + '</div>';
+  }
+
   function renderLookAngles(loc) {
     const body = document.getElementById('comm-satla-body');
     const status = document.getElementById('comm-satla-status');
@@ -119,7 +144,7 @@
 
     if (!loc) {
       body.innerHTML = '<p class="comm-placeholder">Select a location to load satellite look angles.</p>';
-      if (status) status.textContent = 'n/a';
+      if (status) status.innerHTML = 'n/a';
       return;
     }
 
@@ -135,15 +160,19 @@
       '<div class="look-header">',
       '<div class="look-location">' + escapeHtml(loc.label) + '<div class="look-coords">' + loc.coords.lat.toFixed(4) + '°, ' + loc.coords.lon.toFixed(4) + '°</div></div>',
       wxLine,
-      '<div class="look-availability">Starlink: <span class="look-available">Available</span></div>',
+      renderAvailability(),
       '</div>',
       controls,
       '<div class="look-note">Azimuth is TRUE north (not magnetic)</div>',
       '<div class="look-grid">' + sections + '</div>',
-      '<div class="comm-card-micro">Data: ' + escapeHtml(formatUserClock(Date.now())) + ' • Via N2YO</div>'
+      '<div class="comm-card-micro">Data: ' + escapeHtml(formatUserStamp(Date.now())) + ' • Via N2YO</div>'
     ].join('');
 
-    if (status) status.textContent = isLoading ? 'Loading…' : 'Loaded';
+    if (status) {
+      const cls = isLoading ? 'severity-fair' : 'severity-good';
+      const text = isLoading ? 'Loading…' : 'Loaded';
+      status.innerHTML = '<span class="status-pill ' + cls + '">' + escapeHtml(text) + '</span>';
+    }
 
     wireControlEvents();
   }
@@ -163,6 +192,12 @@
         if (lastLocation) renderLookAngles(lastLocation);
       });
     }
+    const refresh = document.getElementById('look-refresh');
+    if (refresh) {
+      refresh.addEventListener('click', () => {
+        if (lastLocation) loadLookAngles(lastLocation);
+      });
+    }
   }
 
   async function loadLookAngles(loc) {
@@ -175,7 +210,7 @@
     renderLookAngles(loc);
     const selected = Array.from(selectedConstellations);
     const data = await Promise.all(selected.map(key => buildConstellation(key, loc)));
-    constellationData = data.filter(Boolean);
+    constellationData = data.filter(Boolean).sort((a, b) => CONSTELLATION_ORDER.indexOf(a.key) - CONSTELLATION_ORDER.indexOf(b.key));
     isLoading = false;
     renderLookAngles(loc);
   }
