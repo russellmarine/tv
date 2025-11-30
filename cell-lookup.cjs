@@ -139,22 +139,8 @@ if (!loadedFromDb) {
 
 // ---------- CUSTOM OVERRIDES (US etc.) ---------------------------------
 
-const CUSTOM_CARRIERS = {
-  '310-410': { name: 'AT&T', bands: ['B2', 'B4', 'B5', 'B12', 'B14', 'B17', 'B29', 'B30', 'B66', 'n5', 'n77', 'n260'] },
-  '310-260': { name: 'T-Mobile', bands: ['B2', 'B4', 'B12', 'B66', 'B71', 'n41', 'n71', 'n258', 'n260', 'n261'] },
-  '311-480': { name: 'Verizon', bands: ['B2', 'B4', 'B5', 'B13', 'B66', 'n2', 'n5', 'n77', 'n261'] },
-  '310-120': { name: 'Sprint (T-Mobile)', bands: ['B25', 'B26', 'B41', 'n41'] },
-  '311-490': { name: 'Verizon LTE', bands: ['B4', 'B13'] },
-  '312-530': { name: 'Sprint (T-Mobile)', bands: ['B25', 'B41'] },
-  '310-150': { name: 'AT&T', bands: ['B2', 'B4', 'B5', 'B12', 'B17'] },
-  '311-882': { name: 'AT&T FirstNet', bands: ['B14'] },
-  '310-030': { name: 'AT&T', bands: ['B2', 'B4', 'B5'] },
-  '310-070': { name: 'AT&T', bands: ['B2', 'B4', 'B5'] },
-  '310-560': { name: 'US Cellular', bands: ['B2', 'B4', 'B5', 'B12', 'n71'] },
-  '311-220': { name: 'US Cellular', bands: ['B2', 'B4', 'B5', 'B12'] },
-  '310-990': { name: 'Inland Cellular', bands: ['B2', 'B4', 'B12'] },
-  '312-250': { name: 'Cellular One', bands: ['B4', 'B12'] },
-};
+
+const CUSTOM_CARRIERS = {};
 
 // ---------- COUNTRY HELPERS --------------------------------------------
 
