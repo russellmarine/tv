@@ -108,7 +108,7 @@
         '<div class="location-search-container">',
         '  <input id="comm-location-input" class="location-search-input" ',
         '         type="search" autocomplete="off" ',
-        '         placeholder="e.g., Camp Lejeune, Jacksonville NC, 28540">',
+        '         placeholder="Camp Lejeune, Jacksonville NC, 28540">',
         '  <div id="comm-location-autocomplete" class="location-autocomplete"></div>',
         '</div>',
         '<div id="comm-location-error" class="location-error"></div>'
@@ -119,7 +119,7 @@
         '<div class="location-input-row">',
         '  <div class="location-input-field" style="flex: 1;">',
         '    <input id="comm-mgrs-input" type="text" class="location-search-input"',
-        '           placeholder="e.g., 18SVK4083001357" style="text-transform: uppercase; font-family: monospace;">',
+        '           placeholder="18SVK4083001357" style="text-transform: uppercase; font-family: monospace;">',
         '  </div>',
         '  <button type="button" id="comm-mgrs-go" class="location-go-btn">→</button>',
         '</div>',
@@ -149,7 +149,7 @@
         '<div class="location-input-row">',
         '  <div class="location-input-field" style="flex: 1;">',
         '    <input id="comm-grid-input" type="text" class="location-search-input"',
-        '           placeholder="e.g., FM19la or FM19" style="text-transform: uppercase;">',
+        '           placeholder="FM19la or FM19" style="text-transform: uppercase;">',
         '  </div>',
         '  <button type="button" id="comm-grid-go" class="location-go-btn">→</button>',
         '</div>',
@@ -934,13 +934,13 @@
 
       const windDirection = degreesToCardinal(wind.deg);
       const metrics = [];
-      if (humidity !== null) metrics.push(metricHtml('Humidity', humidity + '%'));
-      if (pressure !== null) metrics.push(metricHtml('Pressure', pressure + ' hPa'));
-      if (wind.speed != null) metrics.push(metricHtml('Wind', Math.round(wind.speed) + ' mph' + (windDirection ? ' ' + windDirection : '')));
-      if (visibility != null) metrics.push(metricHtml('Visibility', (visibility / 1609).toFixed(1) + ' mi'));
-      metrics.push(metricHtml('Local Time', localTime));
-      if (sunrise) metrics.push(metricHtml('Sunrise', formatLocalTime(sunrise, timezone)));
-      if (sunset) metrics.push(metricHtml('Sunset', formatLocalTime(sunset, timezone)));
+      if (humidity !== null) metrics.push(metricHtml('Humidity', humidity + '%', null, getWeatherMetricIcon('Humidity')));
+      if (pressure !== null) metrics.push(metricHtml('Pressure', pressure + ' hPa', null, getWeatherMetricIcon('Pressure')));
+      if (wind.speed != null) metrics.push(metricHtml('Wind', Math.round(wind.speed) + ' mph' + (windDirection ? ' ' + windDirection : ''), null, getWeatherMetricIcon('Wind')));
+      if (visibility != null) metrics.push(metricHtml('Visibility', (visibility / 1609).toFixed(1) + ' mi', null, getWeatherMetricIcon('Visibility')));
+      metrics.push(metricHtml('Local Time', localTime, null, getWeatherMetricIcon('Local Time')));
+      if (sunrise) metrics.push(metricHtml('Sunrise', formatLocalTime(sunrise, timezone), null, getWeatherMetricIcon('Sunrise')));
+      if (sunset) metrics.push(metricHtml('Sunset', formatLocalTime(sunset, timezone), null, getWeatherMetricIcon('Sunset')));
 
       body.innerHTML = [
         '<div class="comm-weather-body">',
@@ -1027,6 +1027,16 @@
     return 'severity-poor';
   }
 
+  function getDayPhaseIcon(status) {
+    if (status === 'night') {
+      return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3a7 7 0 1 0 9 9.5A9 9 0 1 1 12 3Z" fill="currentColor" opacity="0.9"/></svg>';
+    }
+    if (status === 'greyline') {
+      return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><linearGradient id="gl" x1="0" y1="0" x2="24" y2="0" gradientUnits="userSpaceOnUse"><stop stop-color="currentColor" stop-opacity="0.4"/><stop offset="1" stop-color="currentColor" stop-opacity="0.9"/></linearGradient><path d="M3 12h18" stroke="url(#gl)" stroke-width="2.5" stroke-linecap="round"/><path d="M6 8c1.5-2 3.8-3 6-3 4.9 0 9 4.1 9 9 0 2.2-0.8 4.3-2 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+    }
+    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="5.5" stroke="currentColor" stroke-width="2"/><path d="m12 1.75 0 3.5M12 18.75l0 3.5M4.22 4.22l2.47 2.47m11.14 11.12 2.47 2.47M1.75 12h3.5m13.5 0h3.5M4.22 19.78l2.47-2.47m11.14-11.12 2.47-2.47" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  }
+
   function satBandClass(status) {
     if (status === 'green') return 'severity-good';
     if (status === 'yellow') return 'severity-fair';
@@ -1052,37 +1062,40 @@
     const updatedText = updated ? 'Updated ' + updated.toUTCString() : 'Live NOAA SWPC';
     const kpCondition = data.kpIndex >= 5 ? 'Storm' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet';
 
+    const scaleLinks = {
+      R: 'https://www.swpc.noaa.gov/noaa-scales/radio-blackouts-scale',
+      S: 'https://www.swpc.noaa.gov/noaa-scales/solar-radiation-storm-scale',
+      G: 'https://www.swpc.noaa.gov/noaa-scales/geomagnetic-storms-scale'
+    };
+    const scaleTooltips = {
+      R: 'R-scale: HF radio blackouts driven by X-ray flares (R1 minor → R5 extreme).',
+      S: 'S-scale: Solar radiation storms. Energetic protons causing HF disruption at high latitudes.',
+      G: 'G-scale: Geomagnetic storms from CMEs/solar wind. Can trigger aurora, absorption, and scintillation.'
+    };
+    const kpTooltip = 'Planetary K index (0–9) measures geomagnetic disturbance. Kp≥5 is storm level.';
+    const scaleCards = ['R', 'S', 'G'].map(key => (
+      '<a class="spacewx-scale-card tooltip-target" href="' + scaleLinks[key] + '" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(scaleTooltips[key]) + '">' +
+        '<div class="label">' + (key === 'R' ? 'Radio' : key === 'S' ? 'Solar' : 'Geomag') + '</div>' +
+        '<div class="value" style="color:' + getScaleColor(data.scales[key]) + '">' + key + data.scales[key] + '</div>' +
+        '<div class="desc">' + getScaleDescription(key, data.scales[key]) + '</div>' +
+      '</a>'
+    )).join('');
+
     body.innerHTML = [
       '<div class="spacewx-heading">',
       '  <div class="spacewx-title">🌡️ Space Weather Overview</div>',
-      '  <div class="spacewx-links">',
-      '    <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">NOAA Scales →</a>',
-      '    <a class="inline-link" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer">Kp Source →</a>',
-      '  </div>',
       '</div>',
-      '<div class="spacewx-scales-row">',
-      '  <div class="spacewx-scale-card">',
-      '    <div class="label">Radio</div>',
-      '    <div class="value" style="color:' + getScaleColor(data.scales.R) + '">R' + data.scales.R + '</div>',
-      '    <div class="desc">' + getScaleDescription('R', data.scales.R) + '</div>',
-      '  </div>',
-      '  <div class="spacewx-scale-card">',
-      '    <div class="label">Solar</div>',
-      '    <div class="value" style="color:' + getScaleColor(data.scales.S) + '">S' + data.scales.S + '</div>',
-      '    <div class="desc">' + getScaleDescription('S', data.scales.S) + '</div>',
-      '  </div>',
-      '  <div class="spacewx-scale-card">',
-      '    <div class="label">Geomag</div>',
-      '    <div class="value" style="color:' + getScaleColor(data.scales.G) + '">G' + data.scales.G + '</div>',
-      '    <div class="desc">' + getScaleDescription('G', data.scales.G) + '</div>',
-      '  </div>',
-      '</div>',
-      '<div class="spacewx-kp-row">',
+      '<div class="spacewx-scales-row">' + scaleCards + '</div>',
+      '<a class="spacewx-kp-row tooltip-target" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(kpTooltip) + '">',
       '  <span class="label">Kp Index</span>',
       '  <span class="value" style="color:' + kpColor + ';">' + data.kpIndex.toFixed(2) + '</span>',
       '  <span class="status">' + kpCondition + '</span>',
-      '</div>',
+      '</a>',
       '<div class="spacewx-footnote">R = HF Radio Blackouts · S = Solar Radiation · G = Geomagnetic Storms</div>',
+      '<div class="spacewx-links">',
+      '  <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">NOAA Scales →</a>',
+      '  <a class="inline-link" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer">Kp Source →</a>',
+      '</div>',
       '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank" rel="noopener noreferrer">NOAA SWPC</a> • ' + escapeHtml(updatedText) + '</div>'
     ].join('');
 
@@ -1114,6 +1127,9 @@
         (r >= 2 || g >= 3 || kp >= 5) ? 'Fair' : 'Good';
     const hfInfo = getHfSeverityDetails(hfSeverity);
 
+    const dayPhaseClass = dayNight.status === 'night' ? 'dayphase-night' : dayNight.status === 'greyline' ? 'dayphase-grey' : 'dayphase-day';
+    const dayPhaseIcon = getDayPhaseIcon(dayNight.status);
+
     if (hfBody) {
       hfBody.innerHTML = [
         '<div class="comm-prop-headerline">',
@@ -1126,10 +1142,10 @@
         '    <div class="muf-label">Est. MUF</div>',
         '    <div class="muf-desc">' + escapeHtml(hfAssessment) + '</div>',
         '  </div>',
-        '  <div class="muf-tag ' + hfInfo.className + '">' + escapeHtml(dayNight.label || '') + '</div>',
+        '  <div class="muf-tag ' + hfInfo.className + ' ' + dayPhaseClass + '">' + dayPhaseIcon + '<span>' + escapeHtml(dayNight.label || '') + '</span></div>',
         '</div>',
-        '<div class="comm-prop-row accent">',
-        '  <span class="label">Recommended Bands (VOACAP)</span>',
+        '<div class="comm-prop-row accent hf-band-block">',
+        '  <div class="hf-band-header">Recommended Bands (VOACAP)</div>',
         '  <div class="comm-prop-chiprow">' + bands.map(b => '<span class="comm-prop-chip ' + bandQualityClass(b.quality) + '">' + escapeHtml(b.band) + '<span class="chip-sub">' + escapeHtml(b.freq) + '</span></span>').join('') + '</div>',
         '</div>',
         '<div class="comm-prop-row">',
@@ -1285,12 +1301,41 @@
 
   document.addEventListener('DOMContentLoaded', init);
 
-  function metricHtml(label, value, hint) {
+  function metricHtml(label, value, hint, icon) {
     return '<div class="comm-weather-metric">' +
-      '<span class="label">' + escapeHtml(label) + '</span>' +
-      '<span class="value">' + escapeHtml(value) + '</span>' +
-      (hint ? '<span class="hint">' + escapeHtml(hint) + '</span>' : '') +
+      '<span class="icon">' + (icon || '') + '</span>' +
+      '<div class="metric-text">' +
+      '  <span class="label">' + escapeHtml(label) + '</span>' +
+      '  <span class="value">' + escapeHtml(value) + '</span>' +
+      (hint ? '  <span class="hint">' + escapeHtml(hint) + '</span>' : '') +
+      '</div>' +
       '</div>';
+  }
+
+  function getWeatherMetricIcon(label) {
+    const l = (label || '').toLowerCase();
+    if (l.includes('humidity')) {
+      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3s-5.5 6.1-5.5 10A5.5 5.5 0 0 0 12 18.5 5.5 5.5 0 0 0 17.5 13C17.5 9.1 12 3 12 3Z" fill="currentColor" opacity="0.86"/></svg>';
+    }
+    if (l.includes('pressure')) {
+      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    }
+    if (l.includes('wind')) {
+      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 10h9a2 2 0 1 0-2-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 14h11a2.5 2.5 0 1 1-2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+    if (l.includes('visibility')) {
+      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5S2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>';
+    }
+    if (l.includes('sunrise')) {
+      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 15h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 15a5 5 0 0 1 10 0" stroke="currentColor" stroke-width="1.6"/><path d="m12 6 0-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="m5.5 8 2 2M18.5 8l-2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    }
+    if (l.includes('sunset')) {
+      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 15h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 15a5 5 0 0 1 10 0" stroke="currentColor" stroke-width="1.6"/><path d="m12 3 0 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="m5.5 10 2-2M18.5 10l-2-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    }
+    if (l.includes('time')) {
+      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4l2.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    }
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   }
 
   function formatLocalTime(epochSeconds, offsetSeconds, includeDate) {
