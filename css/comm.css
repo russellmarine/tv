@@ -174,6 +174,13 @@ main {
   gap: 0.5rem;
 }
 
+#comm-card-satcom,
+#comm-card-cellular {
+  background: linear-gradient(145deg, rgba(10, 5, 0, 0.96), rgba(25, 12, 0, 0.96));
+  --card-accent: rgba(255, 120, 0, 0.55);
+  --card-glow: rgba(255, 120, 0, 0.3);
+}
+
 #comm-planner-view .comm-card-header {
   display: flex;
   justify-content: space-between;
@@ -402,28 +409,28 @@ main {
 }
 
 .location-util-btn {
-  padding: 0.6rem 0.95rem;
-  min-width: 170px;
+  padding: 0.42rem 0.85rem;
+  min-width: 0;
   border-radius: 999px;
-  border: 1px solid rgba(255, 200, 140, 0.9);
+  border: 1px solid rgba(255, 180, 110, 0.9);
   background:
-    radial-gradient(circle at 20% 20%, rgba(255, 200, 140, 0.4), rgba(30, 10, 0, 0.2)),
-    linear-gradient(135deg, rgba(255, 150, 80, 0.6), rgba(140, 45, 0, 0.65));
-  color: #ffe7cf;
-  font-size: 0.78rem;
+    radial-gradient(circle at 25% 20%, rgba(255, 190, 120, 0.35), rgba(45, 15, 0, 0.25)),
+    linear-gradient(135deg, rgba(255, 135, 25, 0.6), rgba(150, 55, 0, 0.65));
+  color: #ffe8d1;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   cursor: pointer;
   transition: all 0.18s ease;
-  box-shadow: 0 0 18px rgba(255, 150, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 12px rgba(255, 140, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .location-util-btn:hover {
   background:
-    radial-gradient(circle at 25% 20%, rgba(255, 220, 170, 0.55), rgba(30, 12, 0, 0.25)),
-    linear-gradient(145deg, rgba(255, 170, 90, 0.75), rgba(150, 50, 0, 0.75));
-  border-color: rgba(255, 210, 150, 1);
-  box-shadow: 0 0 16px rgba(255, 170, 100, 0.85), 0 0 26px rgba(255, 120, 0, 0.65);
+    radial-gradient(circle at 25% 20%, rgba(255, 215, 155, 0.55), rgba(40, 12, 0, 0.3)),
+    linear-gradient(145deg, rgba(255, 165, 80, 0.85), rgba(170, 70, 0, 0.82));
+  border-color: rgba(255, 205, 150, 1);
+  box-shadow: 0 0 14px rgba(255, 170, 100, 0.9), 0 0 22px rgba(255, 120, 0, 0.65);
 }
 
 .comm-recent-wrapper {
@@ -637,9 +644,20 @@ main {
 }
 
 .comm-weather-icon {
-  font-size: 2.4rem;
-  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.55));
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: right;
+  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.55));
+}
+
+.comm-weather-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 14px rgba(0, 0, 0, 0.45));
 }
 
 .comm-weather-grid {

@@ -757,13 +757,13 @@
     #propagation-panel .band-pills {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.3rem;
+      gap: 0.22rem;
     }
 
     #propagation-panel .band-pill {
-      padding: 0.2rem 0.5rem;
+      padding: 0.18rem 0.45rem;
       border-radius: 999px;
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       font-weight: 600;
       border: 1px solid;
       cursor: pointer;
@@ -844,6 +844,44 @@
     #propagation-panel .satcom-item .band-status.yellow { color: #ffcc00; }
     #propagation-panel .satcom-item .band-status.orange { color: #ff8800; }
     #propagation-panel .satcom-item .band-status.red { color: #ff4444; }
+
+    #propagation-panel .satcom-band-box,
+    #propagation-panel .gps-box {
+      background: linear-gradient(135deg, rgba(15, 8, 0, 0.85), rgba(35, 18, 0, 0.85));
+      border: 1px solid rgba(255, 120, 0, 0.35);
+      border-radius: 10px;
+      box-shadow: inset 0 0 0 1px rgba(255, 140, 0, 0.14);
+    }
+
+    #propagation-panel .satcom-band-box {
+      overflow: hidden;
+    }
+
+    #propagation-panel .gps-box {
+      margin-top: 0.65rem;
+      padding: 0.7rem 0.75rem;
+    }
+
+    #propagation-panel .gps-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.4rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #ffd8a8;
+    }
+
+    #propagation-panel .gps-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      font-size: 0.7rem;
+    }
+
+    #propagation-panel .gps-divider {
+      opacity: 0.4;
+    }
 
     /* Weather row */
     #propagation-panel .weather-row {
@@ -2427,7 +2465,7 @@
           
           <!-- Band Status Table -->
           <div style="font-size: 0.7rem; opacity: 0.6; margin-bottom: 0.3rem; text-transform: uppercase;">Band Status & Remarks</div>
-          <div style="background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden;">
+          <div class="satcom-band-box">
             ${renderBandRow('EHF', satcom.ehf)}
             ${renderBandRow('Ka', satcom.ka)}
             ${renderBandRow('Ku', satcom.ku)}
@@ -2437,17 +2475,17 @@
           </div>
 
           <!-- GPS Section -->
-          <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,120,0,0.2);">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
-              <span style="font-size: 0.75rem; font-weight: 600;">🛰️ GPS/GNSS</span>
+          <div class="gps-box">
+            <div class="gps-header">
+              <span>🛰️ GPS/GNSS</span>
               <span class="band-status ${satcom.gps.status}" style="font-size: 0.8rem;">${satcom.gps.label}</span>
             </div>
-            ${satcom.gps.notes ? `<div style="font-size: 0.75rem; opacity: 0.85; margin-bottom: 0.4rem;">${satcom.gps.notes}</div>` : ''}
-            <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.7rem;">
+            ${satcom.gps.notes ? `<div style="font-size: 0.75rem; opacity: 0.85; margin-bottom: 0.35rem;">${satcom.gps.notes}</div>` : ''}
+            <div class="gps-links">
               <a href="${LINKS.gpsJam}" target="_blank" rel="noopener noreferrer" class="inline-link">GPSJam Map</a>
-              <span style="opacity: 0.4;">·</span>
+              <span class="gps-divider">·</span>
               <a href="${LINKS.flightradarGps}" target="_blank" rel="noopener noreferrer" class="inline-link">FR24 Interference</a>
-              <span style="opacity: 0.4;">·</span>
+              <span class="gps-divider">·</span>
               <a href="${LINKS.navcenGuide}" target="_blank" rel="noopener noreferrer" class="inline-link">NAVCEN GUIDE</a>
             </div>
           </div>

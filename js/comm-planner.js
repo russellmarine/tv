@@ -608,14 +608,17 @@
 
   function getWeatherGlyph(main) {
     const m = (main || '').toLowerCase();
-    if (m.includes('thunder')) return '⛈️';
-    if (m.includes('rain')) return '🌧️';
-    if (m.includes('drizzle')) return '🌦️';
-    if (m.includes('snow')) return '❄️';
-    if (m.includes('cloud')) return '☁️';
-    if (m.includes('mist') || m.includes('fog')) return '🌫️';
-    if (m.includes('clear')) return '☀️';
-    return '🌡️';
+    let icon = 'wind';
+
+    if (m.includes('thunder')) icon = 'storm';
+    else if (m.includes('rain') || m.includes('drizzle')) icon = 'rain';
+    else if (m.includes('snow')) icon = 'snow';
+    else if (m.includes('cloud')) icon = 'cloudy';
+    else if (m.includes('mist') || m.includes('fog') || m.includes('haze')) icon = 'fog';
+    else if (m.includes('clear')) icon = 'sunny';
+
+    const alt = (main || 'Weather') + ' icon';
+    return '<img src="/icons/weather/' + icon + '.svg" alt="' + escapeHtml(alt) + '" loading="lazy" />';
   }
 
   // Public API (for other modules later)
