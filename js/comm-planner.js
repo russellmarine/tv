@@ -303,6 +303,15 @@
     };
     updateLocationStatus();
     addRecent(selectedLocation);
+    const weatherMeta = $('#comm-weather-meta');
+    if (weatherMeta) {
+      weatherMeta.textContent = 'Loading weather…';
+    }
+    const weatherCard = $('#comm-card-weather');
+    if (weatherCard) {
+      weatherCard.style.removeProperty('--card-accent');
+      weatherCard.style.removeProperty('--card-glow');
+    }
     fetchLocalWeather(selectedLocation.coords.lat, selectedLocation.coords.lon);
 
     if (Events && Events.emit) {
@@ -337,6 +346,7 @@
   async function fetchLocalWeather(lat, lon) {
     const body = $('#comm-weather-body');
     const meta = $('#comm-weather-meta');
+    const card = $('#comm-card-weather');
     if (!body) return;
 
     try {
@@ -351,25 +361,66 @@
       const temp = wx.main ? Math.round(wx.main.temp) : null;
       const feels = wx.main ? Math.round(wx.main.feels_like) : null;
       const humidity = wx.main ? wx.main.humidity : null;
+      const pressure = wx.main ? wx.main.pressure : null;
+      const visibility = wx.visibility;
       const wind = wx.wind || {};
+      const clouds = wx.clouds ? wx.clouds.all : null;
+      const sunrise = wx.sys ? wx.sys.sunrise : null;
+      const sunset = wx.sys ? wx.sys.sunset : null;
+      const timezone = wx.timezone || 0;
+      const updatedLocal = wx.dt ? formatLocalTime(wx.dt, timezone) : 'Just now';
+      const localTime = formatLocalTime(Date.now() / 1000, timezone, true);
 
-      const pieces = [];
-      pieces.push('<div class="comm-weather-row">');
-      pieces.push('<div class="comm-weather-main">');
-      pieces.push('<div class="comm-weather-big">' + (main.main || 'Weather') + '</div>');
-      if (main.description) {
-        pieces.push('<div class="comm-weather-desc">' + escapeHtml(main.description) + '</div>');
+      const accent = tempToAccent(temp);
+      if (card && accent) {
+        card.style.setProperty('--card-accent', accent);
+        card.style.setProperty('--card-glow', colorMixWithTransparency(accent, 0.45));
       }
-      pieces.push('</div>');
-      pieces.push('<div class="comm-weather-metrics">');
-      if (temp !== null) pieces.push('<div><span class="label">Temp</span><span class="value">' + temp + '°F</span></div>');
-      if (feels !== null) pieces.push('<div><span class="label">Feels</span><span class="value">' + feels + '°F</span></div>');
-      if (humidity !== null) pieces.push('<div><span class="label">Humidity</span><span class="value">' + humidity + '%</span></div>');
-      if (wind.speed != null) pieces.push('<div><span class="label">Wind</span><span class="value">' + Math.round(wind.speed) + ' kt</span></div>');
-      pieces.push('</div></div>');
 
-      body.innerHTML = pieces.join('');
-      if (meta) meta.textContent = 'Updated just now';
+      const heroClass = accent ? 'comm-weather-hero accented' : 'comm-weather-hero';
+      const summaryLine = [];
+      if (wx.main && wx.main.temp_max != null && wx.main.temp_min != null) {
+        summaryLine.push('High/Low ' + Math.round(wx.main.temp_max) + '° / ' + Math.round(wx.main.temp_min) + '°');
+      }
+      if (clouds != null) {
+        summaryLine.push('Clouds ' + clouds + '%');
+      }
+
+      const windDirection = degreesToCardinal(wind.deg);
+      const metrics = [];
+      if (humidity !== null) metrics.push(metricHtml('Humidity', humidity + '%'));
+      if (pressure !== null) metrics.push(metricHtml('Pressure', pressure + ' hPa'));
+      if (wind.speed != null) metrics.push(metricHtml('Wind', Math.round(wind.speed) + ' mph' + (windDirection ? ' ' + windDirection : '')));
+      if (visibility != null) metrics.push(metricHtml('Visibility', (visibility / 1609).toFixed(1) + ' mi'));
+      metrics.push(metricHtml('Local Time', localTime));
+      if (sunrise) metrics.push(metricHtml('Sunrise', formatLocalTime(sunrise, timezone)));
+      if (sunset) metrics.push(metricHtml('Sunset', formatLocalTime(sunset, timezone)));
+
+      body.innerHTML = [
+        '<div class="comm-weather-body">',
+        '  <div class="' + heroClass + '" style="--weather-accent:' + (accent || '') + ';">',
+        '    <div class="comm-weather-left">',
+        '      <div class="comm-weather-location">' + escapeHtml(selectedLocation?.label || 'Selected location') + '</div>',
+        '      <div class="comm-weather-temp-row">',
+        '        <div class="comm-weather-icon">' + getWeatherGlyph(main.main) + '</div>',
+        '        <div class="comm-weather-mainline">',
+        '          <div class="comm-weather-temp">' + (temp !== null ? temp + '°F' : '--') + '</div>',
+        '          <div class="comm-weather-desc">' + escapeHtml(main.description || main.main || 'Weather') + '</div>',
+        '          <div class="comm-weather-feels">Feels like ' + (feels !== null ? feels + '°F' : '—') + '</div>',
+        '        </div>',
+        '      </div>',
+        summaryLine.length ? '      <div class="comm-weather-summary-row">' + summaryLine.map(escapeHtml).join('<span>•</span>') + '</div>' : '',
+        '      <div class="comm-weather-meta-row">',
+        '        <span class="comm-weather-source">Data: OpenWeather</span>',
+        '        <span class="comm-weather-updated">Updated ' + escapeHtml(updatedLocal) + '</span>',
+        '      </div>',
+        '    </div>',
+        '  </div>',
+        metrics.length ? '  <div class="comm-weather-grid">' + metrics.join('') + '</div>' : '',
+        '</div>'
+      ].join('');
+
+      if (meta) meta.textContent = 'OpenWeather • Updated ' + updatedLocal;
     } catch (e) {
       console.warn('[CommPlanner] Weather fetch failed:', e);
       body.textContent = 'Unable to load weather for this location.';
@@ -434,7 +485,10 @@
       '</div>'
     ].join('');
 
-    if (meta) meta.textContent = 'Live data from NOAA SWPC';
+    if (meta) {
+      const updated = window.RussellTV.SpaceWeather.getLastUpdate();
+      meta.textContent = updated ? 'NOAA SWPC • Updated ' + updated.toUTCString() : 'NOAA SWPC';
+    }
   }
 
   // ---------- Init ----------
@@ -511,6 +565,57 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
+
+  function metricHtml(label, value, hint) {
+    return '<div class="comm-weather-metric">' +
+      '<span class="label">' + escapeHtml(label) + '</span>' +
+      '<span class="value">' + escapeHtml(value) + '</span>' +
+      (hint ? '<span class="hint">' + escapeHtml(hint) + '</span>' : '') +
+      '</div>';
+  }
+
+  function formatLocalTime(epochSeconds, offsetSeconds, includeDate) {
+    if (!epochSeconds && epochSeconds !== 0) return '';
+    const tzOffset = offsetSeconds || 0;
+    const date = new Date((epochSeconds + tzOffset) * 1000);
+    const opts = { hour: '2-digit', minute: '2-digit' };
+    if (includeDate) {
+      opts.month = 'short';
+      opts.day = 'numeric';
+    }
+    return date.toLocaleString(undefined, opts);
+  }
+
+  function tempToAccent(tempF) {
+    if (tempF === null || tempF === undefined || isNaN(tempF)) return '';
+    const clamped = Math.max(-10, Math.min(110, tempF));
+    const norm = (clamped + 10) / 120; // 0..1
+    const hue = 210 - (norm * 190); // blue to warm
+    return `hsl(${hue}deg 90% 60%)`;
+  }
+
+  function colorMixWithTransparency(color, alpha) {
+    return color.replace('hsl', 'hsla').replace(')', ` / ${alpha})`);
+  }
+
+  function degreesToCardinal(deg) {
+    if (deg === null || deg === undefined || isNaN(deg)) return '';
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const idx = Math.round(deg / 45) % 8;
+    return dirs[idx];
+  }
+
+  function getWeatherGlyph(main) {
+    const m = (main || '').toLowerCase();
+    if (m.includes('thunder')) return '⛈️';
+    if (m.includes('rain')) return '🌧️';
+    if (m.includes('drizzle')) return '🌦️';
+    if (m.includes('snow')) return '❄️';
+    if (m.includes('cloud')) return '☁️';
+    if (m.includes('mist') || m.includes('fog')) return '🌫️';
+    if (m.includes('clear')) return '☀️';
+    return '🌡️';
+  }
 
   // Public API (for other modules later)
   window.RussellTV.CommPlanner = {
