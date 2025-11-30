@@ -36,8 +36,10 @@
   function formatUserStamp(dateVal) {
     const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
     const time = formatUserClock(d, false);
-    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    return `${time} • ${date}`;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleDateString(undefined, { month: 'short' });
+    const year = d.getFullYear().toString().slice(-2);
+    return `${time} ${day} ${month} ${year}`;
   }
 
   function buildMapLink(lat, lon) {
@@ -127,7 +129,7 @@
       towers,
       carriers ? '<div class="cell-carrier-section">' + carriers + '</div>' : '<p class="comm-placeholder">' + (isLoading ? 'Loading towers…' : 'No towers reported in range.') + '</p>',
       '<div class="cell-legend">Azimuth is TRUE north (not magnetic)</div>',
-      '<div class="cell-legend">Source: OpenCellID • Cached ' + escapeHtml(formatUserStamp(Date.now())) + '</div>'
+      '<div class="cell-legend comm-card-footer">Source: OpenCellID • Last Updated: ' + escapeHtml(formatUserStamp(Date.now())) + '</div>'
     ].join('');
 
     if (status) status.innerHTML = '<span class="status-pill ' + coverageCls + '">' + escapeHtml(coverage.grade) + '</span>';

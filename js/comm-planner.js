@@ -19,6 +19,12 @@
   let autocompleteTimeout = null;
   let recentLocations = [];
   let lastWeather = null;
+  let lastWeatherRaw = null;
+  let lastForecastRaw = null;
+  let lastWeatherCoords = null;
+  let tempUnit = 'F';
+  let timebarWeather = {};
+  let timebarClockTimer = null;
   const MAX_RECENT = 7;
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
 
@@ -873,7 +879,7 @@
     const swData = window.RussellTV?.SpaceWeather?.getCurrentData?.();
     if (swData) {
       const updated = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
-      const updatedText = updated ? formatUserStamp(updated) : 'Live NOAA SWPC';
+      const updatedText = updated ? 'Last Updated: ' + formatUserStamp(updated) : 'Live NOAA SWPC';
       updatePropagationCards(swData, updatedText);
     }
     const weatherMeta = $('#comm-weather-meta');
@@ -944,39 +950,109 @@
     });
   }
 
+  // ---------- Top time/weather bar ----------
+
+  function weatherIconKey(main, desc) {
+    const text = `${main || ''} ${desc || ''}`.toLowerCase();
+    if (text.includes('thunder') || text.includes('storm')) return 'storm';
+    if (text.includes('rain') || text.includes('drizzle')) return 'rain';
+    if (text.includes('snow') || text.includes('sleet')) return 'snow';
+    if (text.includes('cloud')) return 'cloudy';
+    if (text.includes('fog') || text.includes('mist') || text.includes('haze') || text.includes('smoke')) return 'fog';
+    return 'sunny';
+  }
+
+  function timebarTempClass(tempF) {
+    if (tempF == null || isNaN(tempF)) return '';
+    if (tempF >= 90) return 'severity-watch';
+    if (tempF >= 75) return 'severity-fair';
+    if (tempF >= 55) return 'severity-good';
+    if (tempF >= 32) return 'severity-fair';
+    return 'severity-watch';
+  }
+
+  async function fetchTimebarWeather() {
+    if (!window.WEATHER_QUERIES || typeof window.fetchWeather !== 'function') {
+      timebarWeather = {};
+      renderTimebar();
+      return;
+    }
+
+    const newMap = {};
+    for (const [label, query] of Object.entries(window.WEATHER_QUERIES)) {
+      if (/zulu/i.test(label)) continue;
+      try {
+        const d = await window.fetchWeather(query);
+        if (!d || (d.cod && d.cod !== 200)) continue;
+        newMap[label] = {
+          main: d.weather?.[0]?.main || '',
+          desc: d.weather?.[0]?.description || '',
+          temp: Math.round(d.main?.temp ?? 0),
+          hi: Math.round(d.main?.temp_max ?? 0),
+          lo: Math.round(d.main?.temp_min ?? 0)
+        };
+      } catch (e) {
+        // swallow
+      }
+    }
+    timebarWeather = newMap;
+    renderTimebar();
+  }
+
+  function renderTimebar() {
+    const bar = document.getElementById('comm-timebar');
+    if (!bar || !window.TIME_ZONES) return;
+
+    const chips = window.TIME_ZONES.map(loc => {
+      const time = new Date().toLocaleString('en-US', {
+        timeZone: loc.tz,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      }).replace(':', '');
+
+      const weather = timebarWeather[loc.label];
+      const cls = weather ? 'timebar-chip ' + timebarTempClass(weather.temp ?? weather.hi) : 'timebar-chip';
+      const weatherHtml = weather
+        ? '<div class="timebar-weather">'
+          + '<img src="/icons/weather/' + weatherIconKey(weather.main, weather.desc) + '.svg" alt="' + escapeHtml(weather.main || '') + '" loading="lazy">'
+          + '<span>' + escapeHtml(Math.round(weather.hi || weather.temp || 0) + '°/' + Math.round(weather.lo || weather.temp || 0) + '°') + '</span>'
+          + '</div>'
+        : '';
+
+      return '<div class="' + cls + '">'
+        + '<div class="timebar-label">' + escapeHtml(loc.label) + '</div>'
+        + '<div class="timebar-time">' + escapeHtml(time) + '</div>'
+        + weatherHtml
+        + '</div>';
+    }).join('');
+
+    bar.innerHTML = chips;
+  }
+
   async function fetchLocalWeather(lat, lon) {
     const body = $('#comm-weather-body');
     const meta = $('#comm-weather-meta');
     const card = $('#comm-card-weather');
     if (!body) return;
 
-    try {
-      body.textContent = 'Loading detailed weather for selected location…';
+    body.innerHTML = '<p class="comm-placeholder">Loading detailed weather for selected location…</p>';
+    if (meta) meta.innerHTML = '<span class="status-pill severity-fair">Loading…</span>';
+    if (card) {
+      card.style.removeProperty('--card-accent');
+      card.style.removeProperty('--card-glow');
+    }
 
+    lastWeatherCoords = { lat, lon };
+
+    try {
       const res = await fetch('/weather?lat=' + lat + '&lon=' + lon);
       if (!res.ok) throw new Error('Weather HTTP ' + res.status);
-      const data = await res.json();
-
-      const wx = data || {};
-      const main = (wx.weather && wx.weather[0]) || {};
-      const temp = wx.main ? Math.round(wx.main.temp) : null;
-      const feels = wx.main ? Math.round(wx.main.feels_like) : null;
-      const humidity = wx.main ? wx.main.humidity : null;
-      const pressure = wx.main ? wx.main.pressure : null;
-      const visibility = wx.visibility;
-      const wind = wx.wind || {};
-      const clouds = wx.clouds ? wx.clouds.all : null;
-      const sunrise = wx.sys ? wx.sys.sunrise : null;
-      const sunset = wx.sys ? wx.sys.sunset : null;
-      const timezone = wx.timezone || 0;
-      const updatedLocal = wx.dt ? formatUserStamp(wx.dt * 1000) : 'Just now';
-      const localTime = formatLocalClock(Date.now() / 1000, timezone, false);
-      const localDate = formatLocalDate(Date.now() / 1000, timezone);
-      const weatherSeverity = getWeatherSeverityClass(main.main, humidity);
+      const wx = await res.json();
 
       let forecast = null;
       try {
-        const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
+        const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=auto`);
         if (forecastRes.ok) {
           forecast = await forecastRes.json();
         }
@@ -984,78 +1060,118 @@
         console.warn('[CommPlanner] Forecast fetch failed', err);
       }
 
-      lastWeather = {
-        main: main.main,
-        desc: main.description,
-        humidity,
-        temp: temp,
-        feels: feels
-      };
-
-      const accent = tempToAccent(temp);
-      if (card && accent) {
-        card.style.setProperty('--card-accent', accent);
-        card.style.setProperty('--card-glow', colorMixWithTransparency(accent, 0.45));
-      }
-
-      const heroClass = accent ? 'comm-weather-hero accented' : 'comm-weather-hero';
-      const summaryLine = [];
-      if (wx.main && wx.main.temp_max != null && wx.main.temp_min != null) {
-        summaryLine.push('High/Low ' + Math.round(wx.main.temp_max) + '° / ' + Math.round(wx.main.temp_min) + '°');
-      }
-      if (clouds != null) {
-        summaryLine.push('Clouds ' + clouds + '%');
-      }
-
-      const windDirection = degreesToCardinal(wind.deg);
-      const metrics = [];
-      if (humidity !== null) metrics.push(metricHtml('Humidity', humidity + '%', null, getWeatherMetricIcon('Humidity')));
-      if (pressure !== null) metrics.push(metricHtml('Pressure', pressure + ' hPa', null, getWeatherMetricIcon('Pressure')));
-      if (wind.speed != null) metrics.push(metricHtml('Wind', Math.round(wind.speed) + ' mph' + (windDirection ? ' ' + windDirection : ''), null, getWeatherMetricIcon('Wind')));
-      if (visibility != null) metrics.push(metricHtml('Visibility', (visibility / 1609).toFixed(1) + ' mi', null, getWeatherMetricIcon('Visibility')));
-      metrics.push(metricHtml('Local Time', localTime, null, getWeatherMetricIcon('Local Time')));
-      metrics.push(metricHtml('Local Date', localDate, null, getWeatherMetricIcon('Date')));
-      if (sunrise) metrics.push(metricHtml('Sunrise', formatLocalTime(sunrise, timezone), null, getWeatherMetricIcon('Sunrise')));
-      if (sunset) metrics.push(metricHtml('Sunset', formatLocalTime(sunset, timezone), null, getWeatherMetricIcon('Sunset')));
-
-      const radarBlock = buildRadarBlock(lat, lon);
-      const forecastBlock = buildForecastHtml(forecast);
-
-      body.innerHTML = [
-        '<div class="comm-weather-body">',
-        '  <div class="' + heroClass + '" style="--weather-accent:' + (accent || '') + ';">',
-        '    <div class="comm-weather-left">',
-        '      <div class="comm-weather-location">' + escapeHtml(selectedLocation ? formatLocationLabel(selectedLocation) : 'Selected location') + '</div>',
-        '      <div class="comm-weather-temp-row">',
-        '        <div class="comm-weather-icon">' + getWeatherGlyph(main.main) + '</div>',
-        '        <div class="comm-weather-mainline">',
-        '          <div class="comm-weather-temp">' + (temp !== null ? temp + '°F' : '--') + '</div>',
-        '          <div class="comm-weather-desc">' + escapeHtml(main.description || main.main || 'Weather') + '</div>',
-        '          <div class="comm-weather-feels">Feels like ' + (feels !== null ? feels + '°F' : '—') + '</div>',
-        '        </div>',
-        '      </div>',
-        summaryLine.length ? '      <div class="comm-weather-summary-row">' + summaryLine.map(escapeHtml).join('<span>•</span>') + '</div>' : '',
-        '    </div>',
-        '  </div>',
-        metrics.length ? '  <div class="comm-weather-grid">' + metrics.join('') + '</div>' : '',
-        (radarBlock || forecastBlock) ? '  <div class="weather-extended">' + radarBlock + forecastBlock + '</div>' : '',
-        '<div class="comm-card-micro weather-footer">Source: <a class="inline-link" href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeather</a> • ' + escapeHtml(updatedLocal) + '</div>',
-        '</div>'
-      ].join('');
-
-      const swRefresh = window.RussellTV?.SpaceWeather?.getCurrentData?.();
-      if (swRefresh) {
-        const updatedSw = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
-        const updatedLabel = updatedSw ? formatUserStamp(updatedSw) : 'Live NOAA SWPC';
-        updatePropagationCards(swRefresh, updatedLabel);
-      }
-
-      if (meta) meta.innerHTML = '<span class="status-pill ' + weatherSeverity + '">' + escapeHtml(toTitleCase(main.description || main.main || 'Weather')) + '</span>';
+      lastWeatherRaw = wx;
+      lastForecastRaw = forecast;
+      renderWeather(wx, forecast, lat, lon);
     } catch (e) {
       console.warn('[CommPlanner] Weather fetch failed:', e);
       lastWeather = null;
+      lastWeatherRaw = null;
+      lastForecastRaw = null;
       body.textContent = 'Unable to load weather for this location. Ensure the weather proxy is running with an OpenWeather API key.';
       if (meta) meta.textContent = 'Weather proxy not reachable';
+    }
+  }
+
+  function renderWeather(wx, forecast, lat, lon) {
+    const body = $('#comm-weather-body');
+    const meta = $('#comm-weather-meta');
+    const card = $('#comm-card-weather');
+    if (!body || !wx || !wx.main) return;
+
+    const main = (wx.weather && wx.weather[0]) || {};
+    const wind = wx.wind || {};
+    const visibility = wx.visibility;
+    const tempF = wx.main && wx.main.temp != null ? Math.round(wx.main.temp) : null;
+    const feelsF = wx.main && wx.main.feels_like != null ? Math.round(wx.main.feels_like) : null;
+    const humidity = wx.main ? wx.main.humidity : null;
+    const pressure = wx.main ? wx.main.pressure : null;
+    const clouds = wx.clouds ? wx.clouds.all : null;
+    const sunrise = wx.sys ? wx.sys.sunrise : null;
+    const sunset = wx.sys ? wx.sys.sunset : null;
+    const timezone = wx.timezone || 0;
+    const updatedLocal = wx.dt ? 'Last Updated: ' + formatUserStamp(wx.dt * 1000) : 'Last Updated: --';
+    const localTime = formatLocalClock(Date.now() / 1000, timezone, false);
+    const localDate = formatLocalDate(Date.now() / 1000, timezone);
+    const weatherSeverity = getWeatherSeverityClass(main.main, humidity);
+
+    lastWeather = {
+      main: main.main,
+      desc: main.description,
+      humidity,
+      temp: tempF,
+      feels: feelsF
+    };
+
+    const accent = tempToAccent(tempF);
+    if (card && accent) {
+      card.style.setProperty('--card-accent', accent);
+      card.style.setProperty('--card-glow', colorMixWithTransparency(accent, 0.45));
+    }
+
+    const heroClass = accent ? 'comm-weather-hero accented' : 'comm-weather-hero';
+    const summaryLine = [];
+    if (wx.main && wx.main.temp_max != null && wx.main.temp_min != null) {
+      summaryLine.push('High/Low ' + formatTempDisplay(wx.main.temp_max) + ' / ' + formatTempDisplay(wx.main.temp_min));
+    }
+    if (clouds != null) {
+      summaryLine.push('Clouds ' + clouds + '%');
+    }
+
+    const windDirection = degreesToCardinal(wind.deg);
+    const metrics = [];
+    if (humidity !== null) metrics.push(metricHtml('Humidity', humidity + '%', null, getWeatherMetricIcon('Humidity')));
+    if (pressure !== null) metrics.push(metricHtml('Pressure', pressure + ' hPa', null, getWeatherMetricIcon('Pressure')));
+    if (wind.speed != null) metrics.push(metricHtml('Wind', Math.round(wind.speed) + ' mph' + (windDirection ? ' ' + windDirection : ''), null, getWeatherMetricIcon('Wind')));
+    if (visibility != null) metrics.push(metricHtml('Visibility', (visibility / 1609).toFixed(1) + ' mi', null, getWeatherMetricIcon('Visibility')));
+    metrics.push(metricHtml('Local Time', localTime, null, getWeatherMetricIcon('Local Time')));
+    metrics.push(metricHtml('Local Date', localDate, null, getWeatherMetricIcon('Date')));
+    if (sunrise) metrics.push(metricHtml('Sunrise', formatLocalTime(sunrise, timezone), null, getWeatherMetricIcon('Sunrise')));
+    if (sunset) metrics.push(metricHtml('Sunset', formatLocalTime(sunset, timezone), null, getWeatherMetricIcon('Sunset')));
+
+    const radarBlock = buildRadarBlock(lat, lon);
+    const forecastBlock = buildForecastHtml(forecast);
+
+    body.innerHTML = [
+      '<div class="comm-weather-body">',
+      '  <div class="weather-toggle-row"><button type="button" id="temp-unit-toggle" class="temp-toggle">Show °' + (tempUnit === 'F' ? 'C' : 'F') + '</button></div>',
+      '  <div class="' + heroClass + '" style="--weather-accent:' + (accent || '') + ';">',
+      '    <div class="comm-weather-left">',
+      '      <div class="comm-weather-location">' + escapeHtml(selectedLocation ? formatLocationLabel(selectedLocation) : 'Selected location') + '</div>',
+      '      <div class="comm-weather-temp-row">',
+      '        <div class="comm-weather-icon">' + getWeatherGlyph(main.main) + '</div>',
+      '        <div class="comm-weather-mainline">',
+      '          <div class="comm-weather-temp">' + formatTempDisplay(tempF) + '</div>',
+      '          <div class="comm-weather-desc">' + escapeHtml(main.description || main.main || 'Weather') + '</div>',
+      '          <div class="comm-weather-feels">Feels like ' + formatTempDisplay(feelsF) + '</div>',
+      '        </div>',
+      '      </div>',
+      summaryLine.length ? '      <div class="comm-weather-summary-row">' + summaryLine.map(escapeHtml).join('<span>•</span>') + '</div>' : '',
+      '    </div>',
+      '  </div>',
+      metrics.length ? '  <div class="comm-weather-grid">' + metrics.join('') + '</div>' : '',
+      (radarBlock || forecastBlock) ? '  <div class="weather-extended">' + radarBlock + forecastBlock + '</div>' : '',
+      '<div class="comm-card-micro comm-card-footer weather-footer">Source: <a class="inline-link" href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeather</a> • ' + escapeHtml(updatedLocal) + '</div>',
+      '</div>'
+    ].join('');
+
+    const swRefresh = window.RussellTV?.SpaceWeather?.getCurrentData?.();
+    if (swRefresh) {
+      const updatedSw = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
+      const updatedLabel = updatedSw ? 'Last Updated: ' + formatUserStamp(updatedSw) : 'Live NOAA SWPC';
+      updatePropagationCards(swRefresh, updatedLabel);
+    }
+
+    if (meta) meta.innerHTML = '<span class="status-pill ' + weatherSeverity + '">' + escapeHtml(toTitleCase(main.description || main.main || 'Weather')) + '</span>';
+
+    const toggle = document.getElementById('temp-unit-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        tempUnit = tempUnit === 'F' ? 'C' : 'F';
+        if (lastWeatherRaw && lastWeatherCoords) {
+          renderWeather(lastWeatherRaw, lastForecastRaw, lastWeatherCoords.lat, lastWeatherCoords.lon);
+        }
+      });
     }
   }
 
@@ -1234,7 +1350,7 @@
     const kpColor = data.kpIndex >= 5 ? '#ff8800' : (data.kpIndex >= 4 ? '#ffcc00' : '#44cc44');
 
     const updated = window.RussellTV.SpaceWeather.getLastUpdate();
-    const updatedText = updated ? formatUserStamp(updated) : 'Live NOAA SWPC';
+    const updatedText = updated ? 'Last Updated: ' + formatUserStamp(updated) : 'Live NOAA SWPC';
     const kpCondition = data.kpIndex >= 5 ? 'Storm' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet';
 
     const spacewxOverall = getSpacewxOverall(data);
@@ -1272,13 +1388,11 @@
       : '';
 
     body.innerHTML = [
-      '<div class="spacewx-topline">'
-      + ' <div class="spacewx-scales-row">' + scaleCards + '</div>'
-      + ' <div class="spacewx-summary">'
-      + '   <div class="spacewx-pill ' + spacewxOverall.className + '">' + escapeHtml(spacewxOverall.label) + '</div>'
-      + '   <div class="spacewx-summary-desc">' + escapeHtml(spacewxOverall.desc) + '</div>'
-      + ' </div>'
+      '<div class="spacewx-summary-row">'
+      + '  <div class="spacewx-pill ' + spacewxOverall.className + '">' + escapeHtml(spacewxOverall.label) + '</div>'
+      + '  <div class="spacewx-summary-desc">' + escapeHtml(spacewxOverall.desc) + '</div>'
       + '</div>',
+      '<div class="spacewx-scales-row">' + scaleCards + '</div>',
       '<a class="spacewx-kp-row tooltip-target" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(kpTooltip) + '">',
       '  <span class="label">Kp Index</span>',
       '  <span class="value" style="color:' + kpColor + ';">' + data.kpIndex.toFixed(2) + '</span>',
@@ -1286,12 +1400,10 @@
       '</a>',
       sunspotBlock,
       '<div class="spacewx-footnote">R = HF Radio Blackouts · S = Solar Radiation · G = Geomagnetic Storms</div>',
-      '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank" rel="noopener noreferrer">NOAA SWPC</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">NOAA Scales</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer">Kp Source</a> • ' + escapeHtml(updatedText) + '</div>'
+      '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank" rel="noopener noreferrer">NOAA SWPC</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">NOAA Scales</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer">Kp Source</a> • ' + escapeHtml(updatedText) + '</div>'
     ].join('');
 
-    if (meta) {
-      meta.innerHTML = '<span class="status-pill ' + spacewxOverall.className + '">' + escapeHtml(spacewxOverall.label) + '</span>';
-    }
+    if (meta) meta.textContent = '';
 
     updatePropagationCards(data, updatedText);
   }
@@ -1352,7 +1464,7 @@
         '  <span class="label">NVIS (0-400 km)</span>',
         '  <span class="hint">' + escapeHtml(nvis.recommended + ' — ' + nvis.quality) + '</span>',
         '</div>',
-        '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">SWPC HF</a> • ' + escapeHtml(sourceText) + '</div>'
+        '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">SWPC HF</a> • ' + escapeHtml(sourceText) + '</div>'
       ].join('');
     }
 
@@ -1367,7 +1479,7 @@
     const gpsCondition = satAssessment.gps?.label || 'Normal';
 
     const weatherLine = lastWeather
-      ? '<div class="satcom-weather"><div class="weather-icon">' + getWeatherGlyph(lastWeather.main) + '</div><div class="weather-meta"><div>' + escapeHtml(toTitleCase(lastWeather.desc || lastWeather.main || 'Weather')) + '</div><div class="weather-sub">' + (lastWeather.temp != null ? escapeHtml(lastWeather.temp + '°F') : '--') + (lastWeather.humidity != null ? ' • ' + escapeHtml(lastWeather.humidity + '% RH') : '') + '</div></div></div>'
+      ? '<div class="satcom-weather"><div class="weather-icon">' + getWeatherGlyph(lastWeather.main) + '</div><div class="weather-meta"><div>' + escapeHtml(toTitleCase(lastWeather.desc || lastWeather.main || 'Weather')) + '</div><div class="weather-sub">' + (lastWeather.temp != null ? escapeHtml(formatTempDisplay(lastWeather.temp)) : '--') + (lastWeather.humidity != null ? ' • ' + escapeHtml(lastWeather.humidity + '% RH') : '') + '</div></div></div>'
       : '<div class="satcom-weather"><div class="weather-meta">Space weather driven assessment</div></div>';
 
     const bandOrder = ['aehf', 'ehf', 'ka', 'ku', 'x', 'c', 'uhf'];
@@ -1411,7 +1523,7 @@
         '  </div>',
         '  <p class="status-desc">Scintillation: ' + escapeHtml(satAssessment.scintillation || 'Low') + ' · Iono Delay: ' + escapeHtml(satAssessment.ionosphericDelay || 'Minimal') + '</p>',
         '</div>',
-        '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/products/goes-energetic-particle" target="_blank" rel="noopener noreferrer">SWPC</a> · <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam Map</a> · <a class="inline-link" href="https://www.flightradar24.com/blog/gnss-interference-dashboard/" target="_blank" rel="noopener noreferrer">FR24 Interference</a> · <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN GUIDE</a> • ' + escapeHtml(sourceText) + '</div>'
+        '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/products/goes-energetic-particle" target="_blank" rel="noopener noreferrer">SWPC</a> · <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam Map</a> · <a class="inline-link" href="https://www.flightradar24.com/blog/gnss-interference-dashboard/" target="_blank" rel="noopener noreferrer">FR24 Interference</a> · <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN GUIDE</a> • ' + escapeHtml(sourceText) + '</div>'
       ].join('');
     }
 
@@ -1500,6 +1612,7 @@
 
   function init() {
     if (!document.querySelector('.comm-layout-grid')) return;
+    initTimebar();
     initLocationCard();
     initSpaceWeatherCard();
     console.log('[CommPlanner] Dashboard initialized');
@@ -1511,6 +1624,14 @@
   };
 
   document.addEventListener('DOMContentLoaded', init);
+
+  function initTimebar() {
+    renderTimebar();
+    fetchTimebarWeather();
+    if (timebarClockTimer) clearInterval(timebarClockTimer);
+    timebarClockTimer = setInterval(renderTimebar, 30000);
+    setInterval(fetchTimebarWeather, 15 * 60 * 1000);
+  }
 
   function metricHtml(label, value, hint, icon) {
     return '<div class="comm-weather-metric">' +
@@ -1580,6 +1701,16 @@
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
+  function convertTempToUnit(tempF) {
+    if (tempF === null || tempF === undefined || isNaN(tempF)) return null;
+    return tempUnit === 'C' ? ((tempF - 32) * 5) / 9 : tempF;
+  }
+
+  function formatTempDisplay(tempF) {
+    const v = convertTempToUnit(tempF);
+    return v === null ? '--' : `${Math.round(v)}°${tempUnit}`;
+  }
+
   function formatUserClock(dateVal, includeSeconds) {
     const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
     const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
@@ -1591,8 +1722,10 @@
     if (!dateVal && dateVal !== 0) return '';
     const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
     const time = formatUserClock(d, false);
-    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    return `${time} • ${date}`;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleDateString(undefined, { month: 'short' });
+    const year = d.getFullYear().toString().slice(-2);
+    return `${time} ${day} ${month} ${year}`;
   }
 
   function tempToAccent(tempF) {
@@ -1653,8 +1786,8 @@
       const label = dt.toLocaleDateString(undefined, { weekday: 'short' });
       const main = weatherCodeToMain(codes[idx]);
       const icon = getWeatherGlyph(main);
-      const high = highs[idx] != null ? Math.round(highs[idx]) + '°' : '—';
-      const low = lows[idx] != null ? Math.round(lows[idx]) + '°' : '—';
+      const high = highs[idx] != null ? formatTempDisplay(highs[idx]) : '—';
+      const low = lows[idx] != null ? formatTempDisplay(lows[idx]) : '—';
       return '<div class="forecast-card">'
         + '  <div class="forecast-day">' + escapeHtml(label) + '</div>'
         + '  <div class="forecast-icon">' + icon + '</div>'
@@ -1679,7 +1812,7 @@
       '  <div class="weather-radar-head">Local Radar</div>',
       '  <div class="weather-radar-frame">',
       '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" onerror="this.classList.add(\'img-error\')">',
-      '    <div class="radar-fallback">Radar preview unavailable</div>',
+      '    <div class="radar-fallback">Radar preview unavailable — ensure RainViewer tiles are reachable.</div>',
       '  </div>',
       '</div>'
     ].join('');

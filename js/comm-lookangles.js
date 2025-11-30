@@ -24,7 +24,12 @@
     wgs: [{ name: 'WGS-5', az: 140.8, el: 41.9, range: '36k km' }, { name: 'WGS-1', az: 129.3, el: 35.3, range: '36k km' }, { name: 'WGS-6', az: 250.3, el: 17.7, range: '36k km' }, { name: 'WGS-2', az: 110.6, el: 14.6, range: '37k km' }, { name: 'WGS-9', az: 104.6, el: 11.6, range: '37k km' }],
     aehf: [{ name: 'AEHF-4', az: 163.4, el: 48.2, range: '36k km' }, { name: 'AEHF-3', az: 239.4, el: 24.8, range: '36k km' }, { name: 'AEHF-2', az: 110.0, el: 13.1, range: '37k km' }],
     muos: [{ name: 'MUOS-5', az: 220.0, el: 41.7, range: '36k km' }, { name: 'MUOS-1', az: 213.6, el: 38.0, range: '36k km' }, { name: 'MUOS-3', az: 107.5, el: 13.7, range: '37k km' }],
-    intelsat: [{ name: 'IS 34', az: 144.8, el: 43.5, range: '36k km' }, { name: 'IS 37e', az: 108.6, el: 16.5, range: '37k km' }]
+    intelsat: [{ name: 'IS 34', az: 144.8, el: 43.5, range: '36k km' }, { name: 'IS 37e', az: 108.6, el: 16.5, range: '37k km' }],
+    eutelsat: [{ name: 'Eutelsat 8WB', az: 118.2, el: 32.1, range: '36k km' }, { name: 'Eutelsat 7B', az: 101.8, el: 14.4, range: '37k km' }],
+    ses: [{ name: 'SES-10', az: 147.3, el: 39.5, range: '36k km' }, { name: 'SES-14', az: 119.4, el: 28.7, range: '36k km' }],
+    telesat: [{ name: 'Telstar 19V', az: 145.3, el: 70.6, range: '35k km' }, { name: 'Telstar 11N', az: 107.1, el: 46.1, range: '36k km' }],
+    mena: [{ name: 'Arabsat 5C', az: 90.0, el: 22.0, range: '36k km' }, { name: 'Arabsat 6A', az: 82.5, el: 18.2, range: '37k km' }],
+    asia: [{ name: 'JCSAT-14', az: 102.4, el: 16.9, range: '37k km' }, { name: 'Apstar 5C', az: 75.2, el: 12.3, range: '37k km' }]
   };
 
   let selectedConstellations = new Set(CONSTELLATION_ORDER.filter(key => !!CONSTELLATIONS[key]));
@@ -48,8 +53,10 @@
   function formatUserStamp(dateVal) {
     const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
     const time = formatUserClock(d, false);
-    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    return `${time} • ${date}`;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleDateString(undefined, { month: 'short' });
+    const year = d.getFullYear().toString().slice(-2);
+    return `${time} ${day} ${month} ${year}`;
   }
 
   function severityClass(el) {
@@ -158,14 +165,14 @@
 
     body.innerHTML = [
       '<div class="look-header">',
-      '<div class="look-location">' + escapeHtml(loc.label) + '<div class="look-coords">' + loc.coords.lat.toFixed(4) + '°, ' + loc.coords.lon.toFixed(4) + '°</div></div>',
+      '<div class="look-location">' + escapeHtml(loc.context ? `${loc.label} (${loc.context})` : loc.label) + '<div class="look-coords">' + loc.coords.lat.toFixed(4) + '°, ' + loc.coords.lon.toFixed(4) + '°</div></div>',
       wxLine,
       renderAvailability(),
       '</div>',
       controls,
       '<div class="look-note">Azimuth is TRUE north (not magnetic)</div>',
       '<div class="look-grid">' + sections + '</div>',
-      '<div class="comm-card-micro">Data: ' + escapeHtml(formatUserStamp(Date.now())) + ' • Via N2YO</div>'
+      '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.n2yo.com/" target="_blank" rel="noopener noreferrer">N2YO</a> • Last Updated: ' + escapeHtml(formatUserStamp(Date.now())) + '</div>'
     ].join('');
 
     if (status) {
