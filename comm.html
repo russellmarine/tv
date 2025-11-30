@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Russell TV – Comm Planner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/favicon.png">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/css/grid-pro.css">
+  <link rel="stylesheet" href="/css/russelltv-styles.css">
+</head>
+
+<body>
+  <header class="rtv-header">
+    <div class="rtv-brand">
+      <button
+        type="button"
+        id="rtv-brand-button"
+        class="rtv-brand-button"
+        aria-label="Contact RussellTV"
+      >
+        <span class="rtv-brand-title">Russell TV</span>
+        <span class="rtv-brand-tagline">Transmit Feedback</span>
+      </button>
+    </div>
+
+    <div class="mode-toggle">
+      <a href="/" class="btn" title="Back to TV">← TV</a>
+      <span class="btn active" style="pointer-events:none;">Comm</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="comm-planner-view">
+      <div class="comm-layout-grid">
+        <!-- TOP ROW: Location + Space Weather -->
+        <div class="comm-grid-top">
+          <!-- Location card (top-left, 1/4 width) -->
+          
+    <article id="comm-card-location" class="comm-card">
+      <div class="comm-card-header">
+        <div class="comm-card-title">Location</div>
+        <div class="comm-card-meta" id="comm-location-status">No location selected</div>
+      </div>
+      <div class="comm-card-body">
+        <div class="comm-location-tabs">
+          <button type="button" class="location-mode-tab active" data-mode="search">Search</button>
+          <button type="button" class="location-mode-tab" data-mode="mgrs">MGRS</button>
+          <button type="button" class="location-mode-tab" data-mode="latlon">Lat/Lon</button>
+          <button type="button" class="location-mode-tab" data-mode="maiden">Grid</button>
+        </div>
+        <div id="comm-location-input-area" class="comm-location-input-area"></div>
+        <div class="comm-location-footer-row">
+          <button type="button" id="comm-use-browser" class="location-util-btn">
+            Use browser location
+          </button>
+          <div class="comm-recent-wrapper">
+            <span class="comm-recent-label">Recent:</span>
+            <div id="comm-recent-list" class="comm-recent-list"></div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+
+          <!-- Global Space Weather (middle-left, 1/4 width) -->
+          <article id="comm-card-spacewx" class="comm-card">
+            <div class="comm-card-header">
+              <div class="comm-card-title"><span>Space Weather</span></div>
+              <div class="comm-card-status"><span id="comm-spacewx-status">Loading…</span></div>
+            </div>
+            <div class="comm-card-body" id="comm-spacewx-body">
+              <p class="comm-placeholder">
+                Global space-weather scales (R/S/G) and Kp index will appear here.
+              </p>
+            </div>
+          </article>
+
+          <!-- Local Weather (right half) -->
+          <article id="comm-card-weather" class="comm-card">
+            <div class="comm-card-header">
+              <div class="comm-card-title"><span>Local Weather</span></div>
+              <div class="comm-card-status"><span id="comm-weather-status">n/a</span></div>
+            </div>
+            <div class="comm-card-body" id="comm-weather-body">
+              <p class="comm-placeholder">
+                Detailed weather for the selected location will appear here.
+              </p>
+            </div>
+          </article>
+        </div>
+
+        <!-- BOTTOM ROW: HF, SATCOM, Look Angles, Cellular -->
+        <div class="comm-grid-bottom">
+          <article id="comm-card-hf" class="comm-card">
+            <div class="comm-card-header">
+              <div class="comm-card-title"><span>HF Propagation</span></div>
+              <div class="comm-card-status"><span id="comm-hf-status">n/a</span></div>
+            </div>
+            <div class="comm-card-body" id="comm-hf-body">
+              <p class="comm-placeholder">
+                HF band recommendations and NVIS assessment will appear here.
+              </p>
+            </div>
+          </article>
+
+          <article id="comm-card-satcom" class="comm-card">
+            <div class="comm-card-header">
+              <div class="comm-card-title"><span>SATCOM &amp; GPS</span></div>
+              <div class="comm-card-status"><span id="comm-sat-status">n/a</span></div>
+            </div>
+            <div class="comm-card-body" id="comm-sat-body">
+              <p class="comm-placeholder">
+                SATCOM band status and GPS interference summary will appear here.
+              </p>
+            </div>
+          </article>
+
+          <article id="comm-card-satangles" class="comm-card">
+            <div class="comm-card-header">
+              <div class="comm-card-title"><span>Satellite Look Angles</span></div>
+              <div class="comm-card-status"><span id="comm-satla-status">n/a</span></div>
+            </div>
+            <div class="comm-card-body" id="comm-satla-body">
+              <p class="comm-placeholder">
+                Per-satellite azimuth, elevation, and polarization data will appear here.
+              </p>
+            </div>
+          </article>
+
+          <article id="comm-card-cellular" class="comm-card">
+            <div class="comm-card-header">
+              <div class="comm-card-title"><span>Cellular Coverage</span></div>
+              <div class="comm-card-status"><span id="comm-cell-status">n/a</span></div>
+            </div>
+            <div class="comm-card-body" id="comm-cell-body">
+              <p class="comm-placeholder">
+                Carrier footprint, technologies, and reliability assessment will appear here.
+              </p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Core + config -->
+  <script src="/js/russelltv-core.js"></script>
+  <script src="/config/time-config.js"></script>
+  <script src="/config/weather-config.js"></script>
+  <script src="/config/space-weather-config.js"></script>
+
+  <!-- Space weather + comm planner modules -->
+  <script src="/js/space-weather.js"></script>
+  <script src="/js/satellite-lookangles.js"></script>
+  <script src="/js/cellular-coverage.js"></script>
+  <script src="/js/comm-planner.js"></script>
+  <script src="/js/comm-sat.js"></script>
+
+  <!-- Brand click mailto handler -->
+  <script>
+    (function () {
+      const brandButton = document.getElementById('rtv-brand-button');
+      if (!brandButton) return;
+
+      brandButton.addEventListener('click', () => {
+        const email = 'mike@russellmarine.tech';
+        const subject = 'Russell TV';
+        const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+        window.location.href = mailtoUrl;
+      });
+    })();
+  </script>
+</body>
+</html>
