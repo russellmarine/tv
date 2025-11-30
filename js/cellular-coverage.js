@@ -112,9 +112,47 @@
     
     .cell-carriers { margin-bottom: 0.6rem; }
     .cell-carriers-title { font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.3rem; letter-spacing: 0.5px; }
-    .cell-carrier { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .cell-carrier { display: flex; justify-content: space-between; align-items: flex-start; padding: 0.4rem 0.6rem; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.05); }
     .cell-carrier:last-child { border-bottom: none; }
     .cell-carrier-name { font-weight: 500; font-size: 0.8rem; }
+    .cell-carrier-name-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+    .cell-carrier-meta {
+      font-size: 0.65rem;
+      opacity: 0.7;
+    }
+    .cell-carrier-towers {
+      margin-top: 0.2rem;
+      font-size: 0.65rem;
+      opacity: 0.9;
+    }
+    .cell-carrier-towers-title {
+      text-transform: uppercase;
+      opacity: 0.6;
+      letter-spacing: 0.4px;
+      margin-bottom: 0.15rem;
+    }
+    .cell-carrier-towers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+    .cell-carrier-tower-row {
+      display: grid;
+      grid-template-columns: auto 50px 60px;
+      gap: 0.3rem;
+    }
+    .cell-carrier-tower-row .tower-tech {
+      white-space: nowrap;
+    }
+    .cell-carrier-tower-row .tower-distance,
+    .cell-carrier-tower-row .tower-bearing {
+      font-family: monospace;
+      text-align: right;
+    }
     .cell-carrier-tech { display: flex; gap: 0.3rem; }
     .cell-carrier-tech span { padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.6rem; font-weight: 600; }
     
@@ -529,6 +567,37 @@
           html += `</div>`;
         }
 
+        // Build quick index of tower counts and nearest towers per carrier (by MCC/MNC or name)
+        const carrierTowerCounts = {};
+        const carrierTowerIndex = {};
+        if (cellData.towers && cellData.towers.length > 0) {
+          for (const tower of cellData.towers) {
+            const tmcc = tower.mcc ?? tower.MCC;
+            const tmnc = tower.mnc ?? tower.MNC;
+            let key;
+            if (tmcc != null && tmnc != null) {
+              key = `${tmcc}/${tmnc}`;
+            } else if (tower.carrier) {
+              key = `name:${tower.carrier}`;
+            } else {
+              continue;
+            }
+            carrierTowerCounts[key] = (carrierTowerCounts[key] || 0) + 1;
+            if (!carrierTowerIndex[key]) {
+              carrierTowerIndex[key] = [];
+            }
+            carrierTowerIndex[key].push(tower);
+          }
+          // Sort each carrier's towers by distance ascending
+          for (const key of Object.keys(carrierTowerIndex)) {
+            carrierTowerIndex[key].sort((a, b) => {
+              const da = (a.distance != null ? a.distance : 1e9);
+              const db = (b.distance != null ? b.distance : 1e9);
+              return da - db;
+            });
+          }
+        }
+
         // Carriers
         if (cellData.carriers && cellData.carriers.length > 0) {
           html += `
@@ -542,6 +611,8 @@
             const operator = carrier.operator || carrier.Operator || '';
             const mcc      = carrier.mcc ?? carrier.MCC;
             const mnc      = carrier.mnc ?? carrier.MNC;
+            let   plmn     = carrier.plmn ?? carrier.PLMN;
+            const mvnoFlag = carrier.mvno === true;
 
             let displayName = rawName || brand || operator || '';
 
@@ -566,9 +637,70 @@
               displayName = 'Unknown Carrier';
             }
 
+            // Derive PLMN if missing and MCC/MNC are numeric
+            if (!plmn && mcc != null && mnc != null) {
+              const mccStr = String(mcc).trim();
+              const mncStr = String(mnc).trim();
+              if (/^\d+$/.test(mccStr) && /^\d+$/.test(mncStr)) {
+                plmn = `${mccStr}${mncStr.padStart(3, '0')}`;
+              }
+            }
+
+            // Count towers for this carrier using MCC/MNC or name fallback
+            let countKey = null;
+            if (mcc != null && mnc != null) {
+              countKey = `${mcc}/${mnc}`;
+            } else if (brand || operator || rawName) {
+              countKey = `name:${brand || operator || rawName}`;
+            }
+            const towerCount = countKey ? (carrierTowerCounts[countKey] || 0) : 0;
+
+            // Build nerd meta line: Towers · MCC/MNC · PLMN · MVNO
+            const metaParts = [];
+            if (towerCount > 0) {
+              metaParts.push(`Towers: ${towerCount}`);
+            }
+            if (mcc != null && mnc != null) {
+              metaParts.push(`MCC/MNC: ${mcc}/${mnc}`);
+            }
+            if (plmn) {
+              metaParts.push(`PLMN: ${plmn}`);
+            }
+            if (mvnoFlag) {
+              metaParts.push('MVNO');
+            }
+            const metaText = metaParts.join(' · ');
+
+            // Build per-carrier nearest tower list (up to 5)
+            let towerListHtml = '';
+            if (towerCount > 0 && countKey && carrierTowerIndex[countKey] && carrierTowerIndex[countKey].length > 0) {
+              const towersForCarrier = carrierTowerIndex[countKey].slice(0, 5);
+              towerListHtml += '<div class="cell-carrier-towers">';
+              towerListHtml += '<div class="cell-carrier-towers-title">Nearest towers</div>';
+              towerListHtml += '<div class="cell-carrier-towers-list">';
+              for (const t of towersForCarrier) {
+                const tTechInfo = TECH_INFO[t.technology] || TECH_INFO[t.radio] || { color: '#888' };
+                const tTechLabel = t.technology || t.radio || '?';
+                const tDist = (t.distance != null ? `${t.distance}m` : '—');
+                const tBearing = (typeof t.bearingDeg === 'number' && !Number.isNaN(t.bearingDeg))
+                  ? `${t.bearingDeg}°T`
+                  : '—';
+                towerListHtml += '<div class="cell-carrier-tower-row">';
+                towerListHtml += `<span class="tower-tech" style="color:${tTechInfo.color};">${tTechLabel}</span>`;
+                towerListHtml += `<span class="tower-distance">${tDist}</span>`;
+                towerListHtml += `<span class="tower-bearing">${tBearing}</span>`;
+                towerListHtml += '</div>';
+              }
+              towerListHtml += '</div></div>';
+            }
+
             html += `
               <div class="cell-carrier">
-                <span class="cell-carrier-name">${flag} ${escapeHtml(displayName)}</span>
+                <span class="cell-carrier-name-block">
+                  <span class="cell-carrier-name">${flag} ${escapeHtml(displayName)}</span>
+                  ${metaText ? `<span class="cell-carrier-meta">${escapeHtml(metaText)}</span>` : ''}
+                  ${towerListHtml}
+                </span>
                 <div class="cell-carrier-tech">`;
             
             // Show technologies for this carrier
@@ -588,7 +720,7 @@
             if (carrier.bands && carrier.bands.length > 0) {
               html += `
                 <div class="cell-bands">
-                  <div class="cell-bands-title">Typical Bands for ${escapeHtml(carrier.name)}</div>
+                  <div class="cell-bands-title">Typical Bands for ${escapeHtml(displayName)}</div>
                   <div class="cell-bands-list">`;
               for (const bandRaw of carrier.bands) {
                 const band = String(bandRaw);
@@ -652,7 +784,7 @@
             
             html += `
               <div class="cell-tower">
-                <span style="font-size:0.65rem;">${flag} ${escapeHtml(tower.carrier?.split(' ')[0] || 'Unknown')}</span>
+                <span style="font-size:0.65rem;">${flag} ${escapeHtml(tower.carrier || 'Unknown')}</span>
                 <span style="color:${techInfo.color};">${tower.technology || tower.radio || '?'}</span>
                 <span class="cell-tower-distance">${tower.distance}m</span>
                 <span class="cell-tower-bearing">${bearingText}</span>
