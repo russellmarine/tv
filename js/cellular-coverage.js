@@ -74,6 +74,13 @@
   let isExpanded = false;
   let isLoading = false;
   let showTechInfo = false; // Toggle for technology definitions
+  let techFilters = {
+    '5G': true,
+    'LTE': true,
+    'UMTS': true,
+    'GSM': true,
+    'CDMA': true
+  };
 
   // ============ STYLES ============
   
@@ -329,6 +336,52 @@
       opacity: 0.7; 
     }
     .cell-signal-legend span { display: flex; align-items: center; gap: 0.2rem; }
+
+    .cell-tech-badge.disabled {
+      opacity: 0.35;
+      filter: grayscale(0.3);
+    }
+
+    .cell-carrier-tower-row {
+      display: grid;
+      grid-template-columns: 3.8rem 3.6rem auto;
+      align-items: center;
+      column-gap: 0.4rem;
+      font-size: 0.7rem;
+      padding: 0.15rem 0;
+    }
+    .cell-carrier-tower-row .tower-tech {
+      justify-self: flex-start;
+    }
+    .cell-carrier-tower-row .tower-bearing {
+      justify-self: center;
+      text-align: center;
+      font-family: monospace;
+    }
+    .cell-carrier-tower-row .tower-distance {
+      justify-self: flex-end;
+      text-align: right;
+    }
+
+    .cell-carrier-tower-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.7rem;
+      padding: 0.15rem 0;
+    }
+    .cell-carrier-tower-row .tower-tech {
+      min-width: 3.5rem;
+    }
+    .cell-carrier-tower-row .tower-bearing {
+      min-width: 3.5rem;
+      text-align: center;
+      font-family: monospace;
+    }
+    .cell-carrier-tower-row .tower-distance {
+      margin-left: auto;
+      text-align: right;
+    }
   `;
 
   // ============ DATA FETCHING ============
@@ -389,7 +442,41 @@
   }
 
   // ============ SIGNAL STRENGTH HELPERS ============
+
+  function getTowerReliability(tower) {
+    if (!tower) {
+      return { grade: 'D', label: 'Unknown', emoji: '⚪', samples: 0, color: '#888888' };
+    }
+
+    let samples = 0;
+    if (typeof tower.sampleCount === 'number') {
+      samples = tower.sampleCount;
+    } else if (Array.isArray(tower.samples)) {
+      samples = tower.samples.length;
+    } else if (typeof tower.samples === 'number') {
+      samples = tower.samples;
+    }
+
+    let grade, label, emoji, color;
+    if (samples >= 10) {
+      grade = 'A'; label = 'High';   emoji = '🟢'; color = '#00ff88';
+    } else if (samples >= 3) {
+      grade = 'B'; label = 'Medium'; emoji = '🟡'; color = '#ffcc00';
+    } else if (samples >= 1) {
+      grade = 'C'; label = 'Low';    emoji = '🔴'; color = '#ff4444';
+    } else {
+      grade = 'D'; label = 'Unknown'; emoji = '⚪'; color = '#888888';
+    }
+
+    return { grade, label, emoji, samples, color };
+  }
+
   
+  function isTechEnabled(tech) {
+    if (!tech) return true;
+    return techFilters[tech] !== false;
+  }
+
   function getSignalClass(dbm) {
     if (dbm == null || isNaN(dbm)) return '';
     if (dbm >= -70) return 'strong';
@@ -535,8 +622,10 @@
             if (count > 0) {
               detectedTechs.push(tech);
               const info = TECH_INFO[tech] || { color: '#888' };
+              const enabled = techFilters[tech] !== false;
+              const disabledClass = enabled ? '' : ' disabled';
               html += `
-                <div class="cell-tech-badge" style="border-color:${info.color}44;" title="${info.desc || ''}">
+                <div class="cell-tech-badge${disabledClass}" style="border-color:${info.color}44;" title="Click to toggle ${tech} coverage" onclick="event.stopPropagation(); window.RussellTV.CellCoverage.toggleTech('${tech}')">
                   <span style="color:${info.color};">●</span>
                   <span>${tech}</span>
                   <span class="count">×${count}</span>
@@ -617,7 +706,31 @@
             <div class="cell-carriers">
               <div class="cell-carriers-title">Carriers Detected</div>`;
           
-          for (const carrier of cellData.carriers.slice(0, 6)) {
+          const carriersWithTowers = [];
+          for (const carrier of (cellData.carriers || [])) {
+            const mccVal = carrier.mcc ?? carrier.MCC;
+            const mncVal = carrier.mnc ?? carrier.MNC;
+            // If we don't know MCC/MNC, keep the carrier (fallback case)
+            if (mccVal == null || mncVal == null) {
+              carriersWithTowers.push(carrier);
+              continue;
+            }
+            const relevantTowers = (cellData.towers || []).filter(t => {
+              const matches = String(t.mcc) === String(mccVal) &&
+                                String(t.mnc) === String(mncVal);
+              const techOk = !t.technology && !t.radio
+                ? true
+                : isTechEnabled(t.technology || t.radio);
+              return matches && techOk;
+            });
+            carrier.__rtvVisibleTowerCount = relevantTowers.length;
+            // Only show carriers that have at least one visible tower
+            if (relevantTowers.length > 0) {
+              carriersWithTowers.push(carrier);
+            }
+          }
+
+          for (const carrier of carriersWithTowers.slice(0, 6)) {
             const flag     = carrier.flag || '';
             const rawName  = carrier.name || '';
             const brand    = carrier.brand || carrier.Brand || '';
@@ -703,14 +816,16 @@
                   ? `https://www.google.com/maps/search/?api=1&query=${t.lat},${t.lon}`
                   : null;
 
+                const tRel = getTowerReliability(t);
+
                 towerListHtml += '<div class="cell-carrier-tower-row">';
                 towerListHtml += `<span class="tower-tech" style="color:${tTechInfo.color};">${tTechLabel}</span>`;
                 if (tMapsUrl) {
-                  towerListHtml += `<a href="${tMapsUrl}" target="_blank" rel="noopener" class="cell-tower-link tower-distance">📍 ${tDist}</a>`;
-                  towerListHtml += `<a href="${tMapsUrl}" target="_blank" rel="noopener" class="cell-tower-link tower-bearing">${tBearing}</a>`;
+                  towerListHtml += `<a href="${tMapsUrl}" target="_blank" rel="noopener" class="cell-tower-link tower-distance" title="Reliability: ${tRel.label} (${tRel.samples} reports)">📍 ${tDist} · ${tRel.emoji} ${tRel.samples}</a>`;
+                  towerListHtml += `<a href="${tMapsUrl}" target="_blank" rel="noopener" class="cell-tower-link tower-bearing" title="Bearing to tower (true)">${tBearing}</a>`;
                 } else {
-                  towerListHtml += `<span class="tower-distance">${tDist}</span>`;
-                  towerListHtml += `<span class="tower-bearing">${tBearing}</span>`;
+                  towerListHtml += `<span class="tower-distance" title="Reliability: ${tRel.label} (${tRel.samples} reports)">${tDist} · ${tRel.emoji} ${tRel.samples}</span>`;
+                  towerListHtml += `<span class="tower-bearing" title="Bearing to tower (true)">${tBearing}</span>`;
                 }
                 towerListHtml += '</div>';
               }
@@ -796,7 +911,7 @@
                 <span>Bearing (°T)</span>
               </div>`;
           
-          for (const tower of cellData.towers.slice(0, 8)) {
+          for (const tower of (cellData.towers || []).filter(t => !t.technology && !t.radio ? true : isTechEnabled(t.technology || t.radio)).slice(0, 8)) {
             const techInfo = TECH_INFO[tower.technology] || TECH_INFO[tower.radio] || { color: '#888' };
             const flag = tower.flag || '';
             const signal = formatSignal(tower.signal || tower.averageSignal || tower.samples?.[0]?.signal);
@@ -809,6 +924,8 @@
             const mapsUrl = hasCoords
               ? `https://www.google.com/maps/search/?api=1&query=${tower.lat},${tower.lon}`
               : null;
+
+            const rel = getTowerReliability(tower);
             
             html += `
               <div class="cell-tower">
@@ -816,11 +933,11 @@
                 <span style="color:${techInfo.color};">${tower.technology || tower.radio || '?'}</span>`;
 
             if (mapsUrl) {
-              html += `<a href="${mapsUrl}" target="_blank" rel="noopener" class="cell-tower-link cell-tower-distance">📍 ${tower.distance}m</a>`;
-              html += `<a href="${mapsUrl}" target="_blank" rel="noopener" class="cell-tower-link cell-tower-bearing">${bearingText}</a>`;
+              html += `<a href="${mapsUrl}" target="_blank" rel="noopener" class="cell-tower-link cell-tower-distance" title="Reliability: ${rel.label} (${rel.samples} reports)">📍 ${tower.distance}m · ${rel.emoji} ${rel.samples}</a>`;
+              html += `<a href="${mapsUrl}" target="_blank" rel="noopener" class="cell-tower-link cell-tower-bearing" title="Bearing to tower (true)">${bearingText}</a>`;
             } else {
-              html += `<span class="cell-tower-distance">${tower.distance}m</span>`;
-              html += `<span class="cell-tower-bearing">${bearingText}</span>`;
+              html += `<span class="cell-tower-distance" title="Reliability: ${rel.label} (${rel.samples} reports)">${tower.distance}m · ${rel.emoji} ${rel.samples}</span>`;
+              html += `<span class="cell-tower-bearing" title="Bearing to tower (true)">${bearingText}</span>`;
             }
 
             html += `
@@ -935,6 +1052,13 @@
 
   function toggleTechInfo() {
     showTechInfo = !showTechInfo;
+    Events.emit('cell:render');
+  }
+
+  function toggleTech(tech) {
+    if (!tech) return;
+    const current = techFilters[tech];
+    techFilters[tech] = current === false ? true : false;
     Events.emit('cell:render');
   }
 
@@ -1066,6 +1190,7 @@
   window.RussellTV.CellCoverage = {
     toggleExpand,
     toggleTechInfo,
+    toggleTech,
     refresh,
     getData: () => cellData,
     getLocation: () => currentLocation,
