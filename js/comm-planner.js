@@ -34,6 +34,28 @@
     }
   }
 
+  function loadSelectedLocation() {
+    try {
+      const raw = localStorage.getItem('commSelectedLocation');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveSelectedLocation() {
+    try {
+      if (selectedLocation) {
+        localStorage.setItem('commSelectedLocation', JSON.stringify(selectedLocation));
+      } else {
+        localStorage.removeItem('commSelectedLocation');
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   function saveRecent() {
     try {
       localStorage.setItem('commRecentLocations', JSON.stringify(recentLocations));
@@ -108,7 +130,7 @@
         '<div class="location-search-container">',
         '  <input id="comm-location-input" class="location-search-input" ',
         '         type="search" autocomplete="off" ',
-        '         placeholder="Camp Lejeune, Jacksonville NC, 28540">',
+        '         placeholder="Camp Lejeune, Jacksonville NC, 28542">',
         '  <div id="comm-location-autocomplete" class="location-autocomplete"></div>',
         '</div>',
         '<div id="comm-location-error" class="location-error"></div>'
@@ -722,7 +744,7 @@
         assessment.ka = { status: 'green', label: 'Normal', freq: '26.5-40 GHz', notes: 'Good conditions.' };
       }
     } else {
-      assessment.ehf = { status: 'yellow', label: 'No Wx', freq: '30-300 GHz', notes: 'Weather unavailable.' };
+      assessment.ehf = { status: 'green', label: 'Normal', freq: '30-300 GHz', notes: 'Clear-to-moderate conditions.' };
     }
 
     if (absGeomagLat < 20) {
@@ -818,6 +840,10 @@
     });
   }
 
+  function hasSelectedLocation() {
+    return !!(selectedLocation && selectedLocation.coords && typeof selectedLocation.coords.lat === 'number' && typeof selectedLocation.coords.lon === 'number');
+  }
+
   // ---------- Location application & weather ----------
 
   async function applyLocation(loc) {
@@ -830,6 +856,7 @@
     };
     updateLocationStatus();
     addRecent(selectedLocation);
+    saveSelectedLocation();
     lastWeather = null;
     const swData = window.RussellTV?.SpaceWeather?.getCurrentData?.();
     if (swData) {
@@ -966,6 +993,13 @@
         '</div>'
       ].join('');
 
+      const swRefresh = window.RussellTV?.SpaceWeather?.getCurrentData?.();
+      if (swRefresh) {
+        const updatedSw = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
+        const updatedLabel = updatedSw ? 'Updated ' + updatedSw.toUTCString() : 'Live NOAA SWPC';
+        updatePropagationCards(swRefresh, updatedLabel);
+      }
+
       if (meta) meta.textContent = 'OpenWeather • Updated ' + updatedLocal;
     } catch (e) {
       console.warn('[CommPlanner] Weather fetch failed:', e);
@@ -1082,9 +1116,6 @@
     )).join('');
 
     body.innerHTML = [
-      '<div class="spacewx-heading">',
-      '  <div class="spacewx-title">🌡️ Space Weather Overview</div>',
-      '</div>',
       '<div class="spacewx-scales-row">' + scaleCards + '</div>',
       '<a class="spacewx-kp-row tooltip-target" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(kpTooltip) + '">',
       '  <span class="label">Kp Index</span>',
@@ -1115,7 +1146,19 @@
     const g = data.scales.G;
     const kp = data.kpIndex;
 
-    const loc = selectedLocation?.coords || { lat: 0, lon: 0 };
+    if (!hasSelectedLocation()) {
+      if (hfBody) {
+        hfBody.innerHTML = '<p class="comm-placeholder">Select a location to see HF propagation.</p>';
+      }
+      if (satBody) {
+        satBody.innerHTML = '<p class="comm-placeholder">Select a location to see SATCOM & GPS guidance.</p>';
+      }
+      if (hfStatus) hfStatus.textContent = 'n/a';
+      if (satStatus) satStatus.textContent = 'n/a';
+      return;
+    }
+
+    const loc = selectedLocation.coords;
     const dayNight = getDayNightStatus(loc.lat, loc.lon);
     const muf = estimateMUF(loc.lat, loc.lon, data);
     const bands = getRecommendedBands(muf, dayNight);
@@ -1132,27 +1175,23 @@
 
     if (hfBody) {
       hfBody.innerHTML = [
-        '<div class="comm-prop-headerline">',
-        '  <div class="comm-prop-title">📻 HF Communications</div>',
-        '  <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">SWPC HF →</a>',
-        '</div>',
-        '<div class="muf-row">',
-        '  <div class="muf-value">' + escapeHtml(muf + ' MHz') + '</div>',
-        '  <div class="muf-meta">',
+        '<div class="muf-row compact">',
+        '  <div class="muf-value-box">',
         '    <div class="muf-label">Est. MUF</div>',
-        '    <div class="muf-desc">' + escapeHtml(hfAssessment) + '</div>',
+        '    <div class="muf-value">' + escapeHtml(muf + ' MHz') + '</div>',
         '  </div>',
         '  <div class="muf-tag ' + hfInfo.className + ' ' + dayPhaseClass + '">' + dayPhaseIcon + '<span>' + escapeHtml(dayNight.label || '') + '</span></div>',
         '</div>',
+        '<div class="muf-desc-row">' + escapeHtml(hfAssessment) + '</div>',
         '<div class="comm-prop-row accent hf-band-block">',
         '  <div class="hf-band-header">Recommended Bands (VOACAP)</div>',
-        '  <div class="comm-prop-chiprow">' + bands.map(b => '<span class="comm-prop-chip ' + bandQualityClass(b.quality) + '">' + escapeHtml(b.band) + '<span class="chip-sub">' + escapeHtml(b.freq) + '</span></span>').join('') + '</div>',
+        '  <div class="comm-prop-chiprow tight">' + bands.map(b => '<span class="comm-prop-chip ' + bandQualityClass(b.quality) + '">' + escapeHtml(b.band) + '<span class="chip-sub">' + escapeHtml(b.freq) + '</span></span>').join('') + '</div>',
         '</div>',
         '<div class="comm-prop-row">',
         '  <span class="label">NVIS (0-400 km)</span>',
         '  <span class="hint">' + escapeHtml(nvis.recommended + ' — ' + nvis.quality) + '</span>',
         '</div>',
-        '<div class="comm-card-micro">Source: ' + escapeHtml(sourceText) + '</div>'
+        '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">SWPC HF</a> • ' + escapeHtml(sourceText) + '</div>'
       ].join('');
     }
 
@@ -1184,10 +1223,6 @@
 
     if (satBody) {
       satBody.innerHTML = [
-        '<div class="comm-prop-headerline">',
-        '  <div class="comm-prop-title">📡 SATCOM &amp; GPS</div>',
-        '  <a class="inline-link" href="https://www.swpc.noaa.gov/products/goes-energetic-particle" target="_blank" rel="noopener noreferrer">SWPC →</a>',
-        '</div>',
         weatherLine,
         '<div class="comm-prop-status ' + satInfo.className + '">',
         '  <div class="status-heading">',
@@ -1210,7 +1245,7 @@
         '    <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN GUIDE</a>',
         '  </div>',
         '</div>',
-        '<div class="comm-card-micro">Source: ' + escapeHtml(sourceText) + '</div>'
+        '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/products/goes-energetic-particle" target="_blank" rel="noopener noreferrer">SWPC</a> • ' + escapeHtml(sourceText) + '</div>'
       ].join('');
     }
 
@@ -1283,6 +1318,11 @@
         );
       });
     }
+
+    const persisted = loadSelectedLocation();
+    if (persisted && persisted.coords) {
+      applyLocation(persisted);
+    }
   }
 
   function initSpaceWeatherCard() {
@@ -1315,27 +1355,27 @@
   function getWeatherMetricIcon(label) {
     const l = (label || '').toLowerCase();
     if (l.includes('humidity')) {
-      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3s-5.5 6.1-5.5 10A5.5 5.5 0 0 0 12 18.5 5.5 5.5 0 0 0 17.5 13C17.5 9.1 12 3 12 3Z" fill="currentColor" opacity="0.86"/></svg>';
+      return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="humGradient" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#5ad1ff"/><stop offset="100%" stop-color="#0fa3b1"/></linearGradient></defs><path d="M12 3s-5.5 6.1-5.5 10A5.5 5.5 0 0 0 12 18.5 5.5 5.5 0 0 0 17.5 13C17.5 9.1 12 3 12 3Z" fill="url(#humGradient)" stroke="#a7f0ff" stroke-width="0.6"/><circle cx="9.5" cy="12.5" r="0.8" fill="#e8ffff"/><circle cx="13.8" cy="14.2" r="1" fill="#d0f7ff"/></svg>';
     }
     if (l.includes('pressure')) {
-      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+      return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="#ffc46b" stroke-width="1.7" fill="rgba(255,200,120,0.12)"/><path d="M12 6v6l3 2" stroke="#ffdba3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     }
     if (l.includes('wind')) {
-      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 10h9a2 2 0 1 0-2-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 14h11a2.5 2.5 0 1 1-2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 9.5h10a2.2 2.2 0 1 0-2.2-2.2" stroke="#7fd3ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 14h11a2.7 2.7 0 1 1-2.7 2.7" stroke="#ffe27a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     }
     if (l.includes('visibility')) {
-      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5S2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>';
+      return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 12s3.6-5.2 9-5.2S21 12 21 12s-3.6 5.2-9 5.2S3 12 3 12Z" fill="rgba(255,255,255,0.08)" stroke="#b8f0ff" stroke-width="1.5"/><circle cx="12" cy="12" r="2.6" fill="#12202d" stroke="#7fd3ff" stroke-width="1.4"/></svg>';
     }
     if (l.includes('sunrise')) {
-      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 15h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 15a5 5 0 0 1 10 0" stroke="currentColor" stroke-width="1.6"/><path d="m12 6 0-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="m5.5 8 2 2M18.5 8l-2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+      return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 15h14" stroke="#ffb347" stroke-width="1.8" stroke-linecap="round"/><path d="M7 15a5 5 0 0 1 10 0" stroke="#ffe5a3" stroke-width="1.6"/><path d="m12 6 0-3" stroke="#ffd580" stroke-width="1.6" stroke-linecap="round"/><path d="m5.5 8 2 2M18.5 8l-2 2" stroke="#ffc066" stroke-width="1.6" stroke-linecap="round"/></svg>';
     }
     if (l.includes('sunset')) {
-      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 15h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 15a5 5 0 0 1 10 0" stroke="currentColor" stroke-width="1.6"/><path d="m12 3 0 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="m5.5 10 2-2M18.5 10l-2-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+      return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 15h14" stroke="#ff7b54" stroke-width="1.8" stroke-linecap="round"/><path d="M7 15a5 5 0 0 1 10 0" stroke="#ffd4a3" stroke-width="1.6"/><path d="m12 3 0 3" stroke="#ff9f68" stroke-width="1.6" stroke-linecap="round"/><path d="m5.5 10 2-2M18.5 10l-2-2" stroke="#ffb487" stroke-width="1.6" stroke-linecap="round"/></svg>';
     }
     if (l.includes('time')) {
-      return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4l2.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+      return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="#ffd9a0" stroke-width="1.6" fill="rgba(255,200,120,0.08)"/><path d="M12 8v4l2.5 1.5" stroke="#ffe9c7" stroke-width="1.6" stroke-linecap="round"/></svg>';
     }
-    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 12h16" stroke="#ffcba4" stroke-width="1.6" stroke-linecap="round"/></svg>';
   }
 
   function formatLocalTime(epochSeconds, offsetSeconds, includeDate) {

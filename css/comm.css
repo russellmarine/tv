@@ -317,6 +317,16 @@ main {
   color: rgba(255, 255, 255, 0.4);
 }
 
+.location-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  height: 14px;
+  width: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 150, 80, 0.9), rgba(180, 60, 0, 0.9));
+  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23fff"><path d="M6 6l12 12M18 6 6 18" stroke-width="3" stroke-linecap="round"/></svg>') center / contain no-repeat;
+  cursor: pointer;
+}
+
 .location-autocomplete {
   position: absolute;
   top: 100%;
@@ -339,7 +349,7 @@ main {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  color: rgba(235, 210, 180, 0.92);
+  color: rgba(210, 190, 170, 0.95);
 }
 
 .location-autocomplete-item:last-child {
@@ -453,26 +463,27 @@ main {
 }
 
 .location-util-btn {
-  padding: 0.45rem 0.9rem;
-  min-width: 150px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 175, 105, 0.8);
+  padding: 0.38rem 0.7rem;
+  min-width: 0;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 170, 90, 0.7);
   background:
-    linear-gradient(135deg, rgba(255, 145, 40, 0.75), rgba(160, 60, 0, 0.78));
+    linear-gradient(135deg, rgba(255, 130, 40, 0.7), rgba(140, 45, 0, 0.75));
   color: #ffe6cc;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   cursor: pointer;
   transition: all 0.18s ease;
-  box-shadow: 0 0 12px rgba(255, 140, 60, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 10px rgba(255, 120, 50, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
 }
 
 .location-util-btn:hover {
   background:
-    linear-gradient(145deg, rgba(255, 170, 90, 0.88), rgba(185, 80, 0, 0.86));
-  border-color: rgba(255, 205, 150, 0.95);
-  box-shadow: 0 0 16px rgba(255, 180, 90, 0.6);
+    linear-gradient(145deg, rgba(255, 165, 100, 0.85), rgba(185, 70, 0, 0.85));
+  border-color: rgba(255, 200, 145, 0.9);
+  box-shadow: 0 0 14px rgba(255, 170, 90, 0.55);
 }
 
 .comm-recent-wrapper {
@@ -527,7 +538,7 @@ main {
   background:
     radial-gradient(circle at 10% 10%, rgba(255, 200, 140, 0.18), transparent 55%),
     rgba(15, 6, 0, 0.65);
-  color: rgba(240, 205, 170, 0.9);
+  color: rgba(215, 185, 155, 0.95);
   padding: 0.35rem 0.65rem;
   font-size: 0.8rem;
   cursor: pointer;
@@ -597,6 +608,13 @@ main {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.comm-prop-chiprow.tight {
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
 }
 
 .hf-band-block {
@@ -800,9 +818,9 @@ main {
 .tooltip-target[data-tooltip]:focus-visible::after {
   content: attr(data-tooltip);
   position: absolute;
-  left: 50%;
+  right: 0;
   bottom: calc(100% + 6px);
-  transform: translateX(-50%);
+  transform: none;
   background: rgba(0, 0, 0, 0.92);
   color: #ffe6c6;
   padding: 0.5rem 0.6rem;
@@ -813,7 +831,7 @@ main {
   line-height: 1.3;
   border: 1px solid rgba(255, 180, 120, 0.4);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-  z-index: 50;
+  z-index: 120;
 }
 
 .inline-link {
@@ -849,6 +867,17 @@ main {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
+.muf-row.compact {
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.muf-value-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
 .muf-value {
   font-size: 1.45rem;
   font-weight: 800;
@@ -858,6 +887,13 @@ main {
 .muf-meta { flex: 1; }
 .muf-label { font-size: 0.75rem; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.08em; }
 .muf-desc { font-size: 0.9rem; opacity: 0.9; }
+
+.muf-desc-row {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  line-height: 1.35;
+}
 
 .muf-tag {
   padding: 0.35rem 0.7rem;
@@ -1055,27 +1091,35 @@ main {
   padding: 0.6rem 0.75rem;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.25rem 0.5rem;
+  gap: 0.35rem 0.4rem;
   box-shadow: inset 0 0 0 1px rgba(255, 160, 80, 0.15);
 }
 
 
-.comm-weather-metric .icon { width: 22px; height: 22px; filter: drop-shadow(0 0 8px rgba(0,0,0,0.45)); display: flex; align-items: center; justify-content: center; }
+.comm-weather-metric .icon { width: 24px; height: 24px; filter: drop-shadow(0 0 8px rgba(0,0,0,0.45)); display: flex; align-items: center; justify-content: center; align-self: center; }
 
 .comm-weather-metric .icon img { width: 100%; height: 100%; object-fit: contain; }
 
-.comm-weather-metric .metric-text { display: flex; flex-direction: column; gap: 0.15rem; }
+.comm-weather-metric .metric-text {
+  display: grid;
+  grid-template-rows: auto auto;
+  align-items: start;
+  justify-items: end;
+  gap: 0.15rem;
+  width: 100%;
+}
 
 .comm-weather-metric .label {
   font-size: 0.78rem;
   opacity: 0.8;
   letter-spacing: 0.04em;
-  align-self: center;
+  justify-self: end;
 }
 
 .comm-weather-metric .value {
   font-size: 1rem;
   font-weight: 600;
+  justify-self: end;
 }
 
 .comm-weather-metric .hint {
