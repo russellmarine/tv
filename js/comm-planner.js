@@ -490,6 +490,83 @@
     ].join('');
 
     if (meta) meta.textContent = updatedText;
+
+    updatePropagationCards(data, updatedText);
+  }
+
+  function updatePropagationCards(data, sourceText) {
+    const hfBody = $('#comm-hf-body');
+    const satBody = $('#comm-sat-body');
+    const hfStatus = $('#comm-hf-status');
+    const satStatus = $('#comm-sat-status');
+    if (!data) return;
+
+    const r = data.scales.R;
+    const g = data.scales.G;
+    const kp = data.kpIndex;
+
+    // HF status and band guidance
+    const hfSeverity = (r >= 4 || g >= 5) ? 'Severe disruption' :
+      (r >= 3 || g >= 4 || kp >= 6) ? 'Degraded' :
+      (r >= 2 || g >= 3 || kp >= 5) ? 'Fair' : 'Good';
+
+    const bands = hfSeverity === 'Good'
+      ? ['80m', '60m', '40m', '30m', '20m', '17m']
+      : hfSeverity === 'Fair'
+        ? ['80m', '60m', '40m', '30m', '20m']
+        : ['80m', '60m', '40m'];
+
+    const nvisNote = kp >= 6 ? 'NVIS unstable above regional ranges.' :
+      kp >= 5 ? 'NVIS may fade during substorms.' :
+      'NVIS viable for regional links.';
+
+    if (hfBody) {
+      hfBody.innerHTML = [
+        '<div class="comm-prop-row accent">',
+        '  <span class="label">HF Condition</span>',
+        '  <span class="value">' + escapeHtml(hfSeverity) + '</span>',
+        '</div>',
+        '<div class="comm-prop-row">',
+        '  <span class="label">Recommended bands</span>',
+        '  <div class="comm-prop-chiprow">' + bands.map(b => '<span class="comm-prop-chip">' + escapeHtml(b) + '</span>').join('') + '</div>',
+        '</div>',
+        '<div class="comm-prop-row">',
+        '  <span class="label">NVIS</span>',
+        '  <span class="hint">' + escapeHtml(nvisNote) + '</span>',
+        '</div>',
+        '<div class="comm-card-micro">Source: ' + escapeHtml(sourceText) + '</div>'
+      ].join('');
+    }
+
+    if (hfStatus) hfStatus.textContent = hfSeverity;
+
+    // SATCOM/GPS
+    const satRisk = kp >= 7 ? 'High scintillation risk' : kp >= 6 ? 'Moderate risk' : kp >= 5 ? 'Watch' : 'Nominal';
+    const gpsNote = kp >= 6 ? 'Expect GPS errors at high/low latitudes.' :
+      kp >= 5 ? 'Slight GPS degradation possible.' : 'GPS nominal.';
+    const satNote = (r >= 3 || g >= 4)
+      ? 'Geostationary and UHF links may see fades during storms.'
+      : 'Bands operating normally.';
+
+    if (satBody) {
+      satBody.innerHTML = [
+        '<div class="comm-prop-row accent">',
+        '  <span class="label">SATCOM</span>',
+        '  <span class="value">' + escapeHtml(satRisk) + '</span>',
+        '</div>',
+        '<div class="comm-prop-row">',
+        '  <span class="label">Guidance</span>',
+        '  <span class="hint">' + escapeHtml(satNote) + '</span>',
+        '</div>',
+        '<div class="comm-prop-row">',
+        '  <span class="label">GPS</span>',
+        '  <span class="hint">' + escapeHtml(gpsNote) + '</span>',
+        '</div>',
+        '<div class="comm-card-micro">Source: ' + escapeHtml(sourceText) + '</div>'
+      ].join('');
+    }
+
+    if (satStatus) satStatus.textContent = satRisk;
   }
 
   // ---------- Init ----------
