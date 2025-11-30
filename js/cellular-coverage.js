@@ -515,6 +515,16 @@
                   </div>`;
               }
             }
+
+            // MVNO explanation
+            html += `
+              <div class="cell-tech-def">
+                <span class="cell-tech-def-name">MVNO</span>
+                <span class="cell-tech-def-desc">
+                  Mobile Virtual Network Operator — a carrier brand that uses another company&#39;s radio network.
+                  Plans are sold under the MVNO brand (for example, Boost Mobile), but your phone actually connects to the host carrier&#39;s towers.
+                </span>
+              </div>`;
           }
           html += `</div>`;
         }
@@ -526,10 +536,39 @@
               <div class="cell-carriers-title">Carriers Detected</div>`;
           
           for (const carrier of cellData.carriers.slice(0, 6)) {
-            const flag = carrier.flag || '';
+            const flag     = carrier.flag || '';
+            const rawName  = carrier.name || '';
+            const brand    = carrier.brand || carrier.Brand || '';
+            const operator = carrier.operator || carrier.Operator || '';
+            const mcc      = carrier.mcc ?? carrier.MCC;
+            const mnc      = carrier.mnc ?? carrier.MNC;
+
+            let displayName = rawName || brand || operator || '';
+
+            // Detect placeholder labels like "MCC 311 / MNC 870" or missing names
+            const isMccMncName = /^MCC\s+\d+\s*\/\s*MNC\s*\d+/i.test(displayName);
+            if ((!displayName || isMccMncName) && mcc != null && mnc != null) {
+              displayName = `Unknown Carrier (MCC ${mcc} / MNC ${mnc})`;
+            }
+
+            // Prefer Brand + Operator when both exist (e.g., "Boost Mobile (Sprint Corporation)")
+            if (brand && operator) {
+              if (brand.toLowerCase() === operator.toLowerCase()) {
+                displayName = brand;
+              } else {
+                displayName = `${brand} (${operator})`;
+              }
+            } else if (brand && !displayName) {
+              displayName = brand;
+            }
+
+            if (!displayName) {
+              displayName = 'Unknown Carrier';
+            }
+
             html += `
               <div class="cell-carrier">
-                <span class="cell-carrier-name">${flag} ${escapeHtml(carrier.name)}</span>
+                <span class="cell-carrier-name">${flag} ${escapeHtml(displayName)}</span>
                 <div class="cell-carrier-tech">`;
             
             // Show technologies for this carrier

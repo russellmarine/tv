@@ -135,6 +135,8 @@ function processResults(data, centerLat, centerLon) {
       lon: cell.lon,
       distance: Math.round(distance),
       bearingDeg: Math.round(bearingDeg),
+      source: 'opencellid',
+      confidence: 'medium',
       mcc: cell.mcc,
       mnc: cell.mnc,
       carrier: carrierInfo.name,
@@ -196,6 +198,8 @@ function processResults(data, centerLat, centerLon) {
     summary: {
       total,
       coverage,
+      dataSources: ['opencellid'],
+      primarySource: 'opencellid',
       nearestTower: towers[0] ? towers[0].distance : null,
       has5G: technologies['5G'] > 0,
       hasLTE: technologies['LTE'] > 0,

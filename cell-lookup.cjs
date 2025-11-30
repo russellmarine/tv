@@ -4,13 +4,23 @@
 const path = require('path');
 const fs = require('fs');
 
-// --- DATA SOURCES ------------------------------------------------------
+// ---------- HELPERS ----------------------------------------------------
 
-// Canonical MCC/MNC dataset (original big JSON)
+function pick(row, ...names) {
+  if (!row) return null;
+  for (const n of names) {
+    if (row[n] !== undefined && row[n] !== null && row[n] !== '') {
+      return row[n];
+    }
+  }
+  return null;
+}
+
+// ---------- DATA SOURCES -----------------------------------------------
+
 const MCC_MNC_PATH = path.join(__dirname, 'cell-data', 'mcc-mnc.json');
 const mccMncData = JSON.parse(fs.readFileSync(MCC_MNC_PATH, 'utf8'));
 
-// Optional: converted dataset with bands_structured, etc.
 let mccMncConverted = [];
 try {
   mccMncConverted = require('./cell-data/mcc-mnc-converted.json');
@@ -18,24 +28,21 @@ try {
   console.warn('[CellLookup] mcc-mnc-converted.json not found; structured bands will be empty.');
 }
 
-// --- INDEXES -----------------------------------------------------------
+// ---------- INDEXES ----------------------------------------------------
 
-// Map as-is: "mcc-mnc" exactly like in mcc-mnc.json
-const MCC_MNC_MAP = new Map();
-
-// Numeric-normalized map: "mcc-<Number(mnc)>" to handle 004 vs 4
-const MCC_MNC_NUMERIC_MAP = new Map();
-
-// ISO lookup: mcc -> ISO2 code
-const MCC_TO_ISO = new Map();
-
-// Structured bands map: "mcc-<Number(mnc)>" -> converted row (with bands_structured)
-const STRUCTURED_BANDS_MAP = new Map();
+const MCC_MNC_MAP = new Map();          // "mcc-mnc" (strings)
+const MCC_MNC_NUMERIC_MAP = new Map();  // "mcc-Number(mnc)"
+const MCC_TO_ISO = new Map();           // mcc -> ISO2
+const STRUCTURED_BANDS_MAP = new Map(); // "mcc-Number(mnc)" -> converted row
 
 // Build from canonical dataset
 for (const row of mccMncData) {
-  const mccStr = String(row.mcc);
-  const mncStr = String(row.mnc);
+  const mccRaw = pick(row, 'mcc', 'MCC', '\\uFEFFMCC');
+  const mncRaw = pick(row, 'mnc', 'MNC');
+  if (!mccRaw || !mncRaw) continue;
+
+  const mccStr = String(mccRaw).trim();
+  const mncStr = String(mncRaw).trim();
 
   const exactKey = `${mccStr}-${mncStr}`;
   MCC_MNC_MAP.set(exactKey, row);
@@ -45,20 +52,25 @@ for (const row of mccMncData) {
     MCC_MNC_NUMERIC_MAP.set(numKey, row);
   }
 
-  if (row.mcc && row.iso && !MCC_TO_ISO.has(mccStr)) {
-    MCC_TO_ISO.set(mccStr, row.iso.toUpperCase());
+  const iso = pick(row, 'iso', 'ISO');
+  if (mccStr && iso && !MCC_TO_ISO.has(mccStr)) {
+    MCC_TO_ISO.set(mccStr, String(iso).toUpperCase());
   }
 }
 
 // Build structured bands index (if file exists)
 for (const row of mccMncConverted) {
-  const mccStr = String(row.mcc);
-  const mncNum = Number(row.mnc);
+  const mccRaw = pick(row, 'mcc', 'MCC', '\\uFEFFMCC');
+  const mncRaw = pick(row, 'mnc', 'MNC');
+  if (!mccRaw || !mncRaw) continue;
+
+  const mccStr = String(mccRaw).trim();
+  const mncNum = Number(mncRaw);
   const key = `${mccStr}-${mncNum}`;
   STRUCTURED_BANDS_MAP.set(key, row);
 }
 
-// --- CUSTOM OVERRIDES (US, etc.) --------------------------------------
+// ---------- CUSTOM OVERRIDES (US etc.) ---------------------------------
 
 const CUSTOM_CARRIERS = {
   // US examples (you already had these)
@@ -76,10 +88,10 @@ const CUSTOM_CARRIERS = {
   '311-220': { name: 'US Cellular', bands: ['B2', 'B4', 'B5', 'B12'] },
   '310-990': { name: 'Inland Cellular', bands: ['B2', 'B4', 'B12'] },
   '312-250': { name: 'Cellular One', bands: ['B4', 'B12'] },
-  // You can paste more intl overrides here if you want to hard-code them.
+  // Add more hard overrides if you really want to pin specific markets.
 };
 
-// --- HELPERS -----------------------------------------------------------
+// ---------- FLAGS / COUNTRY HELPERS ------------------------------------
 
 function isoToFlag(iso2) {
   if (!iso2 || iso2.length !== 2) return '';
@@ -99,7 +111,6 @@ function getCountryFlag(input) {
   let iso;
 
   if (/^\d+$/.test(s)) {
-    // Looks like an MCC
     iso = getCountryCode(s);
   } else {
     iso = s.toUpperCase();
@@ -110,7 +121,8 @@ function getCountryFlag(input) {
   return isoToFlag(iso);
 }
 
-// Main lookup: mcc + mnc -> carrier info
+// ---------- MAIN LOOKUP ------------------------------------------------
+
 function getCarrierInfo(mcc, mnc) {
   const mccStr = String(mcc);
   const mncStr = String(mnc);
@@ -119,32 +131,41 @@ function getCarrierInfo(mcc, mnc) {
 
   const override = CUSTOM_CARRIERS[exactKey] || CUSTOM_CARRIERS[numericKey] || {};
 
-  // Base row from canonical dataset
-  let base = MCC_MNC_MAP.get(exactKey) || MCC_MNC_NUMERIC_MAP.get(numericKey) || null;
-
-  // Structured bands row
+  const base = MCC_MNC_MAP.get(exactKey) || MCC_MNC_NUMERIC_MAP.get(numericKey) || null;
   const structured = STRUCTURED_BANDS_MAP.get(numericKey) || null;
 
   const iso =
-    (structured && structured.iso && structured.iso.toUpperCase()) ||
-    (base && base.iso && base.iso.toUpperCase()) ||
+    (structured && pick(structured, 'iso', 'ISO')) ||
+    (base && pick(base, 'iso', 'ISO')) ||
     null;
 
   const country =
-    (structured && structured.country) ||
-    (base && base.country) ||
+    (structured && pick(structured, 'country', 'Country')) ||
+    (base && pick(base, 'country', 'Country')) ||
     null;
 
+  const brand =
+    override.brand ||
+    (base && pick(base, 'brand', 'Brand')) ||
+    (structured && pick(structured, 'brand', 'Brand')) ||
+    null;
+
+  const operator =
+    override.operator ||
+    (base && pick(base, 'operator', 'Operator')) ||
+    (structured && pick(structured, 'operator', 'Operator')) ||
+    null;
+
+  // Name priority: explicit override → Brand/Operator → MCC/MNC fallback
   const name =
     override.name ||
-    (base && (base.brand || base.operator)) ||
-    (structured && (structured.brand || structured.operator)) ||
+    (brand || operator) ||
     `MCC ${mcc} / MNC ${mnc}`;
 
   // Bands priority:
   // 1) override.bands
-  // 2) structured.bands_structured flattened
-  // 3) base.bands string split on "/" or ","
+  // 2) structured.bands_structured (flattened)
+  // 3) base.bands / base.Bands string
   let bands = override.bands || [];
 
   if (!bands.length && structured && structured.bands_structured) {
@@ -157,29 +178,51 @@ function getCarrierInfo(mcc, mnc) {
     bands = flat;
   }
 
-  if (!bands.length && base && base.bands) {
-    bands = base.bands
-      .split(/[\/,]/)
-      .map(b => b.trim())
-      .filter(Boolean);
+  if (!bands.length && base) {
+    const bandsStr = pick(base, 'bands', 'Bands');
+    if (bandsStr) {
+      bands = bandsStr
+        .split(/[\/,]/)
+        .map(b => b.trim())
+        .filter(Boolean);
+    }
   }
+
+  const bandsStrAll =
+    (structured && (pick(structured, 'Bands', 'bands') || '')) ||
+    (base && (pick(base, 'Bands', 'bands') || '')) ||
+    '';
+  const isMvno = /mvno/i.test(bandsStrAll);
+
+  const region =
+    (base && pick(base, 'region', 'Region')) ||
+    (structured && pick(structured, 'region', 'Region')) ||
+    null;
+
+  const tadig =
+    (base && pick(base, 'tadig', 'TADIG')) ||
+    (structured && pick(structured, 'tadig', 'TADIG')) ||
+    null;
+
+  const finalIso = iso ? String(iso).toUpperCase() : null;
 
   return {
     name,
     country,
-    iso,
-    flag: iso ? getCountryFlag(iso) : (base ? getCountryFlag(mccStr) : ''),
+    iso: finalIso,
+    flag: finalIso ? getCountryFlag(finalIso) : (base ? getCountryFlag(mccStr) : ''),
     bands,
     mcc: mccStr,
     mnc: mncStr,
-    operator: base ? base.operator : (structured ? structured.operator : null),
-    brand: base ? base.brand : (structured ? structured.brand : null),
-    region: base ? base.region : (structured ? structured.region : null),
-    tadig: base ? base.tadig : (structured ? structured.tadig : null)
+    operator: operator || null,
+    brand: brand || null,
+    region,
+    tadig,
+    mvno: isMvno
   };
 }
 
-// Stub for now – you can wire your bounding-box logic back in later
+// Stub — you can wire bounding-box logic later if you want.
 function getExpectedCountry(lat, lon) {
   return null;
 }
