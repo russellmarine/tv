@@ -18,6 +18,7 @@
   let autocompleteResults = [];
   let autocompleteTimeout = null;
   let recentLocations = [];
+  let lastWeather = null;
   const MAX_RECENT = 7;
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 
@@ -114,27 +115,47 @@
       ].join('');
     } else if (locationMode === 'mgrs') {
       html = [
-        '<div class="location-input-hint">MGRS support coming soon. For now, use Search or Lat/Lon.</div>'
+        '<div class="location-input-hint">Enter MGRS coordinate (zone + band + 100k grid + easting/northing)</div>',
+        '<div class="location-input-row">',
+        '  <div class="location-input-field" style="flex: 1;">',
+        '    <input id="comm-mgrs-input" type="text" class="location-search-input"',
+        '           placeholder="e.g., 18SVK4083001357" style="text-transform: uppercase; font-family: monospace;">',
+        '  </div>',
+        '  <button type="button" id="comm-mgrs-go" class="location-go-btn">→</button>',
+        '</div>',
+        '<div class="location-input-hint subtle">2-10 digit coords; spaces optional.</div>',
+        '<div id="comm-location-error" class="location-error"></div>'
       ].join('');
     } else if (locationMode === 'latlon') {
       html = [
-        '<div class="location-input-hint">Enter decimal degrees (Lat, Lon)</div>',
+        '<div class="location-input-hint">Enter latitude and longitude (decimal or DMS)</div>',
         '<div class="location-input-row">',
         '  <div class="location-input-field">',
         '    <label>Latitude</label>',
-        '    <input id="comm-lat-input" type="text" placeholder="34.5042">',
+        '    <input id="comm-lat-input" type="text" placeholder="34.5042 or 34°30\'15\"N">',
         '  </div>',
         '  <div class="location-input-field">',
         '    <label>Longitude</label>',
-        '    <input id="comm-lon-input" type="text" placeholder="-77.3528">',
+        '    <input id="comm-lon-input" type="text" placeholder="-77.3528 or 77°21\'10\"W">',
         '  </div>',
         '  <button class="location-go-btn" id="comm-latlon-go">→</button>',
         '</div>',
+        '<div class="location-input-hint subtle">DMS: 34°30\'15\"N or 34 30 15 N | Decimal: 34.5042</div>',
         '<div id="comm-location-error" class="location-error"></div>'
       ].join('');
     } else {
-      // maidenhead grid stub
-      html = '<div class="location-input-hint">Maidenhead grid input coming soon.</div>';
+      html = [
+        '<div class="location-input-hint">Enter Maidenhead grid locator (ham radio)</div>',
+        '<div class="location-input-row">',
+        '  <div class="location-input-field" style="flex: 1;">',
+        '    <input id="comm-grid-input" type="text" class="location-search-input"',
+        '           placeholder="e.g., FM19la or FM19" style="text-transform: uppercase;">',
+        '  </div>',
+        '  <button type="button" id="comm-grid-go" class="location-go-btn">→</button>',
+        '</div>',
+        '<div class="location-input-hint subtle">4, 6, or 8 character grid square</div>',
+        '<div id="comm-location-error" class="location-error"></div>'
+      ].join('');
     }
 
     container.innerHTML = html;
@@ -160,6 +181,22 @@
           const latVal = $('#comm-lat-input')?.value.trim();
           const lonVal = $('#comm-lon-input')?.value.trim();
           handleLatLonSubmit(latVal, lonVal);
+        });
+      }
+    } else if (locationMode === 'mgrs') {
+      const btn = $('#comm-mgrs-go');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const value = $('#comm-mgrs-input')?.value.trim();
+          handleMgrsSubmit(value);
+        });
+      }
+    } else if (locationMode === 'maiden') {
+      const btn = $('#comm-grid-go');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const value = $('#comm-grid-input')?.value.trim();
+          handleGridSubmit(value);
         });
       }
     }
@@ -280,18 +317,498 @@
       showLocationError('Enter both latitude and longitude');
       return;
     }
-    const lat = parseFloat(latVal);
-    const lon = parseFloat(lonVal);
-    if (!isFinite(lat) || !isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-      showLocationError('Invalid coordinates');
+    try {
+      const { lat, lon } = parseLatLonInput(latVal, lonVal);
+      showLocationError('');
+      const loc = {
+        label: 'Custom Lat/Long',
+        coords: { lat, lon }
+      };
+      applyLocation(loc);
+    } catch (e) {
+      showLocationError(e.message || 'Invalid coordinates');
+    }
+  }
+
+  function handleMgrsSubmit(value) {
+    if (!value) {
+      showLocationError('Enter an MGRS coordinate');
       return;
     }
-    showLocationError('');
-    const loc = {
-      label: 'Custom Lat/Lon',
-      coords: { lat, lon }
+    try {
+      const coords = mgrsToLatLon(value);
+      showLocationError('');
+      applyLocation({ label: value.toUpperCase(), coords });
+    } catch (e) {
+      showLocationError(e.message || 'Invalid MGRS coordinate');
+    }
+  }
+
+  function handleGridSubmit(value) {
+    if (!value) {
+      showLocationError('Enter a Maidenhead grid');
+      return;
+    }
+    try {
+      const coords = maidenheadToLatLon(value);
+      showLocationError('');
+      applyLocation({ label: value.toUpperCase(), coords });
+    } catch (e) {
+      showLocationError(e.message || 'Invalid grid');
+    }
+  }
+
+  const MGRS_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const UTM_ZONES_LAT = 'CDEFGHJKLMNPQRSTUVWX';
+
+  function parseDMS(dmsStr) {
+    dmsStr = dmsStr.trim().toUpperCase();
+
+    const decimalMatch = dmsStr.match(/^(-?\d+\.?\d*)$/);
+    if (decimalMatch) return parseFloat(decimalMatch[1]);
+
+    const dmsMatch = dmsStr.match(/^(-?)(\d+)[°\s\-]+(\d+)?['\s\-]*(\d+\.?\d*)?["'\s]*([NSEW])?$/);
+    if (dmsMatch) {
+      const sign = (dmsMatch[1] === '-' || dmsMatch[5] === 'S' || dmsMatch[5] === 'W') ? -1 : 1;
+      const deg = parseFloat(dmsMatch[2]) || 0;
+      const min = parseFloat(dmsMatch[3]) || 0;
+      const sec = parseFloat(dmsMatch[4]) || 0;
+      return sign * (deg + min / 60 + sec / 3600);
+    }
+
+    throw new Error('Invalid coordinate format');
+  }
+
+  function parseLatLonInput(latStr, lonStr) {
+    const lat = parseDMS(latStr);
+    const lon = parseDMS(lonStr);
+
+    if (!isFinite(lat) || lat < -90 || lat > 90) {
+      throw new Error('Latitude must be between -90 and 90');
+    }
+    if (!isFinite(lon) || lon < -180 || lon > 180) {
+      throw new Error('Longitude must be between -180 and 180');
+    }
+
+    return { lat, lon };
+  }
+
+  function utmToLatLon(zone, isSouthern, easting, northing) {
+    const a = 6378137, f = 1 / 298.257223563, k0 = 0.9996;
+    const e = Math.sqrt(2 * f - f * f), e2 = e * e;
+    const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+
+    const x = easting - 500000;
+    const y = isSouthern ? northing - 10000000 : northing;
+    const M = y / k0;
+    const mu = M / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256));
+
+    const phi1 = mu + (3 * e1 / 2 - 27 * e1 * e1 * e1 / 32) * Math.sin(2 * mu)
+      + (21 * e1 * e1 / 16 - 55 * e1 * e1 * e1 * e1 / 32) * Math.sin(4 * mu)
+      + (151 * e1 * e1 * e1 / 96) * Math.sin(6 * mu);
+
+    const N1 = a / Math.sqrt(1 - e2 * Math.sin(phi1) * Math.sin(phi1));
+    const T1 = Math.tan(phi1) * Math.tan(phi1);
+    const C1 = (e2 / (1 - e2)) * Math.cos(phi1) * Math.cos(phi1);
+    const R1 = a * (1 - e2) / Math.pow(1 - e2 * Math.sin(phi1) * Math.sin(phi1), 1.5);
+    const D = x / (N1 * k0);
+
+    let lat = phi1 - (N1 * Math.tan(phi1) / R1) * (
+      D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * (e2 / (1 - e2))) * D * D * D * D / 24
+      + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * (e2 / (1 - e2)) - 3 * C1 * C1) * D * D * D * D * D * D / 720
+    );
+
+    let lon = (D - (1 + 2 * T1 + C1) * D * D * D / 6
+      + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * (e2 / (1 - e2)) + 24 * T1 * T1) * D * D * D * D * D / 120)
+      / Math.cos(phi1);
+
+    const lon0 = (zone - 1) * 6 - 180 + 3;
+    return { lat: lat * 180 / Math.PI, lon: lon0 + lon * 180 / Math.PI };
+  }
+
+  function mgrsToLatLon(mgrs) {
+    mgrs = mgrs.replace(/\s/g, '').toUpperCase();
+
+    const match = mgrs.match(/^(\d{1,2})([C-X])([A-HJ-NP-Z]{2})(\d+)$/);
+    if (!match) {
+      throw new Error('Invalid MGRS format. Example: 18SVK4083001357');
+    }
+
+    const zone = parseInt(match[1]);
+    const latBand = match[2];
+    const gridLetters = match[3];
+    const coords = match[4];
+
+    if (zone < 1 || zone > 60) throw new Error('Invalid UTM zone (1-60)');
+
+    const len = coords.length;
+    if (len % 2 !== 0 || len < 2 || len > 10) {
+      throw new Error('MGRS easting/northing must be 2, 4, 6, 8, or 10 digits');
+    }
+
+    const half = len / 2;
+    const precision = Math.pow(10, 5 - half);
+    let easting = parseInt(coords.substring(0, half)) * precision;
+    let northing = parseInt(coords.substring(half)) * precision;
+
+    easting += precision / 2;
+    northing += precision / 2;
+
+    const col = gridLetters[0];
+    const row = gridLetters[1];
+
+    const setNumber = ((zone - 1) % 6);
+    const colOrigin = setNumber * 8 % 24;
+    let colIndex = MGRS_LETTERS.indexOf(col) - colOrigin;
+    if (colIndex < 0) colIndex += 24;
+    easting += (colIndex + 1) * 100000;
+
+    const rowSet = (zone - 1) % 2;
+    const rowOrigin = rowSet === 0 ? 'A' : 'F';
+    let rowIndex = MGRS_LETTERS.indexOf(row) - MGRS_LETTERS.indexOf(rowOrigin);
+    if (rowIndex < 0) rowIndex += 20;
+
+    const latBandIndex = UTM_ZONES_LAT.indexOf(latBand);
+    const bandNorthing = (latBandIndex - 10) * 8 * 111000;
+
+    let baseNorthing = rowIndex * 100000;
+    while (baseNorthing < bandNorthing - 500000) baseNorthing += 2000000;
+    northing += baseNorthing;
+
+    return utmToLatLon(zone, latBand < 'N', easting, northing);
+  }
+
+  function maidenheadToLatLon(grid) {
+    grid = grid.toUpperCase().trim();
+    if (!/^[A-R]{2}\d{2}([A-X]{2}(\d{2})?)?$/.test(grid)) {
+      throw new Error('Invalid Maidenhead format. Examples: FM19, FM19la, FM19la52');
+    }
+
+    let lon = -180, lat = -90;
+    lon += (grid.charCodeAt(0) - 65) * 20;
+    lat += (grid.charCodeAt(1) - 65) * 10;
+    lon += parseInt(grid[2]) * 2;
+    lat += parseInt(grid[3]) * 1;
+
+    if (grid.length >= 6) {
+      lon += (grid.charCodeAt(4) - 65) * (2 / 24);
+      lat += (grid.charCodeAt(5) - 65) * (1 / 24);
+    }
+    if (grid.length === 8) {
+      lon += parseInt(grid[6]) * (2 / 240);
+      lat += parseInt(grid[7]) * (1 / 240);
+    }
+
+    if (grid.length === 4) { lon += 1; lat += 0.5; }
+    else if (grid.length === 6) { lon += 1 / 24; lat += 0.5 / 24; }
+    else if (grid.length === 8) { lon += 1 / 240; lat += 0.5 / 240; }
+
+    return { lat, lon };
+  }
+
+  function calculateSunTimes(lat, lon, date = new Date()) {
+    const rad = Math.PI / 180;
+    const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+    const declination = -23.45 * Math.cos(rad * (360 / 365) * (dayOfYear + 10));
+    const latRad = lat * rad;
+    const decRad = declination * rad;
+    const cosHourAngle = (Math.sin(-0.833 * rad) - Math.sin(latRad) * Math.sin(decRad)) /
+      (Math.cos(latRad) * Math.cos(decRad));
+
+    if (cosHourAngle > 1) return { polarNight: true };
+    if (cosHourAngle < -1) return { polarDay: true };
+
+    const hourAngle = Math.acos(cosHourAngle) / rad;
+    const solarNoon = 12 - lon / 15;
+    const sunriseUTC = solarNoon - hourAngle / 15;
+    const sunsetUTC = solarNoon + hourAngle / 15;
+
+    const sunrise = new Date(date);
+    sunrise.setUTCHours(Math.floor(sunriseUTC), Math.round((sunriseUTC % 1) * 60), 0, 0);
+    const sunset = new Date(date);
+    sunset.setUTCHours(Math.floor(sunsetUTC), Math.round((sunsetUTC % 1) * 60), 0, 0);
+
+    return { sunrise, sunset, solarNoon };
+  }
+
+  function getDayNightStatus(lat, lon) {
+    const now = new Date();
+    const sunTimes = calculateSunTimes(lat, lon, now);
+
+    if (sunTimes.polarDay) return { status: 'day', label: 'Polar Day', icon: '☀️' };
+    if (sunTimes.polarNight) return { status: 'night', label: 'Polar Night', icon: '🌙' };
+
+    const { sunrise, sunset } = sunTimes;
+    const nowTime = now.getTime();
+    const greylineWindow = 30 * 60 * 1000;
+
+    if (Math.abs(nowTime - sunrise.getTime()) < greylineWindow) {
+      return { status: 'greyline', label: 'Greyline (Sunrise)', icon: '🌅', sunTimes };
+    }
+    if (Math.abs(nowTime - sunset.getTime()) < greylineWindow) {
+      return { status: 'greyline', label: 'Greyline (Sunset)', icon: '🌇', sunTimes };
+    }
+    if (nowTime > sunrise.getTime() && nowTime < sunset.getTime()) {
+      return { status: 'day', label: 'Daytime', icon: '☀️', sunTimes };
+    }
+    return { status: 'night', label: 'Nighttime', icon: '🌙', sunTimes };
+  }
+
+  function estimateMUF(lat, lon, data) {
+    const dayNight = getDayNightStatus(lat, lon);
+    const now = new Date();
+    const month = now.getMonth();
+    const absLat = Math.abs(lat);
+
+    let baseMUF = dayNight.status === 'day' ? 21 : dayNight.status === 'greyline' ? 18 : 10;
+
+    const isNorthernHemisphere = lat >= 0;
+    const isSummer = (isNorthernHemisphere && month >= 4 && month <= 8) ||
+      (!isNorthernHemisphere && (month >= 10 || month <= 2));
+    if (isSummer && dayNight.status === 'day') baseMUF += 4;
+
+    if (absLat > 60) baseMUF -= 5;
+    else if (absLat > 45) baseMUF -= 2;
+
+    const kp = data?.kpIndex || 0;
+    if (kp >= 6) baseMUF -= 4;
+    else if (kp >= 4) baseMUF -= 2;
+
+    const rScale = data?.scales?.R || 0;
+    if (rScale >= 3) baseMUF -= 6;
+    else if (rScale >= 2) baseMUF -= 3;
+
+    return Math.max(5, Math.min(35, Math.round(baseMUF)));
+  }
+
+  function getRecommendedBands(muf, dayNight) {
+    const bands = [];
+    if (muf >= 28) bands.push({ band: '10m', freq: '28 MHz', quality: 'excellent' });
+    if (muf >= 21) bands.push({ band: '15m', freq: '21 MHz', quality: muf >= 24 ? 'excellent' : 'good' });
+    if (muf >= 14) bands.push({ band: '20m', freq: '14 MHz', quality: 'excellent' });
+    if (muf >= 10) bands.push({ band: '30m', freq: '10 MHz', quality: 'good' });
+    if (muf >= 7) bands.push({ band: '40m', freq: '7 MHz', quality: dayNight.status === 'night' ? 'excellent' : 'good' });
+    bands.push({ band: '80m', freq: '3.5 MHz', quality: dayNight.status === 'night' ? 'excellent' : 'fair' });
+    bands.push({ band: '160m', freq: '1.8 MHz', quality: dayNight.status === 'night' ? 'good' : 'poor' });
+    return bands.slice(0, 6);
+  }
+
+  function getGeomagLat(lat, lon) {
+    const rad = Math.PI / 180;
+    const geomagPoleLat = 80.5 * rad;
+    const geomagPoleLon = -72.6 * rad;
+    const latRad = lat * rad;
+    const lonRad = lon * rad;
+
+    const geomagLat = Math.asin(
+      Math.sin(latRad) * Math.sin(geomagPoleLat) +
+      Math.cos(latRad) * Math.cos(geomagPoleLat) * Math.cos(lonRad - geomagPoleLon)
+    ) / rad;
+
+    return Math.round(geomagLat * 10) / 10;
+  }
+
+  function getNvisAssessment(lat, data) {
+    const muf = estimateMUF(lat, 0, data);
+    const dayNight = getDayNightStatus(lat, 0);
+
+    if (dayNight.status === 'day') {
+      return muf >= 7
+        ? { recommended: '40m (7 MHz)', quality: 'Good', range: '0-400 km' }
+        : { recommended: '80m (3.5 MHz)', quality: 'Fair', range: '0-400 km' };
+    }
+    return { recommended: '80m / 160m', quality: 'Good', range: '0-400 km' };
+  }
+
+  function getHfAssessment(lat, lon, data) {
+    const dayNight = getDayNightStatus(lat, lon);
+    const kp = data?.kpIndex || 0;
+    const rScale = data?.scales?.R || 0;
+    const absLat = Math.abs(lat);
+
+    let assessment = '';
+
+    if (dayNight.status === 'greyline') {
+      assessment = '🎯 Excellent DX window! Greyline propagation enhances long-distance paths on 20m-40m.';
+    } else if (dayNight.status === 'day') {
+      assessment = 'Daytime favors higher bands (10m-20m). ';
+      if (rScale >= 2) assessment += '⚠️ D-layer absorption elevated - expect fadeouts on lower frequencies.';
+      else assessment += 'F2 layer supporting normal skip distances.';
+    } else {
+      assessment = 'Nighttime favors lower bands (40m-160m). F2 layer may support 20m long-path DX.';
+    }
+
+    if (absLat > 55 && kp >= 5) {
+      assessment += ' 🌌 Aurora conditions - polar HF disrupted, VHF scatter possible.';
+    } else if (absLat > 55 && kp >= 4) {
+      assessment += ' Monitor for polar cap absorption (PCA).';
+    }
+    return assessment;
+  }
+
+  function getSatcomAssessment(lat, lon, data) {
+    const kp = data?.kpIndex || 0;
+    const gScale = data?.scales?.G || 0;
+    const sScale = data?.scales?.S || 0;
+    const geomagLat = getGeomagLat(lat, lon);
+    const absGeomagLat = Math.abs(geomagLat);
+
+    const weather = lastWeather;
+
+    let assessment = {
+      ehf: { status: 'green', label: 'Normal', freq: '30-300 GHz', notes: '' },
+      ka: { status: 'green', label: 'Normal', freq: '26.5-40 GHz', notes: '' },
+      ku: { status: 'green', label: 'Normal', freq: '12-18 GHz', notes: '' },
+      x: { status: 'green', label: 'Normal', freq: '8-12 GHz', notes: '' },
+      c: { status: 'green', label: 'Normal', freq: '4-8 GHz', notes: '' },
+      uhf: { status: 'green', label: 'Normal', freq: '300-3000 MHz', notes: '' },
+      gps: { status: 'green', label: 'Normal', freq: 'L1/L2/L5', notes: '' },
+      scintillation: 'Low',
+      ionosphericDelay: 'Minimal',
+      weather
     };
-    applyLocation(loc);
+
+    if (weather) {
+      const condition = (weather.main || '').toLowerCase();
+      const desc = (weather.desc || '').toLowerCase();
+      const humidity = weather.humidity || 0;
+
+      if (condition.includes('rain') || condition.includes('thunder') || desc.includes('rain') || desc.includes('storm')) {
+        assessment.ehf = {
+          status: 'red', label: 'Rain Fade', freq: '30-300 GHz',
+          notes: `Heavy attenuation (10-20+ dB). ${weather.desc || 'Rain.'}`
+        };
+        assessment.ka = {
+          status: 'orange', label: 'Degraded', freq: '26.5-40 GHz',
+          notes: 'Significant rain fade (5-15 dB). Monitor link margins.'
+        };
+        assessment.ku = {
+          status: 'yellow', label: 'Minor', freq: '12-18 GHz',
+          notes: 'Some rain attenuation possible (2-5 dB).'
+        };
+      } else if (condition.includes('drizzle')) {
+        assessment.ehf = {
+          status: 'orange', label: 'Light Rain', freq: '30-300 GHz',
+          notes: 'Moderate attenuation (3-10 dB).'
+        };
+        assessment.ka = {
+          status: 'yellow', label: 'Minor', freq: '26.5-40 GHz',
+          notes: 'Light rain fade possible.'
+        };
+      } else if (condition.includes('snow')) {
+        assessment.ehf = {
+          status: 'orange', label: 'Snow', freq: '30-300 GHz',
+          notes: 'Wet snow causes higher attenuation. Check antenna.'
+        };
+        assessment.ka = {
+          status: 'yellow', label: 'Monitor', freq: '26.5-40 GHz',
+          notes: 'Wet snow may cause fade.'
+        };
+      } else if (condition.includes('fog') || condition.includes('mist')) {
+        assessment.ehf = {
+          status: 'yellow', label: 'Fog', freq: '30-300 GHz',
+          notes: 'Suspended water droplets cause 2-5 dB absorption.'
+        };
+      } else if (humidity > 85) {
+        assessment.ehf = {
+          status: 'yellow', label: 'High RH', freq: '30-300 GHz',
+          notes: `High humidity (${humidity}%). Water vapor absorption possible.`
+        };
+      } else {
+        assessment.ehf = {
+          status: 'green', label: 'Normal', freq: '30-300 GHz',
+          notes: `${humidity ? humidity + '% RH.' : 'Good conditions.'}`
+        };
+        assessment.ka = { status: 'green', label: 'Normal', freq: '26.5-40 GHz', notes: 'Good conditions.' };
+      }
+    } else {
+      assessment.ehf = { status: 'yellow', label: 'No Wx', freq: '30-300 GHz', notes: 'Weather unavailable.' };
+    }
+
+    if (absGeomagLat < 20) {
+      assessment.scintillation = 'Moderate (equatorial)';
+      assessment.uhf = {
+        status: 'yellow', label: 'Scint Risk', freq: '300-3000 MHz',
+        notes: 'Equatorial scintillation, esp. post-sunset.'
+      };
+      assessment.gps = {
+        status: 'yellow', label: 'Scint Risk', freq: 'L1/L2/L5',
+        notes: 'Equatorial scintillation may affect accuracy.'
+      };
+    } else if (absGeomagLat > 60) {
+      assessment.scintillation = kp >= 5 ? 'High (auroral)' : 'Moderate (polar)';
+      if (kp >= 5) {
+        assessment.uhf = {
+          status: 'orange', label: 'Auroral', freq: '300-3000 MHz',
+          notes: 'Auroral scintillation active. Expect fading.'
+        };
+      }
+    }
+
+    if (gScale >= 3) {
+      assessment.ku = {
+        status: 'orange', label: 'Degraded', freq: '12-18 GHz',
+        notes: 'Signal fluctuations likely.'
+      };
+      assessment.ionosphericDelay = 'Elevated';
+      assessment.gps = {
+        status: 'orange', label: 'Degraded', freq: 'L1/L2/L5',
+        notes: 'Accuracy reduced. Use dual-freq if available.'
+      };
+    } else if (gScale >= 2) {
+      assessment.ku = {
+        status: 'yellow', label: 'Minor', freq: '12-18 GHz',
+        notes: 'Possible signal variations.'
+      };
+    }
+
+    if (sScale >= 3) {
+      assessment.x = {
+        status: 'orange', label: 'Caution', freq: '8-12 GHz',
+        notes: 'Solar particle event. Monitor for anomalies.'
+      };
+      assessment.gps = {
+        status: 'orange', label: 'Degraded', freq: 'L1/L2/L5',
+        notes: 'Solar radiation affecting GPS accuracy.'
+      };
+    }
+
+    if (sScale >= 2 || gScale >= 2) {
+      if (assessment.gps.status === 'green') {
+        assessment.gps = {
+          status: 'yellow', label: 'Monitor', freq: 'L1/L2/L5',
+          notes: 'Minor degradation possible.'
+        };
+      }
+    }
+
+    if (sScale >= 4) {
+      assessment.c = {
+        status: 'yellow', label: 'Monitor', freq: '4-8 GHz',
+        notes: 'Extreme event. Monitor all bands.'
+      };
+    } else {
+      assessment.c = {
+        status: 'green', label: 'Nominal', freq: '4-8 GHz',
+        notes: 'Most resilient band.'
+      };
+    }
+
+    if (assessment.x.status === 'green') {
+      assessment.x = {
+        status: 'green', label: 'Nominal', freq: '8-12 GHz',
+        notes: 'Mil-spec SATCOM operating normally.'
+      };
+    }
+
+    if (assessment.uhf.status === 'green') {
+      assessment.uhf = {
+        status: 'green', label: 'Nominal', freq: '300-3000 MHz',
+        notes: 'MUOS/Legacy UHF operating normally.'
+      };
+    }
+
+    return assessment;
   }
 
   function escapeHtml(str) {
@@ -313,6 +830,13 @@
     };
     updateLocationStatus();
     addRecent(selectedLocation);
+    lastWeather = null;
+    const swData = window.RussellTV?.SpaceWeather?.getCurrentData?.();
+    if (swData) {
+      const updated = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
+      const updatedText = updated ? 'Updated ' + updated.toUTCString() : 'Live NOAA SWPC';
+      updatePropagationCards(swData, updatedText);
+    }
     const weatherMeta = $('#comm-weather-meta');
     if (weatherMeta) {
       weatherMeta.textContent = 'Loading weather…';
@@ -385,6 +909,14 @@
       const updatedLocal = wx.dt ? formatLocalTime(wx.dt, timezone) : 'Just now';
       const localTime = formatLocalTime(Date.now() / 1000, timezone, true);
 
+      lastWeather = {
+        main: main.main,
+        desc: main.description,
+        humidity,
+        temp: temp,
+        feels: feels
+      };
+
       const accent = tempToAccent(temp);
       if (card && accent) {
         card.style.setProperty('--card-accent', accent);
@@ -437,6 +969,7 @@
       if (meta) meta.textContent = 'OpenWeather • Updated ' + updatedLocal;
     } catch (e) {
       console.warn('[CommPlanner] Weather fetch failed:', e);
+      lastWeather = null;
       body.textContent = 'Unable to load weather for this location. Ensure the weather proxy is running with an OpenWeather API key.';
       if (meta) meta.textContent = 'Weather proxy not reachable';
     }
@@ -487,6 +1020,21 @@
     }
   }
 
+  function bandQualityClass(quality) {
+    if (quality === 'excellent') return 'severity-good';
+    if (quality === 'good') return 'severity-fair';
+    if (quality === 'fair') return 'severity-watch';
+    return 'severity-poor';
+  }
+
+  function satBandClass(status) {
+    if (status === 'green') return 'severity-good';
+    if (status === 'yellow') return 'severity-fair';
+    if (status === 'orange') return 'severity-watch';
+    if (status === 'red') return 'severity-poor';
+    return 'severity-good';
+  }
+
   function updateSpaceWeatherCard() {
     const card = $('#comm-card-spacewx');
     if (!card || !window.RussellTV.SpaceWeather || !window.SPACE_WEATHER_CONFIG) return;
@@ -501,9 +1049,17 @@
     const kpColor = data.kpIndex >= 5 ? '#ff8800' : (data.kpIndex >= 4 ? '#ffcc00' : '#44cc44');
 
     const updated = window.RussellTV.SpaceWeather.getLastUpdate();
-    const updatedText = updated ? 'NOAA SWPC • Updated ' + updated.toUTCString() : 'NOAA SWPC';
+    const updatedText = updated ? 'Updated ' + updated.toUTCString() : 'Live NOAA SWPC';
+    const kpCondition = data.kpIndex >= 5 ? 'Storm' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet';
 
     body.innerHTML = [
+      '<div class="spacewx-heading">',
+      '  <div class="spacewx-title">🌡️ Space Weather Overview</div>',
+      '  <div class="spacewx-links">',
+      '    <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">NOAA Scales →</a>',
+      '    <a class="inline-link" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer">Kp Source →</a>',
+      '  </div>',
+      '</div>',
       '<div class="spacewx-scales-row">',
       '  <div class="spacewx-scale-card">',
       '    <div class="label">Radio</div>',
@@ -524,12 +1080,13 @@
       '<div class="spacewx-kp-row">',
       '  <span class="label">Kp Index</span>',
       '  <span class="value" style="color:' + kpColor + ';">' + data.kpIndex.toFixed(2) + '</span>',
-      '  <span class="status">' + (data.kpIndex >= 5 ? 'Stormy' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet') + '</span>',
+      '  <span class="status">' + kpCondition + '</span>',
       '</div>',
-      '<div class="comm-card-micro">' + escapeHtml(updatedText) + '</div>'
+      '<div class="spacewx-footnote">R = HF Radio Blackouts · S = Solar Radiation · G = Geomagnetic Storms</div>',
+      '<div class="comm-card-micro">Source: <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank" rel="noopener noreferrer">NOAA SWPC</a> • ' + escapeHtml(updatedText) + '</div>'
     ].join('');
 
-    if (meta) meta.textContent = updatedText;
+    if (meta) meta.textContent = '';
 
     updatePropagationCards(data, updatedText);
   }
@@ -545,38 +1102,39 @@
     const g = data.scales.G;
     const kp = data.kpIndex;
 
-    // HF status and band guidance
+    const loc = selectedLocation?.coords || { lat: 0, lon: 0 };
+    const dayNight = getDayNightStatus(loc.lat, loc.lon);
+    const muf = estimateMUF(loc.lat, loc.lon, data);
+    const bands = getRecommendedBands(muf, dayNight);
+    const nvis = getNvisAssessment(loc.lat, data);
+    const hfAssessment = getHfAssessment(loc.lat, loc.lon, data);
+
     const hfSeverity = (r >= 4 || g >= 5) ? 'Severe disruption' :
       (r >= 3 || g >= 4 || kp >= 6) ? 'Degraded' :
-      (r >= 2 || g >= 3 || kp >= 5) ? 'Fair' : 'Good';
-
-    const bands = hfSeverity === 'Good'
-      ? ['80m', '60m', '40m', '30m', '20m', '17m']
-      : hfSeverity === 'Fair'
-        ? ['80m', '60m', '40m', '30m', '20m']
-        : ['80m', '60m', '40m'];
-
-    const nvisNote = kp >= 6 ? 'NVIS unstable above regional ranges.' :
-      kp >= 5 ? 'NVIS may fade during substorms.' :
-      'NVIS viable for regional links.';
+        (r >= 2 || g >= 3 || kp >= 5) ? 'Fair' : 'Good';
     const hfInfo = getHfSeverityDetails(hfSeverity);
 
     if (hfBody) {
       hfBody.innerHTML = [
-        '<div class="comm-prop-status ' + hfInfo.className + '">',
-        '  <div class="status-heading">',
-        '    <span class="status-label">HF Condition</span>',
-        '    <span class="status-value">' + escapeHtml(hfSeverity) + '</span>',
+        '<div class="comm-prop-headerline">',
+        '  <div class="comm-prop-title">📻 HF Communications</div>',
+        '  <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">SWPC HF →</a>',
+        '</div>',
+        '<div class="muf-row">',
+        '  <div class="muf-value">' + escapeHtml(muf + ' MHz') + '</div>',
+        '  <div class="muf-meta">',
+        '    <div class="muf-label">Est. MUF</div>',
+        '    <div class="muf-desc">' + escapeHtml(hfAssessment) + '</div>',
         '  </div>',
-        '  <p class="status-desc">' + escapeHtml(hfInfo.desc) + '</p>',
+        '  <div class="muf-tag ' + hfInfo.className + '">' + escapeHtml(dayNight.label || '') + '</div>',
         '</div>',
         '<div class="comm-prop-row accent">',
-        '  <span class="label">Recommended bands</span>',
-        '  <div class="comm-prop-chiprow">' + bands.map(b => '<span class="comm-prop-chip">' + escapeHtml(b) + '</span>').join('", "') + '</div>',
+        '  <span class="label">Recommended Bands (VOACAP)</span>',
+        '  <div class="comm-prop-chiprow">' + bands.map(b => '<span class="comm-prop-chip ' + bandQualityClass(b.quality) + '">' + escapeHtml(b.band) + '<span class="chip-sub">' + escapeHtml(b.freq) + '</span></span>').join('') + '</div>',
         '</div>',
         '<div class="comm-prop-row">',
-        '  <span class="label">NVIS</span>',
-        '  <span class="hint">' + escapeHtml(nvisNote) + '</span>',
+        '  <span class="label">NVIS (0-400 km)</span>',
+        '  <span class="hint">' + escapeHtml(nvis.recommended + ' — ' + nvis.quality) + '</span>',
         '</div>',
         '<div class="comm-card-micro">Source: ' + escapeHtml(sourceText) + '</div>'
       ].join('');
@@ -587,44 +1145,54 @@
       hfStatus.className = 'status-pill ' + hfInfo.className;
     }
 
-
-    // SATCOM/GPS
     const satRisk = kp >= 7 ? 'High scintillation risk' : kp >= 6 ? 'Moderate risk' : kp >= 5 ? 'Watch' : 'Nominal';
     const satInfo = getSatSeverityDetails(satRisk);
-    const gpsCondition = kp >= 7 ? 'High scintillation risk' : kp >= 6 ? 'Moderate risk' : kp >= 5 ? 'Watch' : 'Nominal';
-    const gpsInfo = getSatSeverityDetails(gpsCondition);
-    const gpsNote = kp >= 6 ? 'Expect GPS errors at high/low latitudes.' :
-      kp >= 5 ? 'Slight GPS degradation possible.' : 'GPS nominal.';
-    const satNote = (r >= 3 || g >= 4)
-      ? 'Geostationary and UHF links may see fades during storms.'
-      : 'Bands operating normally.';
-    const satOps = kp >= 6 ? 'Prioritize elevation above 20° and narrowband modes to ride out scintillation.' :
-      kp >= 5 ? 'Have alternates for polar routes and expect occasional dropouts.' :
-      'Routine operations with standard link budgets.';
+    const satAssessment = getSatcomAssessment(loc.lat, loc.lon, data);
+    const gpsCondition = satAssessment.gps?.label || 'Normal';
+
+    const weatherLine = lastWeather
+      ? '<div class="satcom-weather"><div class="weather-icon">' + getWeatherGlyph(lastWeather.main) + '</div><div class="weather-meta"><div>' + escapeHtml((lastWeather.desc || lastWeather.main || '').toLowerCase()) + '</div><div class="weather-sub">' + (lastWeather.temp != null ? escapeHtml(lastWeather.temp + '°F') : '--') + (lastWeather.humidity != null ? ' • ' + escapeHtml(lastWeather.humidity + '% RH') : '') + '</div></div></div>'
+      : '<div class="satcom-weather"><div class="weather-meta">Space weather driven assessment</div></div>';
+
+    const bandOrder = ['ehf', 'ka', 'ku', 'x', 'c', 'uhf'];
+    const bandRows = bandOrder.map(key => {
+      const band = satAssessment[key];
+      if (!band) return '';
+      return '<div class="sat-band-row ' + satBandClass(band.status) + '">' +
+        '<div class="band-name">' + escapeHtml(key.toUpperCase()) + '</div>' +
+        '<div class="band-freq">' + escapeHtml(band.freq || '') + '</div>' +
+        '<div class="band-label">' + escapeHtml(band.label || '') + '</div>' +
+        '<div class="band-notes">' + escapeHtml(band.notes || '') + '</div>' +
+      '</div>';
+    }).join('');
 
     if (satBody) {
       satBody.innerHTML = [
+        '<div class="comm-prop-headerline">',
+        '  <div class="comm-prop-title">📡 SATCOM &amp; GPS</div>',
+        '  <a class="inline-link" href="https://www.swpc.noaa.gov/products/goes-energetic-particle" target="_blank" rel="noopener noreferrer">SWPC →</a>',
+        '</div>',
+        weatherLine,
         '<div class="comm-prop-status ' + satInfo.className + '">',
         '  <div class="status-heading">',
-        '    <span class="status-label">SATCOM Condition</span>',
+        '    <span class="status-label">Overall</span>',
         '    <span class="status-value">' + escapeHtml(satRisk) + '</span>',
         '  </div>',
         '  <p class="status-desc">' + escapeHtml(satInfo.desc) + '</p>',
         '</div>',
-        '<div class="comm-prop-row accent">',
-        '  <span class="label">Band outlook</span>',
-        '  <span class="hint">' + escapeHtml(satNote) + '</span>',
-        '</div>',
-        '<div class="comm-prop-row">',
-        '  <span class="label">Ops note</span>',
-        '  <span class="hint">' + escapeHtml(satOps) + '</span>',
-        '</div>',
-        '<div class="comm-prop-status ' + gpsInfo.className + '">',
+        '<div class="sat-band-heading">Band Status &amp; Remarks</div>',
+        '<div class="sat-band-grid">' + bandRows + '</div>',
+        '<div class="comm-prop-status ' + satBandClass(satAssessment.gps?.status || 'green') + '">',
         '  <div class="status-heading">',
-        '    <span class="status-label">GPS Reliability</span>',
+        '    <span class="status-label">🛰️ GPS/GNSS</span>',
         '    <span class="status-value">' + escapeHtml(gpsCondition) + '</span>',
         '  </div>',
-        '  <p class="status-desc">' + escapeHtml(gpsNote) + '</p>',
+        '  <p class="status-desc">Scintillation: ' + escapeHtml(satAssessment.scintillation || 'Low') + ' · Iono Delay: ' + escapeHtml(satAssessment.ionosphericDelay || 'Minimal') + '</p>',
+        '  <div class="gps-links">',
+        '    <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam Map</a> · ',
+        '    <a class="inline-link" href="https://www.flightradar24.com/blog/gnss-interference-dashboard/" target="_blank" rel="noopener noreferrer">FR24 Interference</a> · ',
+        '    <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN GUIDE</a>',
+        '  </div>',
         '</div>',
         '<div class="comm-card-micro">Source: ' + escapeHtml(sourceText) + '</div>'
       ].join('');
