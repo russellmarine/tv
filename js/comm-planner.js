@@ -25,11 +25,11 @@
   let tempUnit = 'F';
   const MAX_RECENT = 7;
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
-  const SOLAR_CYCLE_ENDPOINT = '/spaceweather/solar-cycle';
+  const SOLAR_CYCLE_ENDPOINT = 'https://r.jina.ai/https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json';
   const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/weather/radar?lat={lat}&lon={lon}';
   let masonryTimer = null;
   let resizeObserver = null;
-  const ROW_HEIGHT = 8;
+    const ROW_HEIGHT = 6;
 
   // ---------- Layout helpers ----------
 
@@ -1108,7 +1108,8 @@
 
       let forecast = null;
       try {
-        const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=auto`);
+        const unitParam = tempUnit === 'C' ? 'celsius' : 'fahrenheit';
+        const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=9&timezone=auto`);
         if (forecastRes.ok) {
           forecast = await forecastRes.json();
         }
@@ -1377,6 +1378,15 @@
       '<div class="band-notes">' + escapeHtml(b.notes) + '</div>' +
       '</div>').join('');
 
+    const bandDefinition = '<details class="comm-definition"><summary>Band health guide</summary>'
+      + '<ul class="definition-list">'
+      + '  <li><strong>Nominal:</strong> Normal PNT performance.</li>'
+      + '  <li><strong>Watch:</strong> Mild geomagnetic or scintillation risk; monitor timing.</li>'
+      + '  <li><strong>Degraded:</strong> Expect dropouts or reduced accuracy; use multi-frequency if possible.</li>'
+      + '  <li><strong>Severe:</strong> High interference/jamming risk; fallback to alternate nav sources.</li>'
+      + '</ul>'
+      + '</details>';
+
     const scintDefinition = '<details class="comm-definition"><summary>Ionospheric Scintillation</summary>'
       + '<p>Ionospheric scintillation is the rapid fluctuation of radio waves caused by small-scale electron density structures. '
       + 'Strong scintillation can prevent GPS/GNSS receivers from locking signals; mild scintillation reduces accuracy. Severity '
@@ -1401,8 +1411,8 @@
       '</div>',
       '<div class="gps-band-heading">Band Health</div>',
       '<div class="gps-band-grid">' + bandRows + '</div>',
-      '<div class="gps-band-heading">GNSS Constellations</div>',
-      '<div class="gnss-constellations">' + constellations + '</div>',
+      bandDefinition,
+      '<details class="comm-definition"><summary>GNSS constellations</summary><div class="gnss-constellations">' + constellations + '</div></details>',
       '<div class="gps-meta">Jamming/Interference: ' + escapeHtml(jam) + '</div>',
       scintDefinition,
       '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/" target="_blank" rel="noopener noreferrer">SWPC</a> · <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam</a> · <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN</a> • ' + escapeHtml(sourceText) + '</div>'
@@ -1451,8 +1461,8 @@
 
     sunspotPromise = (async () => {
       const sources = [
-        'https://r.jina.ai/https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json',
-        SOLAR_CYCLE_ENDPOINT
+        SOLAR_CYCLE_ENDPOINT,
+        'https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json'
       ];
 
       for (const src of sources) {
@@ -1516,10 +1526,6 @@
     const kpCondition = data.kpIndex >= 5 ? 'Storm' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet';
 
     const spacewxOverall = getSpacewxOverall(data);
-    const sunspots = await ensureSunspotSeries();
-    const latestSunspot = sunspots.length ? Math.round(sunspots[sunspots.length - 1].value) : null;
-    const sunspotSpark = renderSunspotSparkline(sunspots);
-
     const scaleLinks = {
       R: 'https://www.swpc.noaa.gov/noaa-scales/radio-blackouts-scale',
       S: 'https://www.swpc.noaa.gov/noaa-scales/solar-radiation-storm-scale',
@@ -1530,6 +1536,17 @@
       S: 'S-scale: Solar radiation storms. Energetic protons causing HF disruption at high latitudes.',
       G: 'G-scale: Geomagnetic storms from CMEs/solar wind. Can trigger aurora, absorption, and scintillation.'
     };
+    const scaleCards = ['R', 'S', 'G'].map(key => (
+      '<a class="spacewx-scale-card tooltip-target" href="' + scaleLinks[key] + '" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(scaleTooltips[key]) + '">' +
+        '<div class="label">' + (key === 'R' ? 'Radio' : key === 'S' ? 'Solar' : 'Geomag') + '</div>' +
+        '<div class="value" style="color:' + getScaleColor(data.scales[key]) + '">' + key + data.scales[key] + '</div>' +
+        '<div class="desc">' + getScaleDescription(key, data.scales[key]) + '</div>' +
+      '</a>'
+    )).join('');
+
+    const sunspots = await ensureSunspotSeries();
+    const latestSunspot = sunspots.length ? Math.round(sunspots[sunspots.length - 1].value) : null;
+    const sunspotSpark = renderSunspotSparkline(sunspots);
     const kpTooltip = 'Planetary K index (0–9) measures geomagnetic disturbance. Kp≥5 is storm level.';
     const kpScale = [
       { label: 'Kp < 3', desc: 'Quiet', color: '#44cc44' },
@@ -1548,13 +1565,6 @@
       + '  <div class="spacewx-footnote">R = HF Radio Blackouts · S = Solar Radiation · G = Geomagnetic Storms</div>'
       + '</div>'
       + '</details>';
-    const scaleCards = ['R', 'S', 'G'].map(key => (
-      '<a class="spacewx-scale-card tooltip-target" href="' + scaleLinks[key] + '" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(scaleTooltips[key]) + '">' +
-        '<div class="label">' + (key === 'R' ? 'Radio' : key === 'S' ? 'Solar' : 'Geomag') + '</div>' +
-        '<div class="value" style="color:' + getScaleColor(data.scales[key]) + '">' + key + data.scales[key] + '</div>' +
-        '<div class="desc">' + getScaleDescription(key, data.scales[key]) + '</div>' +
-      '</a>'
-    )).join('');
 
     const sunspotBlock = sunspotSpark
       ? '<div class="spacewx-sunspot-block">'
@@ -1958,6 +1968,8 @@
     const highs = forecast.daily.temperature_2m_max || [];
     const lows = forecast.daily.temperature_2m_min || [];
     const codes = forecast.daily.weathercode || [];
+    const pop = forecast.daily.precipitation_probability_max || [];
+    const winds = forecast.daily.windspeed_10m_max || [];
 
     const items = days.slice(0, 9).map((dateStr, idx) => {
       const dt = new Date(dateStr);
@@ -1966,10 +1978,15 @@
       const icon = getWeatherGlyph(main);
       const high = highs[idx] != null ? formatTempDisplay(highs[idx]) : '—';
       const low = lows[idx] != null ? formatTempDisplay(lows[idx]) : '—';
+      const popLabel = pop[idx] != null ? pop[idx] + '% rain' : '';
+      const windLabel = winds[idx] != null ? Math.round(winds[idx]) + ' mph wind' : '';
+      const detail = [popLabel, windLabel].filter(Boolean).join(' · ');
+
       return '<div class="forecast-card">'
         + '  <div class="forecast-day">' + escapeHtml(label) + '</div>'
         + '  <div class="forecast-icon">' + icon + '</div>'
         + '  <div class="forecast-temps"><span>' + escapeHtml(high) + '</span><span>' + escapeHtml(low) + '</span></div>'
+        + (detail ? '  <div class="forecast-detail">' + escapeHtml(detail) + '</div>' : '')
         + '</div>';
     }).join('');
 
@@ -1989,7 +2006,6 @@
     const rainviewerUrl = 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
 
     if (RADAR_PROXY_BASE) {
-      console.log('[Comm] Radar URL building from', RADAR_PROXY_BASE, 'lat', lat, 'lon', lon);
       return RADAR_PROXY_BASE
         .replace('{lat}', encodeURIComponent(lat))
         .replace('{lon}', encodeURIComponent(lon))
