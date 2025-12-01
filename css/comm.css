@@ -76,6 +76,17 @@ main {
   flex-wrap: wrap;
 }
 
+#comm-map-toggle {
+  border-color: rgba(255, 170, 120, 0.6);
+  color: #ffcba0;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+#comm-map-toggle:hover {
+  background: rgba(255, 140, 60, 0.15);
+  box-shadow: 0 0 12px rgba(255, 120, 40, 0.4);
+}
+
 .btn {
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
@@ -122,8 +133,10 @@ main {
     gap: 0.5rem;
     align-items: start;
     align-content: start;
-    grid-auto-flow: row dense;
-  }
+  grid-auto-flow: row dense;
+}
+
+.comm-hidden { display: none !important; }
 
 .comm-span-2 {
   grid-column: span 2;
@@ -577,6 +590,14 @@ main {
   color: inherit;
   text-decoration: none;
   display: block;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.spacewx-scale-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 210, 160, 0.9);
+  box-shadow: 0 0 14px rgba(255, 160, 80, 0.5);
 }
 
 .spacewx-scale-card .label {
@@ -1359,13 +1380,23 @@ main {
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid rgba(255, 200, 140, 0.35);
-  aspect-ratio: 1 / 1;
-  min-height: 180px;
-  height: clamp(180px, 26vw, 360px);
+  aspect-ratio: 4 / 3;
+  min-height: 220px;
+  height: clamp(220px, 28vw, 380px);
   background: radial-gradient(circle at 30% 30%, rgba(255, 160, 80, 0.08), rgba(0, 0, 0, 0.55)),
     repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 6px, transparent 6px, transparent 12px),
     rgba(0, 0, 0, 0.4);
 }
+
+.radar-leaflet {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.radar-leaflet .leaflet-control-container { display: none; }
 
 .weather-radar-frame img {
   position: absolute;
@@ -1440,6 +1471,58 @@ main {
   display: grid;
   gap: 0.25rem;
   z-index: 4;
+}
+
+.overlay-map-body {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.overlay-map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.overlay-map-controls label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 200, 140, 0.35);
+}
+
+.overlay-map-controls input[type="checkbox"] {
+  accent-color: #ff9f54;
+}
+
+.overlay-map-frame {
+  position: relative;
+  border: 1px solid rgba(255, 200, 140, 0.35);
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 260px;
+  height: clamp(260px, 32vw, 520px);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 160, 80, 0.08), rgba(0, 0, 0, 0.55)),
+    rgba(0, 0, 0, 0.4);
+}
+
+.overlay-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.overlay-map-frame .leaflet-control-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.overlay-map-frame .leaflet-top.leaflet-left {
+  pointer-events: auto;
 }
 
 .radar-zoom-btn {

@@ -28,13 +28,13 @@
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
   const BACKUP_GEOCODER = 'https://geocode.maps.co/search';
   const SOLAR_CYCLE_ENDPOINT = window.SOLAR_CYCLE_ENDPOINT
-    || 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json');
+    || '/api/spaceweather/json/solar-cycle/observed-solar-cycle.json';
   const SOLAR_CYCLE_FALLBACK = 'https://r.jina.ai/https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json';
-  const DECLINATION_ENDPOINT = 'https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&resultFormat=json';
-  const DECLINATION_FALLBACK = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?altitude=0&lat={lat}&lon={lon}&resultFormat=json');
-  const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/weather/radar?lat={lat}&lon={lon}';
-  const RAINVIEWER_TILE = 'https://tilecache.rainviewer.com/v2/radar/last/512/{z}/{x}/{y}/2/1_1.png';
-  const RAINVIEWER_CLOUDS = 'https://tilecache.rainviewer.com/v2/satellite/last/512/{z}/{x}/{y}/2/1_1.png';
+  const DECLINATION_ENDPOINT = 'https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&model=WMM&startYear=2025&resultFormat=json';
+  const DECLINATION_FALLBACK = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&model=WMM&startYear=2025&resultFormat=json');
+  const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '';
+  const RAINVIEWER_TILE = 'https://tilecache.rainviewer.com/v2/radar/last/{z}/{x}/{y}/2/1_1.png';
+  const RAINVIEWER_CLOUDS = 'https://tilecache.rainviewer.com/v2/satellite/last/{z}/{x}/{y}/2/1_1.png';
   const RADAR_ZOOM_MIN = 4;
   const RADAR_ZOOM_MAX = 10;
   let masonryTimer = null;
@@ -1215,7 +1215,7 @@
     const sunset = wx.sys ? wx.sys.sunset : null;
     const timezone = wx.timezone || 0;
     const updatedLocal = wx.dt ? 'Last Updated: ' + formatUserStamp(wx.dt * 1000) + ' (local) • ' + formatUtcStamp(wx.dt * 1000) + 'Z' : 'Last Updated: --';
-    const localTime = formatLocalClock(Date.now() / 1000, timezone, false);
+    const localTime = formatLocalClock(Date.now() / 1000, timezone, false) + 'L';
     const localDate = formatLocalDate(Date.now() / 1000, timezone);
     const weatherSeverity = getWeatherSeverityClass(main.main, humidity);
 
@@ -1538,8 +1538,7 @@
     sunspotPromise = (async () => {
       const sources = [
         SOLAR_CYCLE_ENDPOINT,
-        SOLAR_CYCLE_FALLBACK,
-        'https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json'
+        SOLAR_CYCLE_FALLBACK
       ];
 
       for (const src of sources) {
@@ -1604,9 +1603,9 @@
 
     const spacewxOverall = getSpacewxOverall(data);
     const scaleLinks = {
-      R: 'https://www.swpc.noaa.gov/noaa-scales/radio-blackouts-scale',
-      S: 'https://www.swpc.noaa.gov/noaa-scales/solar-radiation-storm-scale',
-      G: 'https://www.swpc.noaa.gov/noaa-scales/geomagnetic-storms-scale'
+      R: 'https://www.swpc.noaa.gov/noaa-scales-explanation',
+      S: 'https://www.swpc.noaa.gov/noaa-scales-explanation',
+      G: 'https://www.swpc.noaa.gov/noaa-scales-explanation'
     };
     const scaleTooltips = {
       R: 'R-scale: HF radio blackouts driven by X-ray flares (R1 minor → R5 extreme).',
@@ -1906,11 +1905,12 @@
     const tzOffset = offsetSeconds || 0;
     const date = new Date((epochSeconds + tzOffset) * 1000);
     const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
-    if (includeDate) {
-      opts.month = 'short';
-      opts.day = 'numeric';
-    }
-    return date.toLocaleString(undefined, opts);
+    const time = date.toLocaleTimeString(undefined, opts).replace(/:/g, '');
+    if (!includeDate) return time + 'L';
+    const month = date.toLocaleDateString(undefined, { month: 'short' });
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${time}L ${day} ${month} ${year}`;
   }
 
   function formatLocalClock(epochSeconds, offsetSeconds, includeSeconds) {
@@ -1933,7 +1933,10 @@
     if (!epochSeconds && epochSeconds !== 0) return '';
     const tzOffset = offsetSeconds || 0;
     const date = new Date((epochSeconds + tzOffset) * 1000);
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const month = date.toLocaleDateString(undefined, { month: 'short' });
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${day} ${month} ${year}`;
   }
 
   function convertTempToUnit(tempF) {
@@ -2060,76 +2063,27 @@
     return '<div class="weather-forecast"><div class="forecast-head">9-Day Outlook</div><div class="forecast-row">' + items + '</div></div>';
   }
 
-  function getTileCoords(lat, lon, zoomLevel) {
-    const zoom = clampZoom(zoomLevel);
-    const scale = Math.pow(2, zoom);
-    const x = Math.floor(((lon + 180) / 360) * scale);
-    const latRad = lat * Math.PI / 180;
-    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
-    return { x, y, zoom };
-  }
-
-  function getRadarSnapshotUrl(lat, lon, zoomLevel, layer) {
-    if (lat == null || lon == null) return '';
-
-    const { x, y, zoom } = getTileCoords(lat, lon, zoomLevel);
-    const isClouds = layer === 'clouds';
-    const rainviewerUrl = (isClouds ? RAINVIEWER_CLOUDS : RAINVIEWER_TILE)
-      .replace('{z}', zoom).replace('{x}', x).replace('{y}', y);
-
-    if (isClouds) return rainviewerUrl;
-
-    const proxyUrl = RADAR_PROXY_BASE
-      ? RADAR_PROXY_BASE
-        .replace('{lat}', encodeURIComponent(lat))
-        .replace('{lon}', encodeURIComponent(lon))
-        .replace('{x}', x)
-        .replace('{y}', y)
-        .replace('{z}', zoom)
-      : '';
-
-    return proxyUrl || rainviewerUrl;
-  }
-
-  function getRadarFallbackUrl(lat, lon, zoomLevel) {
-    if (lat == null || lon == null) return '';
-    const { x, y, zoom } = getTileCoords(lat, lon, zoomLevel);
-    const rainviewerUrl = RAINVIEWER_TILE.replace('{z}', zoom).replace('{x}', x).replace('{y}', y);
-    return rainviewerUrl;
-  }
-
-  function getBasemapUrl(lat, lon, zoomLevel) {
-    if (lat == null || lon == null) return '';
-    const { x, y, zoom } = getTileCoords(lat, lon, zoomLevel);
-    return 'https://tile.openstreetmap.org/' + zoom + '/' + x + '/' + y + '.png';
-  }
-
   function clampZoom(z) {
     const zoomNum = Number.isFinite(z) ? Math.round(z) : radarZoom;
     return Math.min(Math.max(zoomNum || 6, RADAR_ZOOM_MIN), RADAR_ZOOM_MAX);
   }
 
-  function buildRadarUrls(lat, lon, zoomLevel, layer = radarLayer) {
-    const z = clampZoom(zoomLevel);
-    return {
-      url: getRadarSnapshotUrl(lat, lon, z, layer),
-      fallback: getRadarFallbackUrl(lat, lon, z),
-      basemap: getBasemapUrl(lat, lon, z),
-      zoom: z,
-      layer
-    };
+  let radarId = 0;
+
+  function getRadarTileTemplate(layer) {
+    if (layer === 'clouds') return RAINVIEWER_CLOUDS;
+    if (RADAR_PROXY_BASE) return RADAR_PROXY_BASE;
+    return RAINVIEWER_TILE;
   }
 
   function buildRadarBlock(lat, lon) {
-    const urls = buildRadarUrls(lat, lon, radarZoom, radarLayer);
-    if (!urls.url) return '';
-
+    if (lat == null || lon == null) return '';
+    const radarMapId = 'radar-map-' + (++radarId);
     return [
       '<div class="weather-radar">',
       '  <div class="weather-radar-head">Local Radar<div class="radar-layer-toggle"><button type="button" class="radar-layer-btn active" data-layer="radar">Precip</button><button type="button" class="radar-layer-btn" data-layer="clouds">Clouds</button></div></div>',
-      '  <div class="weather-radar-frame" data-lat="' + escapeHtml(lat) + '" data-lon="' + escapeHtml(lon) + '" data-zoom="' + urls.zoom + '" data-layer="' + urls.layer + '">',
-      '    <img class="radar-base" src="' + urls.basemap + '" alt="Map tile" loading="lazy" referrerpolicy="no-referrer">',
-      '    <img class="radar-img" src="' + urls.url + '" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" data-fallback="' + urls.fallback + '">',
+      '  <div class="weather-radar-frame" data-lat="' + escapeHtml(lat) + '" data-lon="' + escapeHtml(lon) + '" data-zoom="' + radarZoom + '" data-layer="' + radarLayer + '">',
+      '    <div class="radar-leaflet" id="' + radarMapId + '"></div>',
       '    <div class="radar-overlay"></div>',
       '    <div class="radar-caption"><span class="dot"></span><span>Live sweep</span></div>',
       '    <div class="radar-zoom-controls">',
@@ -2143,50 +2097,60 @@
   }
 
   function wireRadarFrame(container) {
-    if (!container) return;
-    const img = container.querySelector('.radar-img');
-    const basemap = container.querySelector('.radar-base');
-    if (!img || !basemap) return;
+    if (!container || typeof L === 'undefined') return;
+    const mapEl = container.querySelector('.radar-leaflet');
+    if (!mapEl) return;
 
     const lat = Number(container.dataset.lat);
     const lon = Number(container.dataset.lon);
     const layerButtons = container.parentElement?.querySelectorAll('.radar-layer-btn');
 
-    function refresh(zoomLevel) {
-      const layer = container.dataset.layer || radarLayer;
-      const nextUrls = buildRadarUrls(lat, lon, zoomLevel ?? Number(container.dataset.zoom) ?? radarZoom, layer);
-      radarZoom = nextUrls.zoom;
-      radarLayer = layer;
-      container.dataset.zoom = String(nextUrls.zoom);
-      container.dataset.layer = layer;
-      img.dataset.fallbackUsed = '';
-      img.dataset.fallback = nextUrls.fallback;
-      img.classList.remove('img-error');
-      if (basemap && nextUrls.basemap) basemap.src = nextUrls.basemap;
-      img.src = nextUrls.url;
+    const map = L.map(mapEl, { zoomControl: false, attributionControl: false, scrollWheelZoom: true });
+    const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      minZoom: RADAR_ZOOM_MIN,
+      maxZoom: RADAR_ZOOM_MAX,
+      crossOrigin: true
+    });
+    base.addTo(map);
+
+    let overlay = null;
+
+    function setLayer(layerName) {
+      if (overlay) overlay.remove();
+      const tpl = getRadarTileTemplate(layerName);
+      overlay = L.tileLayer(tpl, { opacity: 0.85, crossOrigin: true });
+      overlay.addTo(map);
+      container.dataset.layer = layerName;
+      radarLayer = layerName;
     }
 
-    img.addEventListener('load', () => queueLayout());
-    img.addEventListener('error', () => {
-      if (!img.dataset.fallbackUsed && img.dataset.fallback) {
-        img.dataset.fallbackUsed = '1';
-        img.src = img.dataset.fallback;
-        return;
-      }
-      img.classList.add('img-error');
+    function refreshZoom(next) {
+      const z = clampZoom(next ?? map.getZoom());
+      map.setZoom(z);
+      container.dataset.zoom = String(z);
+      radarZoom = z;
+    }
+
+    map.setView([lat, lon], clampZoom(Number(container.dataset.zoom) || radarZoom));
+    setLayer(container.dataset.layer || radarLayer);
+
+    map.whenReady(() => {
+      map.invalidateSize();
       queueLayout();
     });
+
+    map.on('moveend zoomend', () => queueLayout());
 
     container.addEventListener('wheel', (ev) => {
       ev.preventDefault();
       const delta = ev.deltaY > 0 ? -1 : 1;
-      refresh((Number(container.dataset.zoom) || radarZoom) + delta);
+      refreshZoom((map.getZoom() || radarZoom) + delta);
     });
 
     container.querySelectorAll('.radar-zoom-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const dir = btn.dataset.direction === 'in' ? 1 : -1;
-        refresh((Number(container.dataset.zoom) || radarZoom) + dir);
+        refreshZoom((map.getZoom() || radarZoom) + dir);
       });
     });
 
@@ -2194,8 +2158,7 @@
       layerButtons.forEach(btn => {
         btn.addEventListener('click', () => {
           layerButtons.forEach(b => b.classList.toggle('active', b === btn));
-          container.dataset.layer = btn.dataset.layer;
-          refresh(container.dataset.zoom);
+          setLayer(btn.dataset.layer);
         });
       });
     }
@@ -2213,6 +2176,7 @@
   window.RussellTV.CommPlanner = {
     getSelectedLocation: function () { return selectedLocation; },
     getLastWeather: function () { return lastWeather; },
+    getDeclination: function () { return currentDeclination; },
     queueLayout
   };
 
