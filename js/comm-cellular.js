@@ -136,6 +136,8 @@
     ].join('');
 
     if (status) status.innerHTML = '<span class="status-pill ' + coverageCls + '">' + escapeHtml(coverage.grade) + '</span>';
+
+    window.RussellTV?.CommPlanner?.queueLayout?.();
   }
 
   async function fetchCellular(loc) {

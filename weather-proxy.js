@@ -42,6 +42,41 @@ app.get("/weather", async (req, res) => {
   }
 });
 
+// Radar tile helper (OpenWeather precipitation tiles)
+app.get("/weather/radar", async (req, res) => {
+  const { lat, lon, z, x, y } = req.query;
+  const apiKey = process.env.OPENWEATHER_API_KEY;
+  if (!apiKey) return res.status(500).send("No API key configured");
+
+  const zoom = Number(z) || 6;
+  let tileX = x != null ? Number(x) : null;
+  let tileY = y != null ? Number(y) : null;
+
+  if ((lat == null || lon == null) && (tileX == null || tileY == null)) {
+    return res.status(400).send("Missing lat/lon");
+  }
+
+  if (tileX == null || tileY == null) {
+    const scale = Math.pow(2, zoom);
+    tileX = Math.floor(((Number(lon) + 180) / 360) * scale);
+    const latRad = Number(lat) * Math.PI / 180;
+    tileY = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
+  }
+
+  const url = `https://tile.openweathermap.org/map/precipitation_new/${zoom}/${tileX}/${tileY}.png?appid=${apiKey}`;
+
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return res.status(r.status).send("Radar unavailable");
+    const buf = Buffer.from(await r.arrayBuffer());
+    res.set("Content-Type", r.headers.get("content-type") || "image/png");
+    res.send(buf);
+  } catch (err) {
+    console.error("Radar proxy error", err);
+    res.status(500).send("Radar fetch failed");
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Weather proxy running on port ${PORT}`);
 });

@@ -118,6 +118,7 @@ main {
   margin: 2rem auto 3rem;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 12px;
   gap: 1.25rem;
   align-items: start;
   align-content: start;
@@ -165,6 +166,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  grid-row-end: span var(--row-span, 1);
 }
 
 #comm-planner-view .comm-grid-bottom .comm-card {
@@ -1036,6 +1038,14 @@ main {
 
 .gps-links { font-size: 0.82rem; opacity: 0.85; display: flex; gap: 0.35rem; flex-wrap: wrap; }
 
+/* GPS/PNT */
+.gps-band-heading { font-size: 0.86rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.82; }
+.gps-band-grid { display: grid; gap: 0.3rem; }
+.gps-band-row { display: grid; grid-template-columns: 0.8fr 0.8fr 1.6fr; gap: 0.3rem; align-items: center; padding: 0.32rem 0.4rem; border-radius: 10px; border: 1px solid rgba(255, 200, 140, 0.25); background: rgba(0,0,0,0.3); }
+.gps-band-row .band-name { font-weight: 700; }
+.gps-band-row .band-label { font-size: 0.86rem; opacity: 0.88; }
+.gps-meta { font-size: 0.86rem; opacity: 0.85; }
+
 /* Local weather deluxe layout */
 #comm-card-weather {
   --card-accent: rgba(255, 180, 90, 0.45);
@@ -1047,10 +1057,7 @@ main {
   flex-direction: column;
   gap: 0.85rem;
 }
-.weather-toggle-row {
-  display: flex;
-  justify-content: flex-end;
-}
+.weather-meta-bar { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 .temp-toggle {
   border: 1px solid rgba(255, 200, 150, 0.6);
   background: rgba(255, 140, 0, 0.12);
@@ -1443,11 +1450,12 @@ main {
 .look-table-head, .look-row { display: grid; grid-template-columns: repeat(4, 1fr); font-size: 0.85rem; }
 .look-table-head { opacity: 0.7; text-transform: uppercase; letter-spacing: 0.04em; }
 .look-row { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 0.3rem 0.4rem; }
-.look-controls { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.4rem; align-items: center; }
-.look-toggle { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.15rem 0.38rem; border-radius: 10px; border: 1px solid rgba(255, 170, 110, 0.5); background: rgba(255, 150, 80, 0.1); font-size: 0.7rem; color: #ffd8b0; }
+.look-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.35rem; margin-bottom: 0.4rem; align-items: stretch; }
+.look-toggle { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.55rem; border-radius: 12px; border: 1px solid rgba(255, 170, 110, 0.5); background: rgba(255, 150, 80, 0.1); font-size: 0.72rem; color: #ffd8b0; }
 .look-toggle.secondary { border-style: dashed; opacity: 0.9; }
 .look-toggle input { accent-color: #ff9a4f; }
 .look-refresh { border: 1px solid rgba(255, 200, 150, 0.55); background: rgba(255, 150, 80, 0.15); color: #ffe6c9; padding: 0.3rem 0.55rem; border-radius: 10px; cursor: pointer; font-size: 0.75rem; }
+.look-refresh.wide { width: 100%; justify-self: stretch; }
 .look-row.severity-good { background: linear-gradient(90deg, rgba(40, 180, 120, 0.18), rgba(0, 0, 0, 0.15)); border: 1px solid rgba(80, 200, 140, 0.45); }
 .look-row.severity-fair { background: linear-gradient(90deg, rgba(180, 160, 60, 0.2), rgba(0, 0, 0, 0.15)); border: 1px solid rgba(210, 180, 90, 0.4); }
 .look-row.severity-watch { background: linear-gradient(90deg, rgba(220, 130, 50, 0.22), rgba(0, 0, 0, 0.15)); border: 1px solid rgba(230, 140, 70, 0.4); }

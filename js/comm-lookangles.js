@@ -101,7 +101,7 @@
       return `<label class="look-toggle"><input type="checkbox" data-constellation="${key}" ${checked}>${escapeHtml(CONSTELLATIONS[key].name)}</label>`;
     }).join('');
     const lowLabel = hideBelowFive ? 'Hiding <5°' : 'Show <5°';
-    return `<div class="look-controls">${toggles}<label class="look-toggle secondary"><input type="checkbox" id="look-toggle-low" ${hideBelowFive ? 'checked' : ''}>${lowLabel}</label><button class="look-refresh" type="button" id="look-refresh">↻ Refresh</button></div>`;
+    return `<div class="look-controls">${toggles}<label class="look-toggle secondary"><input type="checkbox" id="look-toggle-low" ${hideBelowFive ? 'checked' : ''}>${lowLabel}</label><button class="look-refresh wide" type="button" id="look-refresh">↻ Refresh</button></div>`;
   }
 
   function renderSection(section) {
@@ -182,6 +182,7 @@
     }
 
     wireControlEvents();
+    window.RussellTV?.CommPlanner?.queueLayout?.();
   }
 
   function wireControlEvents() {

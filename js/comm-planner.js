@@ -26,7 +26,26 @@
   const MAX_RECENT = 7;
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
   const SOLAR_CYCLE_ENDPOINT = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json');
-  const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '';
+  const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/weather/radar?lat={lat}&lon={lon}';
+  let masonryTimer = null;
+
+  // ---------- Layout helpers ----------
+
+  function queueLayout() {
+    clearTimeout(masonryTimer);
+    masonryTimer = setTimeout(applyMasonry, 120);
+  }
+
+  function applyMasonry() {
+    const grid = document.querySelector('#comm-planner-view .comm-layout-grid');
+    if (!grid) return;
+    const rowHeight = 12;
+    const gap = parseFloat(getComputedStyle(grid).rowGap || '0') || 0;
+    grid.querySelectorAll('.comm-card').forEach(card => {
+      const span = Math.ceil((card.getBoundingClientRect().height + gap) / rowHeight);
+      card.style.setProperty('--row-span', span);
+    });
+  }
 
   // ---------- Storage helpers ----------
 
@@ -876,6 +895,7 @@
     addRecent(selectedLocation);
     saveSelectedLocation();
     lastWeather = null;
+    queueLayout();
     const swData = window.RussellTV?.SpaceWeather?.getCurrentData?.();
     if (swData) {
       const updated = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
@@ -1052,9 +1072,10 @@
     const radarBlock = buildRadarBlock(lat, lon);
     const forecastBlock = buildForecastHtml(forecast);
 
+    if (meta) meta.innerHTML = '<div class="weather-meta-bar"><span class="status-pill ' + weatherSeverity + '">' + escapeHtml(toTitleCase(main.description || main.main || 'Weather')) + '</span><button type="button" id="temp-unit-toggle" class="temp-toggle">°' + (tempUnit === 'F' ? 'C' : 'F') + '</button></div>';
+
     body.innerHTML = [
       '<div class="comm-weather-body">',
-      '  <div class="weather-toggle-row"><button type="button" id="temp-unit-toggle" class="temp-toggle">Show °' + (tempUnit === 'F' ? 'C' : 'F') + '</button></div>',
       '  <div class="' + heroClass + '" style="--weather-accent:' + (accent || '') + ';">',
       '    <div class="comm-weather-left">',
       '      <div class="comm-weather-location">' + escapeHtml(selectedLocation ? formatLocationLabel(selectedLocation) : 'Selected location') + '</div>',
@@ -1082,8 +1103,6 @@
       updatePropagationCards(swRefresh, updatedLabel);
     }
 
-    if (meta) meta.innerHTML = '<span class="status-pill ' + weatherSeverity + '">' + escapeHtml(toTitleCase(main.description || main.main || 'Weather')) + '</span>';
-
     const toggle = document.getElementById('temp-unit-toggle');
     if (toggle) {
       toggle.addEventListener('click', () => {
@@ -1093,6 +1112,8 @@
         }
       });
     }
+
+    queueLayout();
   }
 
   // ---------- Space weather card ----------
@@ -1200,6 +1221,60 @@
     if (status === 'orange') return 'severity-watch';
     if (status === 'red') return 'severity-poor';
     return 'severity-good';
+  }
+
+  function renderGpsCard(satAssessment, sourceText, gpsBody, gpsStatus, kp) {
+    if (!gpsBody || !gpsStatus) return;
+
+    if (!hasSelectedLocation()) {
+      gpsBody.innerHTML = '<p class="comm-placeholder">Select a location to see GPS/PNT conditions.</p>';
+      gpsStatus.textContent = 'n/a';
+      gpsStatus.className = '';
+      return;
+    }
+
+    const gps = satAssessment?.gps || {};
+    const scint = satAssessment?.scintillation || 'Low';
+    const iono = satAssessment?.ionosphericDelay || 'Minimal';
+    const jam = satAssessment?.jamming || gps.notes || 'Monitoring normal operations.';
+
+    const baseStatus = gps.status || 'green';
+    const kpLevel = kp || 0;
+    function bandStatus(level) {
+      if (kpLevel >= 7) return 'red';
+      if (kpLevel >= 6) return 'orange';
+      if (kpLevel >= 5) return 'yellow';
+      return level || baseStatus;
+    }
+
+    const bands = [
+      { name: 'L1 C/A', status: baseStatus, notes: 'Standard positioning & timing.' },
+      { name: 'L2 P(Y)', status: bandStatus(baseStatus), notes: 'Military precision; iono corrections.' },
+      { name: 'L5', status: bandStatus(baseStatus), notes: 'Modern safety-of-life; strongest against interference.' }
+    ];
+
+    const bandRows = bands.map(b => '<div class="gps-band-row ' + satBandClass(b.status) + '">' +
+      '<div class="band-name">' + escapeHtml(b.name) + '</div>' +
+      '<div class="band-label">' + escapeHtml(toTitleCase(b.status)) + '</div>' +
+      '<div class="band-notes">' + escapeHtml(b.notes) + '</div>' +
+      '</div>').join('');
+
+    gpsBody.innerHTML = [
+      '<div class="comm-prop-status ' + satBandClass(baseStatus) + '">',
+      '  <div class="status-heading">',
+      '    <span class="status-label">GPS/GNSS</span>',
+      '    <span class="status-value">' + escapeHtml(gps.label || 'Normal') + '</span>',
+      '  </div>',
+      '  <p class="status-desc">Scintillation: ' + escapeHtml(scint) + ' · Iono Delay: ' + escapeHtml(iono) + '</p>',
+      '</div>',
+      '<div class="gps-band-heading">Band Health</div>',
+      '<div class="gps-band-grid">' + bandRows + '</div>',
+      '<div class="gps-meta">Jamming/Interference: ' + escapeHtml(jam) + '</div>',
+      '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/" target="_blank" rel="noopener noreferrer">SWPC</a> · <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam</a> · <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN</a> • ' + escapeHtml(sourceText) + '</div>'
+    ].join('');
+
+    gpsStatus.textContent = gps.label || 'Normal';
+    gpsStatus.className = 'status-pill ' + satBandClass(baseStatus);
   }
 
   let sunspotSeries = [];
@@ -1326,6 +1401,8 @@
     if (meta) meta.textContent = '';
 
     updatePropagationCards(data, updatedText);
+
+    queueLayout();
   }
 
   function updatePropagationCards(data, sourceText) {
@@ -1346,6 +1423,10 @@
       if (satBody) {
         satBody.innerHTML = '<p class="comm-placeholder">Select a location to see SATCOM & GPS guidance.</p>';
       }
+      const gpsBody = $('#comm-gps-body');
+      const gpsStatus = $('#comm-gps-status');
+      if (gpsBody) gpsBody.innerHTML = '<p class="comm-placeholder">Select a location to see GPS/PNT conditions.</p>';
+      if (gpsStatus) { gpsStatus.textContent = 'n/a'; gpsStatus.className = ''; }
       if (hfStatus) hfStatus.textContent = 'n/a';
       if (satStatus) satStatus.textContent = 'n/a';
       return;
@@ -1396,7 +1477,6 @@
     const satRisk = kp >= 7 ? 'High scintillation risk' : kp >= 6 ? 'Moderate risk' : kp >= 5 ? 'Watch' : 'Nominal';
     const satInfo = getSatSeverityDetails(satRisk);
     const satAssessment = getSatcomAssessment(loc.lat, loc.lon, data);
-    const gpsCondition = satAssessment.gps?.label || 'Normal';
 
     const weatherLine = lastWeather
       ? '<div class="satcom-weather"><div class="weather-icon">' + getWeatherGlyph(lastWeather.main) + '</div><div class="weather-meta"><div>' + escapeHtml(toTitleCase(lastWeather.desc || lastWeather.main || 'Weather')) + '</div><div class="weather-sub">' + (lastWeather.temp != null ? escapeHtml(formatTempDisplay(lastWeather.temp)) : '--') + (lastWeather.humidity != null ? ' • ' + escapeHtml(lastWeather.humidity + '% RH') : '') + '</div></div></div>'
@@ -1436,13 +1516,6 @@
         '</div>',
         '<div class="sat-band-heading">Band Status &amp; Remarks</div>',
         '<div class="sat-band-grid">' + bandRows + '</div>',
-        '<div class="comm-prop-status ' + satBandClass(satAssessment.gps?.status || 'green') + '">',
-        '  <div class="status-heading">',
-        '    <span class="status-label">🛰️ GPS/GNSS</span>',
-        '    <span class="status-value">' + escapeHtml(gpsCondition) + '</span>',
-        '  </div>',
-        '  <p class="status-desc">Scintillation: ' + escapeHtml(satAssessment.scintillation || 'Low') + ' · Iono Delay: ' + escapeHtml(satAssessment.ionosphericDelay || 'Minimal') + '</p>',
-        '</div>',
         '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/products/goes-energetic-particle" target="_blank" rel="noopener noreferrer">SWPC</a> · <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam Map</a> · <a class="inline-link" href="https://www.flightradar24.com/blog/gnss-interference-dashboard/" target="_blank" rel="noopener noreferrer">FR24 Interference</a> · <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN GUIDE</a> • ' + escapeHtml(sourceText) + '</div>'
       ].join('');
     }
@@ -1451,6 +1524,12 @@
       satStatus.textContent = satRisk;
       satStatus.className = 'status-pill ' + satInfo.className;
     }
+
+    const gpsBody = $('#comm-gps-body');
+    const gpsStatus = $('#comm-gps-status');
+    renderGpsCard(satAssessment, sourceText, gpsBody, gpsStatus, kp);
+
+    queueLayout();
   }
 
   // ---------- Init ----------
@@ -1713,16 +1792,20 @@
   function getRadarSnapshotUrl(lat, lon) {
     if (lat == null || lon == null) return '';
 
-    // Prefer a same-origin proxy when available to dodge CORS blocks
-    if (RADAR_PROXY_BASE) {
-      return RADAR_PROXY_BASE.replace('{lat}', encodeURIComponent(lat)).replace('{lon}', encodeURIComponent(lon));
-    }
-
     const zoom = 6;
     const scale = Math.pow(2, zoom);
     const x = Math.floor(((lon + 180) / 360) * scale);
     const latRad = lat * Math.PI / 180;
     const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
+
+    if (RADAR_PROXY_BASE) {
+      return RADAR_PROXY_BASE
+        .replace('{lat}', encodeURIComponent(lat))
+        .replace('{lon}', encodeURIComponent(lon))
+        .replace('{x}', x)
+        .replace('{y}', y)
+        .replace('{z}', zoom);
+    }
 
     return 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
   }
@@ -1753,7 +1836,12 @@
 
   // Public API (for other modules later)
   window.RussellTV.CommPlanner = {
-    getSelectedLocation: function () { return selectedLocation; }
+    getSelectedLocation: function () { return selectedLocation; },
+    getLastWeather: function () { return lastWeather; },
+    queueLayout
   };
+
+  window.addEventListener('resize', queueLayout);
+  document.addEventListener('DOMContentLoaded', queueLayout);
 
 })();
