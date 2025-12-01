@@ -21,6 +21,10 @@
   let cellData = null;
   let isLoading = false;
 
+  function getDeclination() {
+    return window.RussellTV?.CommPlanner?.getDeclination?.();
+  }
+
   function escapeHtml(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -68,10 +72,14 @@
     const towers = carrier.towers || [];
     const plmn = carrier.plmn || carrier.mccmnc || (carrier.mcc && carrier.mnc ? `${carrier.mcc}/${carrier.mnc}` : '—');
     const mccmnc = carrier.mccmnc || (carrier.mcc && carrier.mnc ? `${carrier.mcc}-${carrier.mnc}` : '—');
+    const decl = getDeclination();
     const rows = towers.map(t => {
       const mapLink = buildMapLink(t.lat, t.lon);
       const bearing = t.bearingDeg || t.bearing;
-      return `<div class="cell-near-row"><span>${escapeHtml(t.tech || 'Tech')}</span><span>${t.distance ? escapeHtml(Math.round(t.distance) + 'm') : '—'}</span><span>${bearing ? escapeHtml(Math.round(bearing) + '°T') : '—'}</span><span>${mapLink}</span></div>`;
+      const bearingText = bearing != null && decl != null
+        ? `${Math.round(bearing)}°T / ${Math.round(((bearing - decl) % 360 + 360) % 360)}°M`
+        : (bearing != null ? Math.round(bearing) + '°T' : '—');
+      return `<div class="cell-near-row"><span>${escapeHtml(t.tech || 'Tech')}</span><span>${t.distance ? escapeHtml(Math.round(t.distance) + 'm') : '—'}</span><span>${escapeHtml(bearingText)}</span><span>${mapLink}</span></div>`;
     }).join('');
     const bandBadges = (carrier.bands || []).sort((a, b) => TECH_PRIORITY.indexOf(a.split(' ')[0]) - TECH_PRIORITY.indexOf(b.split(' ')[0])).map(b => `<span class="cell-band ${TECH_COLORS[b.split(' ')[0]] || ''}">${escapeHtml(b)}</span>`).join('');
     return [
@@ -88,18 +96,22 @@
 
   function renderTowerTable(towers) {
     if (!towers || !towers.length) return '';
+    const decl = getDeclination();
     const rows = towers.slice(0, 10).map(t => {
       const map = buildMapLink(t.lat, t.lon);
+      const bearing = t.bearingDeg != null ? t.bearingDeg : t.bearing;
+      const magnetic = bearing != null && decl != null ? Math.round(((bearing - decl) % 360 + 360) % 360) : null;
+      const bearingText = bearing != null ? `${Math.round(bearing)}°T${magnetic != null ? ' / ' + magnetic + '°M' : ''}` : '—';
       return '<div class="cell-tower-row">'
         + '<span class="cell-tower-carrier">' + escapeHtml((t.flag ? t.flag + ' ' : '') + (t.carrier || 'Carrier')) + '</span>'
         + '<span>' + escapeHtml(t.technology || t.radio || 'Tech') + '</span>'
         + '<span>' + escapeHtml(Math.round(t.distance || 0) + 'm') + '</span>'
-        + '<span>' + escapeHtml((t.bearingDeg != null ? Math.round(t.bearingDeg) : Math.round(t.bearing || 0)) + '°T') + '</span>'
+        + '<span>' + escapeHtml(bearingText) + '</span>'
         + '<span>' + map + '</span>'
         + '</div>';
     }).join('');
 
-    return '<div class="cell-tower-section"><div class="cell-tower-head">Nearest Towers (TRUE north bearings)</div>' + rows + '</div>';
+    return '<div class="cell-tower-section"><div class="cell-tower-head">Nearest Towers (TRUE / MAG bearings)</div>' + rows + '</div>';
   }
 
   function renderCellular(loc) {
@@ -130,7 +142,8 @@
       '</div>',
       towers,
       carriers ? '<div class="cell-carrier-section">' + carriers + '</div>' : '<p class="comm-placeholder">' + (isLoading ? 'Loading towers…' : 'No towers reported in range.') + '</p>',
-      '<div class="cell-legend">Azimuth is TRUE north (not magnetic)</div>',
+      '<div class="cell-legend">Azimuth shown as TRUE / MAG (declination applied from NOAA WMM)</div>',
+      '<div class="cell-legend">Verify PLMN/MCC values if operating near borders to avoid unplanned roaming.</div>',
       '<div class="cell-legend comm-card-footer">Source: OpenCellID • Last Updated: ' + escapeHtml(formatUserStamp(Date.now())) + '</div>'
     ].join('');
 

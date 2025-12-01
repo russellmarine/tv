@@ -126,8 +126,9 @@
     if (!sats.length) return '';
     const rows = sats.map(s => {
       const cls = severityClass(s.el || 0);
-      const satLabel = s.id ? `<a class="inline-link" href="https://www.n2yo.com/satellite/?s=${s.id}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.name)}</a>` : escapeHtml(s.name);
-      return `<div class="look-row ${cls}"><span>${satLabel}</span><span>${(s.az ?? 0).toFixed ? (s.az).toFixed(1) : escapeHtml(s.az)}</span><span>${(s.el ?? 0).toFixed ? (s.el).toFixed(1) : escapeHtml(s.el)}</span><span>${escapeHtml(s.range || '')}</span></div>`;
+      const wrapperStart = s.id ? `<a class="look-row ${cls} look-row-link" href="https://www.n2yo.com/satellite/?s=${s.id}" target="_blank" rel="noopener noreferrer">` : `<div class="look-row ${cls}">`;
+      const wrapperEnd = s.id ? '</a>' : '</div>';
+      return `${wrapperStart}<span>${escapeHtml(s.name)}</span><span>${(s.az ?? 0).toFixed ? (s.az).toFixed(1) : escapeHtml(s.az)}</span><span>${(s.el ?? 0).toFixed ? (s.el).toFixed(1) : escapeHtml(s.el)}</span><span>${escapeHtml(s.range || '')}</span>${wrapperEnd}`;
     }).join('');
     return [
       '<div class="look-section">',
@@ -147,19 +148,13 @@
   }
 
   function renderAvailability() {
-    const head = '<div class="look-availability-row head"><span>Name</span><span>Orbit</span><span>Band</span><span>Use</span><span>Status</span></div>';
-    const rows = CONSTELLATION_SUMMARY.map(p =>
-      '<div class="look-availability-row">'
-      + '<span>' + escapeHtml(p.name) + '</span>'
-      + '<span>' + escapeHtml(p.orbit) + '</span>'
-      + '<span>' + escapeHtml(p.band) + '</span>'
-      + '<span>' + escapeHtml(p.use) + '</span>'
-      + '<span><span class="look-pill ' + p.status + '">' + escapeHtml(p.note) + '</span></span>'
-      + '</div>'
+    const pills = CONSTELLATION_SUMMARY.map(p =>
+      '<a class="look-pill ' + p.status + ' look-pill-compact" href="#" onclick="return false;" title="' + escapeHtml(p.use + ' • ' + p.band) + '">' + escapeHtml(p.name)
+      + '<span class="pill-sub">' + escapeHtml(p.note) + '</span></a>'
     ).join('');
     return '<details class="look-availability-panel">'
       + '<summary>Constellation availability (reference)</summary>'
-      + '<div class="look-availability-table">' + head + rows + '</div>'
+      + '<div class="look-availability-pills">' + pills + '</div>'
       + '</details>';
   }
 

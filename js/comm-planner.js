@@ -22,17 +22,26 @@
   let lastWeatherRaw = null;
   let lastForecastRaw = null;
   let lastWeatherCoords = null;
+  let currentDeclination = null;
   let tempUnit = 'F';
   const MAX_RECENT = 7;
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
-  const SOLAR_CYCLE_ENDPOINT = 'https://r.jina.ai/https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json';
+  const BACKUP_GEOCODER = 'https://geocode.maps.co/search';
+  const SOLAR_CYCLE_ENDPOINT = window.SOLAR_CYCLE_ENDPOINT
+    || 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json');
+  const SOLAR_CYCLE_FALLBACK = 'https://r.jina.ai/https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json';
+  const DECLINATION_ENDPOINT = 'https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&resultFormat=json';
+  const DECLINATION_FALLBACK = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?altitude=0&lat={lat}&lon={lon}&resultFormat=json');
   const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/weather/radar?lat={lat}&lon={lon}';
+  const RAINVIEWER_TILE = 'https://tilecache.rainviewer.com/v2/radar/last/512/{z}/{x}/{y}/2/1_1.png';
+  const RAINVIEWER_CLOUDS = 'https://tilecache.rainviewer.com/v2/satellite/last/512/{z}/{x}/{y}/2/1_1.png';
   const RADAR_ZOOM_MIN = 4;
   const RADAR_ZOOM_MAX = 10;
   let masonryTimer = null;
   let resizeObserver = null;
-  const ROW_HEIGHT = 5;
+  const ROW_HEIGHT = 4;
   let radarZoom = 6;
+  let radarLayer = 'radar';
 
   // ---------- Layout helpers ----------
 
@@ -224,6 +233,39 @@
     };
   }
 
+  function formatDeclination(deg) {
+    if (deg === null || deg === undefined || isNaN(deg)) return '';
+    const dir = deg >= 0 ? 'E' : 'W';
+    return Math.abs(deg).toFixed(1) + '°' + dir;
+  }
+
+  async function fetchDeclination(lat, lon) {
+    if (!isFinite(lat) || !isFinite(lon)) return null;
+    const sources = [
+      DECLINATION_ENDPOINT.replace('{lat}', lat).replace('{lon}', lon),
+      DECLINATION_FALLBACK.replace('{lat}', lat).replace('{lon}', lon)
+    ];
+
+    for (const src of sources) {
+      try {
+        const res = await fetch(src, { cache: 'no-cache' });
+        if (!res.ok) continue;
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          const val = data.result?.[0]?.declination || data.result?.declination || data.declination;
+          if (isFinite(val)) return Number(val);
+        } catch (e) {
+          const match = text.match(/"declination"\s*:\s*([-0-9\.]+)/i);
+          if (match && isFinite(Number(match[1]))) return Number(match[1]);
+        }
+      } catch (e) {
+        // try next
+      }
+    }
+    return null;
+  }
+
   function formatLocationLabel(loc) {
     if (!loc) return '';
     const base = loc.label || 'Location';
@@ -238,12 +280,17 @@
     } else {
       selectedLocation.identifiers = selectedLocation.identifiers || buildIdentifiers(selectedLocation.coords);
       const ids = selectedLocation.identifiers || {};
+      const decl = formatDeclination(selectedLocation.declination);
       meta.innerHTML = [
         '<div class="comm-location-lines">',
-        '  <div class="loc-primary">' + escapeHtml(formatLocationLabel(selectedLocation)) + '</div>',
-        ids.latlon ? '  <div class="loc-sub">Lat/Long: ' + escapeHtml(ids.latlon) + '</div>' : '',
-        ids.mgrs ? '  <div class="loc-sub">MGRS: ' + escapeHtml(ids.mgrs) + '</div>' : '',
-        ids.grid ? '  <div class="loc-sub">Grid: ' + escapeHtml(ids.grid) + '</div>' : '',
+        '  <div class="loc-group">',
+        '    <div class="loc-label">Location</div>',
+        '    <div class="loc-primary">' + escapeHtml(formatLocationLabel(selectedLocation)) + '</div>',
+        '  </div>',
+        ids.latlon ? '  <div class="loc-group"><div class="loc-label">Lat/Long</div><div class="loc-value">' + escapeHtml(ids.latlon) + '</div></div>' : '',
+        ids.mgrs ? '  <div class="loc-group"><div class="loc-label">MGRS</div><div class="loc-value">' + escapeHtml(ids.mgrs) + '</div></div>' : '',
+        ids.grid ? '  <div class="loc-group"><div class="loc-label">Grid</div><div class="loc-value">' + escapeHtml(ids.grid) + '</div></div>' : '',
+        decl ? '  <div class="loc-group"><div class="loc-label">Magnetic Declination</div><div class="loc-value">' + escapeHtml(decl) + ' (T→M)</div></div>' : '',
         '</div>'
       ].join('');
     }
@@ -377,6 +424,29 @@
 
   // ---------- Search / Geocoding ----------
 
+  function mapGeocodeResults(raw) {
+    return (raw || []).map(r => {
+      const addr = r.address || {};
+      const city = r.name || addr.city || addr.town || addr.village || '';
+      const state = addr.state || addr.county || '';
+      const country = addr.country || '';
+      const labelParts = [];
+      if (city) labelParts.push(city);
+      if (state && state !== city) labelParts.push(state);
+      if (country && country !== state) labelParts.push(country);
+      const label = labelParts.join(', ') || (r.display_name || '').split(',')[0];
+
+      return {
+        label,
+        fullName: r.display_name || r.licence || label,
+        coords: {
+          lat: parseFloat(r.lat),
+          lon: parseFloat(r.lon)
+        }
+      };
+    });
+  }
+
   async function searchLocation(query) {
     if (!query || query.length < 3) {
       autocompleteResults = [];
@@ -384,44 +454,35 @@
       return;
     }
 
+    const primaryUrl = NOMINATIM_URL + '/search'
+      + '?q=' + encodeURIComponent(query)
+      + '&format=json&limit=6&addressdetails=1';
+
+    const backupUrl = BACKUP_GEOCODER + '?q=' + encodeURIComponent(query) + '&limit=6&format=json';
+
     try {
-      const url = NOMINATIM_URL + '/search' +
-        '?q=' + encodeURIComponent(query) +
-        '&format=json&limit=6&addressdetails=1';
-
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'RussellTV-CommPlanner/1.0' }
-      });
-
-      if (!res.ok) {
-        throw new Error('Geocoding failed');
+      const res = await fetch(primaryUrl, { headers: { 'User-Agent': 'RussellTV-CommPlanner/1.0' } });
+      if (res.ok) {
+        const raw = await res.json();
+        autocompleteResults = mapGeocodeResults(raw);
+        renderAutocomplete();
+        return;
       }
-
-      const raw = await res.json();
-      autocompleteResults = raw.map(r => {
-        const addr = r.address || {};
-        const city = r.name || addr.city || addr.town || addr.village || '';
-        const state = addr.state || addr.county || '';
-        const country = addr.country || '';
-        const labelParts = [];
-        if (city) labelParts.push(city);
-        if (state && state !== city) labelParts.push(state);
-        if (country && country !== state) labelParts.push(country);
-        const label = labelParts.join(', ') || r.display_name.split(',')[0];
-
-        return {
-          label,
-          fullName: r.display_name,
-          coords: {
-            lat: parseFloat(r.lat),
-            lon: parseFloat(r.lon)
-          }
-        };
-      });
-
-      renderAutocomplete();
+      throw new Error('Geocoding failed');
     } catch (e) {
       console.warn('[CommPlanner] Geocoding error:', e);
+      try {
+        const res = await fetch(backupUrl);
+        if (res.ok) {
+          const raw = await res.json();
+          autocompleteResults = mapGeocodeResults(raw);
+          renderAutocomplete();
+          return;
+        }
+      } catch (fallbackErr) {
+        console.warn('[CommPlanner] Backup geocoder error:', fallbackErr);
+      }
+
       autocompleteResults = [];
       renderAutocomplete();
       showLocationError('Geocoding failed. Try again.');
@@ -1004,6 +1065,8 @@
     };
     updateLocationStatus();
     await resolveLocationContext(selectedLocation);
+    selectedLocation.declination = await fetchDeclination(selectedLocation.coords.lat, selectedLocation.coords.lon);
+    currentDeclination = selectedLocation.declination;
     addRecent(selectedLocation);
     saveSelectedLocation();
     lastWeather = null;
@@ -1011,7 +1074,7 @@
     const swData = window.RussellTV?.SpaceWeather?.getCurrentData?.();
     if (swData) {
       const updated = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
-      const updatedText = updated ? 'Last Updated: ' + formatUserStamp(updated) : 'Live NOAA SWPC';
+      const updatedText = updated ? 'Last Updated: ' + formatUserStamp(updated) + ' (local) • ' + formatUtcStamp(updated) + 'Z' : 'Live NOAA SWPC';
       updatePropagationCards(swData, updatedText);
     }
     const weatherMeta = $('#comm-weather-meta');
@@ -1041,6 +1104,7 @@
       const city = addr.city || addr.town || addr.village || addr.hamlet || '';
       const state = addr.state || addr.county || '';
       const country = addr.country || '';
+      loc.countryCode = (addr.country_code || '').toUpperCase();
       const parts = [city, state, country].filter(Boolean);
       const ctx = parts.join(', ');
       if (ctx) {
@@ -1150,7 +1214,7 @@
     const sunrise = wx.sys ? wx.sys.sunrise : null;
     const sunset = wx.sys ? wx.sys.sunset : null;
     const timezone = wx.timezone || 0;
-    const updatedLocal = wx.dt ? 'Last Updated: ' + formatUserStamp(wx.dt * 1000) : 'Last Updated: --';
+    const updatedLocal = wx.dt ? 'Last Updated: ' + formatUserStamp(wx.dt * 1000) + ' (local) • ' + formatUtcStamp(wx.dt * 1000) + 'Z' : 'Last Updated: --';
     const localTime = formatLocalClock(Date.now() / 1000, timezone, false);
     const localDate = formatLocalDate(Date.now() / 1000, timezone);
     const weatherSeverity = getWeatherSeverityClass(main.main, humidity);
@@ -1185,6 +1249,7 @@
     if (wind.speed != null) metrics.push(metricHtml('Wind', Math.round(wind.speed) + ' mph' + (windDirection ? ' ' + windDirection : ''), null, getWeatherMetricIcon('Wind')));
     if (visibility != null) metrics.push(metricHtml('Visibility', (visibility / 1609).toFixed(1) + ' mi', null, getWeatherMetricIcon('Visibility')));
     metrics.push(metricHtml('Local Time', localTime, null, getWeatherMetricIcon('Local Time')));
+    metrics.push(metricHtml('UTC Time', formatUtcClock(false) + 'Z', null, getWeatherMetricIcon('Time')));
     metrics.push(metricHtml('Local Date', localDate, null, getWeatherMetricIcon('Date')));
     if (sunrise) metrics.push(metricHtml('Sunrise', formatLocalTime(sunrise, timezone), null, getWeatherMetricIcon('Sunrise')));
     if (sunset) metrics.push(metricHtml('Sunset', formatLocalTime(sunset, timezone), null, getWeatherMetricIcon('Sunset')));
@@ -1219,7 +1284,7 @@
     const swRefresh = window.RussellTV?.SpaceWeather?.getCurrentData?.();
     if (swRefresh) {
       const updatedSw = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
-      const updatedLabel = updatedSw ? 'Last Updated: ' + formatUserStamp(updatedSw) : 'Live NOAA SWPC';
+    const updatedLabel = updatedSw ? 'Last Updated: ' + formatUserStamp(updatedSw) + ' (local) • ' + formatUtcStamp(updatedSw) + 'Z' : 'Live NOAA SWPC';
       updatePropagationCards(swRefresh, updatedLabel);
     }
 
@@ -1473,6 +1538,7 @@
     sunspotPromise = (async () => {
       const sources = [
         SOLAR_CYCLE_ENDPOINT,
+        SOLAR_CYCLE_FALLBACK,
         'https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json'
       ];
 
@@ -1533,7 +1599,7 @@
     const kpColor = data.kpIndex >= 5 ? '#ff8800' : (data.kpIndex >= 4 ? '#ffcc00' : '#44cc44');
 
     const updated = window.RussellTV.SpaceWeather.getLastUpdate();
-    const updatedText = updated ? 'Last Updated: ' + formatUserStamp(updated) : 'Live NOAA SWPC';
+    const updatedText = updated ? 'Last Updated: ' + formatUserStamp(updated) + ' (local) • ' + formatUtcStamp(updated) + 'Z' : 'Live NOAA SWPC';
     const kpCondition = data.kpIndex >= 5 ? 'Storm' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet';
 
     const spacewxOverall = getSpacewxOverall(data);
@@ -1766,46 +1832,6 @@
       });
     });
 
-    const browserBtn = $('#comm-use-browser');
-    if (browserBtn && navigator.geolocation) {
-      browserBtn.addEventListener('click', () => {
-        browserBtn.disabled = true;
-        browserBtn.textContent = 'Locating…';
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            let label = 'Current location';
-            try {
-              // Quick reverse lookup via Nominatim for a nicer label
-              const url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' +
-                lat + '&lon=' + lon + '&zoom=10&addressdetails=1';
-              const res = await fetch(url, {
-                headers: { 'User-Agent': 'RussellTV-CommPlanner/1.0' }
-              });
-              if (res.ok) {
-                const data = await res.json();
-                if (data && data.display_name) {
-                  label = data.display_name.split(',').slice(0, 2).join(', ');
-                }
-              }
-            } catch (e) {
-              // fall back to generic
-            }
-            applyLocation({ label, coords: { lat, lon } });
-            browserBtn.disabled = false;
-            browserBtn.textContent = 'Use Current Location';
-          },
-          (err) => {
-            console.warn('[CommPlanner] Geolocation error:', err);
-            showLocationError('Browser location failed: ' + err.message);
-            browserBtn.disabled = false;
-            browserBtn.textContent = 'Use Current Location';
-          }
-        );
-      });
-    }
-
     const persisted = loadSelectedLocation();
     if (persisted && persisted.coords) {
       applyLocation(persisted);
@@ -1828,7 +1854,9 @@
 
   window.RussellTV.CommPlanner = {
     getLastWeather: () => lastWeather,
-    getSelectedLocation: () => selectedLocation
+    getSelectedLocation: () => selectedLocation,
+    getDeclination: () => currentDeclination,
+    queueLayout
   };
 
   document.addEventListener('DOMContentLoaded', init);
@@ -1935,6 +1963,17 @@
     return `${time} ${day} ${month} ${year}`;
   }
 
+  function formatUtcStamp(dateVal) {
+    if (!dateVal && dateVal !== 0) return '';
+    const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+    const opts = { timeZone: 'UTC', hour: '2-digit', minute: '2-digit', hour12: false };
+    const time = d.toLocaleTimeString('en-GB', opts).replace(/:/g, '');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = d.toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'short' });
+    const year = d.getUTCFullYear().toString().slice(-2);
+    return `${time} ${day} ${month} ${year}`;
+  }
+
   function tempToAccent(tempF) {
     if (tempF === null || tempF === undefined || isNaN(tempF)) return '';
     const clamped = Math.max(-10, Math.min(110, tempF));
@@ -1952,6 +1991,14 @@
     const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     const idx = Math.round(deg / 45) % 8;
     return dirs[idx];
+  }
+
+  function formatBearingWithMag(bearing) {
+    if (bearing === null || bearing === undefined || isNaN(bearing)) return '—';
+    const trueDeg = ((bearing % 360) + 360) % 360;
+    if (!isFinite(currentDeclination)) return Math.round(trueDeg) + '°T';
+    const mag = ((trueDeg - currentDeclination) % 360 + 360) % 360;
+    return Math.round(trueDeg) + '°T / ' + Math.round(mag) + '°M';
   }
 
   function getWeatherGlyph(main) {
@@ -2022,28 +2069,33 @@
     return { x, y, zoom };
   }
 
-  function getRadarSnapshotUrl(lat, lon, zoomLevel) {
+  function getRadarSnapshotUrl(lat, lon, zoomLevel, layer) {
     if (lat == null || lon == null) return '';
 
     const { x, y, zoom } = getTileCoords(lat, lon, zoomLevel);
-    const rainviewerUrl = 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
+    const isClouds = layer === 'clouds';
+    const rainviewerUrl = (isClouds ? RAINVIEWER_CLOUDS : RAINVIEWER_TILE)
+      .replace('{z}', zoom).replace('{x}', x).replace('{y}', y);
 
-    if (RADAR_PROXY_BASE) {
-      return RADAR_PROXY_BASE
+    if (isClouds) return rainviewerUrl;
+
+    const proxyUrl = RADAR_PROXY_BASE
+      ? RADAR_PROXY_BASE
         .replace('{lat}', encodeURIComponent(lat))
         .replace('{lon}', encodeURIComponent(lon))
         .replace('{x}', x)
         .replace('{y}', y)
-        .replace('{z}', zoom);
-    }
+        .replace('{z}', zoom)
+      : '';
 
-    return rainviewerUrl;
+    return proxyUrl || rainviewerUrl;
   }
 
   function getRadarFallbackUrl(lat, lon, zoomLevel) {
     if (lat == null || lon == null) return '';
     const { x, y, zoom } = getTileCoords(lat, lon, zoomLevel);
-    return 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
+    const rainviewerUrl = RAINVIEWER_TILE.replace('{z}', zoom).replace('{x}', x).replace('{y}', y);
+    return rainviewerUrl;
   }
 
   function getBasemapUrl(lat, lon, zoomLevel) {
@@ -2057,24 +2109,25 @@
     return Math.min(Math.max(zoomNum || 6, RADAR_ZOOM_MIN), RADAR_ZOOM_MAX);
   }
 
-  function buildRadarUrls(lat, lon, zoomLevel) {
+  function buildRadarUrls(lat, lon, zoomLevel, layer = radarLayer) {
     const z = clampZoom(zoomLevel);
     return {
-      url: getRadarSnapshotUrl(lat, lon, z),
+      url: getRadarSnapshotUrl(lat, lon, z, layer),
       fallback: getRadarFallbackUrl(lat, lon, z),
       basemap: getBasemapUrl(lat, lon, z),
-      zoom: z
+      zoom: z,
+      layer
     };
   }
 
   function buildRadarBlock(lat, lon) {
-    const urls = buildRadarUrls(lat, lon, radarZoom);
+    const urls = buildRadarUrls(lat, lon, radarZoom, radarLayer);
     if (!urls.url) return '';
 
     return [
       '<div class="weather-radar">',
-      '  <div class="weather-radar-head">Local Radar</div>',
-      '  <div class="weather-radar-frame" data-lat="' + escapeHtml(lat) + '" data-lon="' + escapeHtml(lon) + '" data-zoom="' + urls.zoom + '">',
+      '  <div class="weather-radar-head">Local Radar<div class="radar-layer-toggle"><button type="button" class="radar-layer-btn active" data-layer="radar">Precip</button><button type="button" class="radar-layer-btn" data-layer="clouds">Clouds</button></div></div>',
+      '  <div class="weather-radar-frame" data-lat="' + escapeHtml(lat) + '" data-lon="' + escapeHtml(lon) + '" data-zoom="' + urls.zoom + '" data-layer="' + urls.layer + '">',
       '    <img class="radar-base" src="' + urls.basemap + '" alt="Map tile" loading="lazy" referrerpolicy="no-referrer">',
       '    <img class="radar-img" src="' + urls.url + '" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" data-fallback="' + urls.fallback + '">',
       '    <div class="radar-overlay"></div>',
@@ -2097,11 +2150,15 @@
 
     const lat = Number(container.dataset.lat);
     const lon = Number(container.dataset.lon);
+    const layerButtons = container.parentElement?.querySelectorAll('.radar-layer-btn');
 
     function refresh(zoomLevel) {
-      const nextUrls = buildRadarUrls(lat, lon, zoomLevel ?? Number(container.dataset.zoom) ?? radarZoom);
+      const layer = container.dataset.layer || radarLayer;
+      const nextUrls = buildRadarUrls(lat, lon, zoomLevel ?? Number(container.dataset.zoom) ?? radarZoom, layer);
       radarZoom = nextUrls.zoom;
+      radarLayer = layer;
       container.dataset.zoom = String(nextUrls.zoom);
+      container.dataset.layer = layer;
       img.dataset.fallbackUsed = '';
       img.dataset.fallback = nextUrls.fallback;
       img.classList.remove('img-error');
@@ -2132,6 +2189,16 @@
         refresh((Number(container.dataset.zoom) || radarZoom) + dir);
       });
     });
+
+    if (layerButtons) {
+      layerButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          layerButtons.forEach(b => b.classList.toggle('active', b === btn));
+          container.dataset.layer = btn.dataset.layer;
+          refresh(container.dataset.zoom);
+        });
+      });
+    }
   }
 
   function getWeatherSeverityClass(main, humidity) {
