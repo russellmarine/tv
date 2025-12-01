@@ -29,10 +29,22 @@
       <a href="/" class="btn" title="Back to TV">← TV</a>
       <span class="btn active" style="pointer-events:none;">Comm</span>
       <button type="button" class="btn ghost" id="comm-map-toggle">Overlays Map</button>
+      <button type="button" class="btn ghost" id="comm-export-pptx">Export PPTX</button>
     </div>
   </header>
 
   <main>
+    <div class="panel-toggle-bar" id="comm-panel-toggle-bar" aria-label="Toggle dashboard panels">
+      <button type="button" class="panel-toggle active" data-target="comm-card-location">Location</button>
+      <button type="button" class="panel-toggle active" data-target="comm-card-spacewx">Space Wx</button>
+      <button type="button" class="panel-toggle active" data-target="comm-card-overlay">Overlays Map</button>
+      <button type="button" class="panel-toggle active" data-target="comm-card-weather">Local Wx</button>
+      <button type="button" class="panel-toggle active" data-target="comm-card-gps">GPS &amp; PNT</button>
+      <button type="button" class="panel-toggle active" data-target="comm-card-hf">HF Prop</button>
+      <button type="button" class="panel-toggle active" data-target="comm-card-satcom">SATCOM Wx</button>
+      <button type="button" class="panel-toggle active" data-target="comm-card-satangles">Satellite Planner</button>
+      <button type="button" class="panel-toggle active" data-target="comm-card-cellular">Cellular</button>
+    </div>
     <section id="comm-planner-view">
       <div class="comm-layout-grid">
         <article id="comm-card-location" class="comm-card">
@@ -72,7 +84,7 @@
           </div>
         </article>
 
-        <article id="comm-card-overlay" class="comm-card comm-hidden">
+        <article id="comm-card-overlay" class="comm-card comm-span-2 comm-hidden">
           <div class="comm-card-header">
             <div class="comm-card-title"><span>Operational Overlays</span></div>
             <div class="comm-card-status"><span id="comm-overlay-status">off</span></div>
@@ -175,6 +187,12 @@
   <script src="/js/feature-toggles.js"></script>
   <script src="/js/propagation-panel.js"></script>
   <script src="/js/gunny-chat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PptxGenJS/3.10.1/pptxgen.bundle.js" referrerpolicy="no-referrer"></script>
+  <script>
+    window.RADAR_PROXY_BASE = '/weather/radar/{layer}/{z}/{x}/{y}.png';
+    window.SOLAR_CYCLE_ENDPOINT = '/api/spaceweather/json/solar-cycle/observed-solar-cycle.json';
+  </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="/js/comm-planner.js"></script>
   <script src="/js/comm-lookangles.js"></script>

@@ -42,12 +42,29 @@ app.get("/weather", async (req, res) => {
   }
 });
 
-// Radar tile helper (OpenWeather precipitation tiles)
-app.get("/weather/radar", async (req, res) => {
-  const { lat, lon, z, x, y } = req.query;
+// Radar tile helper (OpenWeather precipitation/clouds tiles)
+async function proxyRadarTile(layerRaw, z, x, y, res) {
   const apiKey = process.env.OPENWEATHER_API_KEY;
   if (!apiKey) return res.status(500).send("No API key configured");
 
+  const layer = layerRaw === "clouds" || layerRaw === "clouds_new" ? "clouds_new" : "precipitation_new";
+  const url = `https://tile.openweathermap.org/map/${layer}/${z}/${x}/${y}.png?appid=${apiKey}`;
+
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return res.status(r.status).send("Radar unavailable");
+    const buf = Buffer.from(await r.arrayBuffer());
+    res.set("Content-Type", r.headers.get("content-type") || "image/png");
+    res.send(buf);
+  } catch (err) {
+    console.error("Radar proxy error", err);
+    res.status(500).send("Radar fetch failed");
+  }
+}
+
+// Legacy lat/lon radar helper
+app.get("/weather/radar", async (req, res) => {
+  const { lat, lon, z, x, y, layer } = req.query;
   const zoom = Number(z) || 6;
   let tileX = x != null ? Number(x) : null;
   let tileY = y != null ? Number(y) : null;
@@ -63,18 +80,13 @@ app.get("/weather/radar", async (req, res) => {
     tileY = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
   }
 
-  const url = `https://tile.openweathermap.org/map/precipitation_new/${zoom}/${tileX}/${tileY}.png?appid=${apiKey}`;
+  return proxyRadarTile(layer, zoom, tileX, tileY, res);
+});
 
-  try {
-    const r = await fetch(url);
-    if (!r.ok) return res.status(r.status).send("Radar unavailable");
-    const buf = Buffer.from(await r.arrayBuffer());
-    res.set("Content-Type", r.headers.get("content-type") || "image/png");
-    res.send(buf);
-  } catch (err) {
-    console.error("Radar proxy error", err);
-    res.status(500).send("Radar fetch failed");
-  }
+// Tile-friendly pattern: /weather/radar/{layer}/{z}/{x}/{y}.png
+app.get("/weather/radar/:layer/:z/:x/:y.png", async (req, res) => {
+  const { layer, z, x, y } = req.params;
+  return proxyRadarTile(layer, Number(z), Number(x), Number(y), res);
 });
 
 // Solar cycle proxy to avoid client-side CORS failures

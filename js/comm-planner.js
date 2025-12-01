@@ -37,6 +37,18 @@
   const RAINVIEWER_CLOUDS = 'https://tilecache.rainviewer.com/v2/satellite/last/{z}/{x}/{y}/2/1_1.png';
   const RADAR_ZOOM_MIN = 4;
   const RADAR_ZOOM_MAX = 10;
+  const PANEL_STATE_KEY = 'commPanelVisibility';
+  const PANEL_IDS = [
+    'comm-card-location',
+    'comm-card-spacewx',
+    'comm-card-overlay',
+    'comm-card-weather',
+    'comm-card-gps',
+    'comm-card-hf',
+    'comm-card-satcom',
+    'comm-card-satangles',
+    'comm-card-cellular'
+  ];
   let masonryTimer = null;
   let resizeObserver = null;
   const ROW_HEIGHT = 4;
@@ -1844,10 +1856,59 @@
     }
   }
 
+  async function exportPptx() {
+    if (!window.PptxGenJS || !window.html2canvas) {
+      alert('Export libraries not loaded.');
+      return;
+    }
+
+    const cards = Array.from(document.querySelectorAll('#comm-planner-view .comm-card'))
+      .filter(card => !card.classList.contains('comm-hidden'));
+    if (!cards.length) return;
+
+    const pptx = new PptxGenJS();
+    pptx.layout = '16x9';
+    const slideMargin = 0.3;
+    const colWidth = 4.4;
+    const rowHeight = 2.7;
+    let slide = pptx.addSlide();
+    let x = slideMargin;
+    let y = slideMargin;
+
+    for (const card of cards) {
+      try {
+        const canvas = await window.html2canvas(card, { backgroundColor: '#0b0b0d', scale: 2, logging: false });
+        const data = canvas.toDataURL('image/png');
+        slide.addImage({ data, x, y, w: colWidth });
+        x += colWidth + 0.25;
+        if (x + colWidth > 10) {
+          x = slideMargin;
+          y += rowHeight;
+        }
+        if (y + rowHeight > 7) {
+          slide = pptx.addSlide();
+          x = slideMargin;
+          y = slideMargin;
+        }
+      } catch (e) {
+        console.warn('[CommPlanner] PPTX export skipped card', e);
+      }
+    }
+
+    await pptx.writeFile({ fileName: 'comm-dashboard.pptx' });
+  }
+
   function init() {
     if (!document.querySelector('.comm-layout-grid')) return;
+    initPanelToggles();
     initLocationCard();
     initSpaceWeatherCard();
+    const exportBtn = document.getElementById('comm-export-pptx');
+    if (exportBtn) exportBtn.addEventListener('click', exportPptx);
+    initResizeObserver();
+    queueLayout();
+    window.addEventListener('resize', queueLayout);
+    window.addEventListener('load', queueLayout);
     console.log('[CommPlanner] Dashboard initialized');
   }
 
@@ -2071,8 +2132,18 @@
   let radarId = 0;
 
   function getRadarTileTemplate(layer) {
+    const layerKey = layer === 'clouds' ? 'clouds_new' : 'precipitation_new';
+    if (RADAR_PROXY_BASE) {
+      return RADAR_PROXY_BASE.includes('{layer}')
+        ? RADAR_PROXY_BASE.replace('{layer}', layerKey)
+        : RADAR_PROXY_BASE;
+    }
+    if (window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY) {
+      const key = window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY;
+      const base = layer === 'clouds' ? 'clouds_new' : 'precipitation_new';
+      return `https://tile.openweathermap.org/map/${base}/{z}/{x}/{y}.png?appid=${key}`;
+    }
     if (layer === 'clouds') return RAINVIEWER_CLOUDS;
-    if (RADAR_PROXY_BASE) return RADAR_PROXY_BASE;
     return RAINVIEWER_TILE;
   }
 
@@ -2103,6 +2174,9 @@
 
     const lat = Number(container.dataset.lat);
     const lon = Number(container.dataset.lon);
+    const fallback = selectedLocation?.coords || lastWeatherCoords || { lat: 38.9, lon: -77.0 };
+    const viewLat = Number.isFinite(lat) ? lat : fallback.lat;
+    const viewLon = Number.isFinite(lon) ? lon : fallback.lon;
     const layerButtons = container.parentElement?.querySelectorAll('.radar-layer-btn');
 
     const map = L.map(mapEl, { zoomControl: false, attributionControl: false, scrollWheelZoom: true });
@@ -2131,7 +2205,7 @@
       radarZoom = z;
     }
 
-    map.setView([lat, lon], clampZoom(Number(container.dataset.zoom) || radarZoom));
+    map.setView([viewLat, viewLon], clampZoom(Number(container.dataset.zoom) || radarZoom));
     setLayer(container.dataset.layer || radarLayer);
 
     map.whenReady(() => {
@@ -2164,6 +2238,55 @@
     }
   }
 
+  function loadPanelState() {
+    try {
+      const raw = localStorage.getItem(PANEL_STATE_KEY);
+      if (!raw) return {};
+      return JSON.parse(raw) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function savePanelState(state) {
+    try { localStorage.setItem(PANEL_STATE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  }
+
+  function initPanelToggles() {
+    const bar = $('#comm-panel-toggle-bar');
+    if (!bar) return;
+    const state = PANEL_IDS.reduce((acc, id) => {
+      const card = document.getElementById(id);
+      acc[id] = card ? !card.classList.contains('comm-hidden') : true;
+      return acc;
+    }, {});
+    const saved = loadPanelState();
+    Object.assign(state, saved);
+
+    function apply() {
+      PANEL_IDS.forEach(id => {
+        const on = state[id] !== false;
+        const card = document.getElementById(id);
+        const btn = bar.querySelector('[data-target="' + id + '"]');
+        if (card) card.classList.toggle('comm-hidden', !on);
+        if (btn) btn.classList.toggle('active', on);
+      });
+      queueLayout();
+      savePanelState(state);
+    }
+
+    bar.querySelectorAll('.panel-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.target;
+        if (!id) return;
+        state[id] = !(state[id] !== false);
+        apply();
+      });
+    });
+
+    apply();
+  }
+
   function getWeatherSeverityClass(main, humidity) {
     const m = (main || '').toLowerCase();
     if (m.includes('thunder') || m.includes('storm')) return 'severity-poor';
@@ -2171,17 +2294,5 @@
     if (m.includes('cloud')) return 'severity-fair';
     return 'severity-good';
   }
-
-  // Public API (for other modules later)
-  window.RussellTV.CommPlanner = {
-    getSelectedLocation: function () { return selectedLocation; },
-    getLastWeather: function () { return lastWeather; },
-    getDeclination: function () { return currentDeclination; },
-    queueLayout
-  };
-
-  window.addEventListener('resize', queueLayout);
-  document.addEventListener('DOMContentLoaded', () => { initResizeObserver(); queueLayout(); });
-  window.addEventListener('load', queueLayout);
 
 })();
