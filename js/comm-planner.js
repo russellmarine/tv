@@ -25,9 +25,11 @@
   let tempUnit = 'F';
   const MAX_RECENT = 7;
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
-  const SOLAR_CYCLE_ENDPOINT = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json');
+  const SOLAR_CYCLE_ENDPOINT = '/spaceweather/solar-cycle';
   const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/weather/radar?lat={lat}&lon={lon}';
   let masonryTimer = null;
+  let resizeObserver = null;
+  const ROW_HEIGHT = 10;
 
   // ---------- Layout helpers ----------
 
@@ -39,12 +41,18 @@
   function applyMasonry() {
     const grid = document.querySelector('#comm-planner-view .comm-layout-grid');
     if (!grid) return;
-    const rowHeight = 12;
     const gap = parseFloat(getComputedStyle(grid).rowGap || '0') || 0;
     grid.querySelectorAll('.comm-card').forEach(card => {
-      const span = Math.ceil((card.getBoundingClientRect().height + gap) / rowHeight);
+      const span = Math.ceil((card.getBoundingClientRect().height + gap) / (ROW_HEIGHT + gap));
       card.style.setProperty('--row-span', span);
     });
+  }
+
+  function initResizeObserver() {
+    const grid = document.querySelector('#comm-planner-view .comm-layout-grid');
+    if (!grid || resizeObserver) return;
+    resizeObserver = new ResizeObserver(() => queueLayout());
+    grid.querySelectorAll('.comm-card').forEach(card => resizeObserver.observe(card));
   }
 
   // ---------- Storage helpers ----------
@@ -1299,27 +1307,59 @@
   let sunspotSeries = [];
   let sunspotPromise = null;
 
+  function mapSunspots(data) {
+    return (data || []).map(entry => {
+      const dateRaw = entry.time_tag || entry.date || entry.timestamp || entry[0];
+      const valueRaw = entry.ssn ?? entry.sunspot_number ?? entry.smoothed_ssn ?? entry.observed_ssn ?? entry[1];
+      const value = Number(valueRaw);
+      if (!dateRaw || !isFinite(value)) return null;
+      return { date: new Date(dateRaw), value };
+    }).filter(Boolean).sort((a, b) => a.date - b.date);
+  }
+
+  async function fetchSunspotSeries(url) {
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (!res.ok) return [];
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return await res.json();
+    }
+    const text = await res.text();
+    const start = text.indexOf('[');
+    const end = text.lastIndexOf(']');
+    if (start >= 0 && end > start) {
+      try {
+        return JSON.parse(text.slice(start, end + 1));
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  }
+
   async function ensureSunspotSeries() {
     if (sunspotSeries.length) return sunspotSeries;
     if (sunspotPromise) return sunspotPromise;
 
     sunspotPromise = (async () => {
-      try {
-        const res = await fetch(SOLAR_CYCLE_ENDPOINT, { cache: 'no-cache' });
-        if (!res.ok) return [];
-        const data = await res.json();
-        const mapped = (data || []).map(entry => {
-          const dateRaw = entry.time_tag || entry.date || entry.timestamp || entry[0];
-          const valueRaw = entry.ssn ?? entry.sunspot_number ?? entry.smoothed_ssn ?? entry.observed_ssn ?? entry[1];
-          const value = Number(valueRaw);
-          if (!dateRaw || !isFinite(value)) return null;
-          return { date: new Date(dateRaw), value };
-        }).filter(Boolean).sort((a, b) => a.date - b.date);
-        sunspotSeries = mapped.slice(-48); // recent window to keep sparkline compact
-        return sunspotSeries;
-      } catch (e) {
-        return [];
+      const sources = [
+        SOLAR_CYCLE_ENDPOINT,
+        'https://r.jina.ai/http://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json'
+      ];
+
+      for (const src of sources) {
+        try {
+          const raw = await fetchSunspotSeries(src);
+          const mapped = mapSunspots(raw);
+          if (mapped.length) {
+            sunspotSeries = mapped.slice(-48);
+            return sunspotSeries;
+          }
+        } catch (e) {
+          // try next source
+        }
       }
+      return [];
     })();
 
     return sunspotPromise;
@@ -1868,7 +1908,7 @@
       '<div class="weather-radar">',
       '  <div class="weather-radar-head">Local Radar</div>',
       '  <div class="weather-radar-frame">',
-      '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" onerror="if(!this.dataset.fallbackUsed && \'' + fallback + '\'){this.dataset.fallbackUsed=\'1\';this.src=\'' + fallback + '\';}else{this.classList.add(\'img-error\');}">',
+      '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" onload="window.RussellTV?.CommPlanner?.queueLayout?.();" onerror="if(!this.dataset.fallbackUsed && \'" + fallback + "\'){this.dataset.fallbackUsed='1';this.src='" + fallback + "';}else{this.classList.add('img-error');window.RussellTV?.CommPlanner?.queueLayout?.();}">',
       '    <div class="radar-overlay"></div>',
       '    <div class="radar-caption"><span class="dot"></span><span>Live sweep</span></div>',
       '    <div class="radar-fallback">Radar preview unavailable — ensure RainViewer tiles are reachable.</div>',
@@ -1893,7 +1933,7 @@
   };
 
   window.addEventListener('resize', queueLayout);
-  document.addEventListener('DOMContentLoaded', queueLayout);
+  document.addEventListener('DOMContentLoaded', () => { initResizeObserver(); queueLayout(); });
   window.addEventListener('load', queueLayout);
 
 })();

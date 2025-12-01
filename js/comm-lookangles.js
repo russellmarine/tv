@@ -32,6 +32,17 @@
     asia: [{ name: 'JCSAT-14', az: 102.4, el: 16.9, range: '37k km' }, { name: 'Apstar 5C', az: 75.2, el: 12.3, range: '37k km' }]
   };
 
+  const CONSTELLATION_SUMMARY = [
+    { name: 'Starlink', orbit: 'LEO', band: 'Ku/Ka', use: 'Broadband', status: 'severity-good', note: 'Available' },
+    { name: 'OneWeb', orbit: 'LEO', band: 'Ku/Ka', use: 'Broadband', status: 'severity-fair', note: 'Available' },
+    { name: 'O3b/mPOWER', orbit: 'MEO', band: 'Ka', use: 'Broadband', status: 'severity-fair', note: 'Regional equatorial' },
+    { name: 'Iridium', orbit: 'LEO', band: 'L-band', use: 'Narrowband', status: 'severity-good', note: 'Polar capable' },
+    { name: 'Globalstar', orbit: 'LEO', band: 'L/S', use: 'Narrowband', status: 'severity-watch', note: 'Limited regions' },
+    { name: 'Project Kuiper', orbit: 'LEO', band: 'Ku/Ka', use: 'Broadband', status: 'severity-watch', note: 'Pre-launch' },
+    { name: 'HTS Ka (GX/Viasat/SES)', orbit: 'GEO', band: 'Ka', use: 'Wideband', status: 'severity-fair', note: 'Global HTS capacity' },
+    { name: 'Partner MILSATCOM', orbit: 'GEO', band: 'X/Ka/UHF', use: 'Coalition', status: 'severity-fair', note: 'Skynet/Syracuse/Sicral' }
+  ];
+
   let selectedConstellations = new Set(CONSTELLATION_ORDER.filter(key => !!CONSTELLATIONS[key]));
   let hideBelowFive = true;
   let lastLocation = null;
@@ -101,7 +112,10 @@
       return `<label class="look-toggle"><input type="checkbox" data-constellation="${key}" ${checked}>${escapeHtml(CONSTELLATIONS[key].name)}</label>`;
     }).join('');
     const lowLabel = hideBelowFive ? 'Hiding <5°' : 'Show <5°';
-    return `<div class="look-controls"><div class="look-toggle-grid">${toggles}</div><div class="look-toggle-grid"><label class="look-toggle secondary"><input type="checkbox" id="look-toggle-low" ${hideBelowFive ? 'checked' : ''}>${lowLabel}</label><button class="look-refresh wide" type="button" id="look-refresh">↻ Refresh</button></div></div>`;
+    return `<div class="look-controls">`+
+      `<details class="look-toggle-panel"><summary>Constellation selection</summary><div class="look-toggle-grid">${toggles}</div></details>`+
+      `<div class="look-toggle-row"><label class="look-toggle secondary"><input type="checkbox" id="look-toggle-low" ${hideBelowFive ? 'checked' : ''}>${lowLabel}</label><button class="look-refresh wide" type="button" id="look-refresh">↻ Refresh</button></div>`+
+      `</div>`;
   }
 
   function renderSection(section) {
@@ -133,16 +147,17 @@
   }
 
   function renderAvailability() {
-    const providers = [
-      { label: 'Starlink', status: 'severity-good', desc: 'Available' },
-      { label: 'OneWeb', status: 'severity-fair', desc: 'Available' },
-      { label: 'Iridium', status: 'severity-good', desc: 'Polar capable' },
-      { label: 'Project Kuiper', status: 'severity-watch', desc: 'Pre-launch' }
-    ];
-
-    return '<div class="look-availability">' + providers.map(p =>
-      '<span class="look-pill ' + p.status + '">' + escapeHtml(p.label + ': ' + p.desc) + '</span>'
-    ).join('') + '</div>';
+    const head = '<div class="look-availability-row head"><span>Name</span><span>Orbit</span><span>Band</span><span>Use</span><span>Status</span></div>';
+    const rows = CONSTELLATION_SUMMARY.map(p =>
+      '<div class="look-availability-row">'
+      + '<span>' + escapeHtml(p.name) + '</span>'
+      + '<span>' + escapeHtml(p.orbit) + '</span>'
+      + '<span>' + escapeHtml(p.band) + '</span>'
+      + '<span>' + escapeHtml(p.use) + '</span>'
+      + '<span><span class="look-pill ' + p.status + '">' + escapeHtml(p.note) + '</span></span>'
+      + '</div>'
+    ).join('');
+    return '<div class="look-availability-table">' + head + rows + '</div>';
   }
 
   function renderLookAngles(loc) {

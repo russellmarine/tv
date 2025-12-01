@@ -2582,7 +2582,7 @@
   
   function showPanel() {
     if (panel) {
-      panel.style.display = '';  // Clear any inline style
+      panel.style.display = 'flex';
       panel.classList.add('visible');
     }
   }
@@ -2590,6 +2590,7 @@
   function hidePanel() {
     if (panel) {
       panel.classList.remove('visible');
+      panel.style.display = 'none';
     }
   }
 

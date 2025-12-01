@@ -77,6 +77,20 @@ app.get("/weather/radar", async (req, res) => {
   }
 });
 
+// Solar cycle proxy to avoid client-side CORS failures
+app.get("/spaceweather/solar-cycle", async (_req, res) => {
+  const url = "https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json";
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return res.status(r.status).send("Solar cycle unavailable");
+    const data = await r.json();
+    res.json(data);
+  } catch (err) {
+    console.error("Solar cycle proxy error", err);
+    res.status(500).send("Solar cycle fetch failed");
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Weather proxy running on port ${PORT}`);
 });
