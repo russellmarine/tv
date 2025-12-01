@@ -76,38 +76,6 @@ main {
   flex-wrap: wrap;
 }
 
-.comm-timebar {
-  width: min(1440px, calc(100% - 2rem));
-  margin: 0.5rem auto 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  padding: 0 1rem;
-  box-sizing: border-box;
-}
-
-.timebar-chip {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.2rem 0.5rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 190, 140, 0.35);
-  background: rgba(15, 8, 0, 0.75);
-  color: #ffe2c0;
-  min-width: 200px;
-  box-shadow: 0 0 12px rgba(0,0,0,0.35);
-}
-
-.timebar-label { font-weight: 700; letter-spacing: 0.02em; }
-.timebar-time { justify-self: end; font-variant-numeric: tabular-nums; font-weight: 700; }
-.timebar-weather { grid-column: 1 / -1; display: flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; opacity: 0.92; }
-.timebar-weather img { width: 22px; height: 22px; filter: drop-shadow(0 0 8px rgba(0,0,0,0.45)); }
-.timebar-chip.severity-good { border-color: rgba(80, 200, 140, 0.6); background: linear-gradient(135deg, rgba(20,60,30,0.65), rgba(10,20,10,0.6)); }
-.timebar-chip.severity-fair { border-color: rgba(220, 180, 90, 0.65); background: linear-gradient(135deg, rgba(70,50,10,0.65), rgba(30,20,5,0.6)); }
-.timebar-chip.severity-watch { border-color: rgba(235, 150, 80, 0.7); background: linear-gradient(135deg, rgba(80,35,10,0.7), rgba(30,10,0,0.65)); }
-.timebar-chip.severity-poor { border-color: rgba(230, 90, 90, 0.7); background: linear-gradient(135deg, rgba(70,20,20,0.7), rgba(25,5,5,0.65)); }
-
 .btn {
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
@@ -157,7 +125,7 @@ main {
 
 #comm-planner-view .comm-grid-top {
   display: grid;
-  grid-template-columns: 1fr 1fr 2fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1.5rem;
   align-items: stretch;
   grid-auto-rows: 1fr;
