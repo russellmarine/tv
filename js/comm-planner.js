@@ -2013,15 +2013,19 @@
     return '<div class="weather-forecast"><div class="forecast-head">9-Day Outlook</div><div class="forecast-row">' + items + '</div></div>';
   }
 
-  function getRadarSnapshotUrl(lat, lon, zoomLevel) {
-    if (lat == null || lon == null) return '';
-
+  function getTileCoords(lat, lon, zoomLevel) {
     const zoom = clampZoom(zoomLevel);
     const scale = Math.pow(2, zoom);
     const x = Math.floor(((lon + 180) / 360) * scale);
     const latRad = lat * Math.PI / 180;
     const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
+    return { x, y, zoom };
+  }
 
+  function getRadarSnapshotUrl(lat, lon, zoomLevel) {
+    if (lat == null || lon == null) return '';
+
+    const { x, y, zoom } = getTileCoords(lat, lon, zoomLevel);
     const rainviewerUrl = 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
 
     if (RADAR_PROXY_BASE) {
@@ -2038,12 +2042,14 @@
 
   function getRadarFallbackUrl(lat, lon, zoomLevel) {
     if (lat == null || lon == null) return '';
-    const zoom = clampZoom(zoomLevel);
-    const scale = Math.pow(2, zoom);
-    const x = Math.floor(((lon + 180) / 360) * scale);
-    const latRad = lat * Math.PI / 180;
-    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
+    const { x, y, zoom } = getTileCoords(lat, lon, zoomLevel);
     return 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
+  }
+
+  function getBasemapUrl(lat, lon, zoomLevel) {
+    if (lat == null || lon == null) return '';
+    const { x, y, zoom } = getTileCoords(lat, lon, zoomLevel);
+    return 'https://tile.openstreetmap.org/' + zoom + '/' + x + '/' + y + '.png';
   }
 
   function clampZoom(z) {
@@ -2056,6 +2062,7 @@
     return {
       url: getRadarSnapshotUrl(lat, lon, z),
       fallback: getRadarFallbackUrl(lat, lon, z),
+      basemap: getBasemapUrl(lat, lon, z),
       zoom: z
     };
   }
@@ -2068,6 +2075,7 @@
       '<div class="weather-radar">',
       '  <div class="weather-radar-head">Local Radar</div>',
       '  <div class="weather-radar-frame" data-lat="' + escapeHtml(lat) + '" data-lon="' + escapeHtml(lon) + '" data-zoom="' + urls.zoom + '">',
+      '    <img class="radar-base" src="' + urls.basemap + '" alt="Map tile" loading="lazy" referrerpolicy="no-referrer">',
       '    <img class="radar-img" src="' + urls.url + '" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" data-fallback="' + urls.fallback + '">',
       '    <div class="radar-overlay"></div>',
       '    <div class="radar-caption"><span class="dot"></span><span>Live sweep</span></div>',
@@ -2084,19 +2092,21 @@
   function wireRadarFrame(container) {
     if (!container) return;
     const img = container.querySelector('.radar-img');
-    if (!img) return;
+    const basemap = container.querySelector('.radar-base');
+    if (!img || !basemap) return;
 
     const lat = Number(container.dataset.lat);
     const lon = Number(container.dataset.lon);
 
     function refresh(zoomLevel) {
-      const next = buildRadarUrls(lat, lon, zoomLevel ?? Number(container.dataset.zoom) ?? radarZoom);
-      radarZoom = next.zoom;
-      container.dataset.zoom = String(next.zoom);
+      const nextUrls = buildRadarUrls(lat, lon, zoomLevel ?? Number(container.dataset.zoom) ?? radarZoom);
+      radarZoom = nextUrls.zoom;
+      container.dataset.zoom = String(nextUrls.zoom);
       img.dataset.fallbackUsed = '';
-      img.dataset.fallback = next.fallback;
+      img.dataset.fallback = nextUrls.fallback;
       img.classList.remove('img-error');
-      img.src = next.url;
+      if (basemap && nextUrls.basemap) basemap.src = nextUrls.basemap;
+      img.src = nextUrls.url;
     }
 
     img.addEventListener('load', () => queueLayout());
