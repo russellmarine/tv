@@ -26,6 +26,7 @@
   const MAX_RECENT = 7;
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
   const SOLAR_CYCLE_ENDPOINT = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json');
+  const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '';
 
   // ---------- Storage helpers ----------
 
@@ -1712,15 +1713,18 @@
   function getRadarSnapshotUrl(lat, lon) {
     if (lat == null || lon == null) return '';
 
-    // RainViewer uses XYZ tiles; project the requested lat/lon to tile coords.
+    // Prefer a same-origin proxy when available to dodge CORS blocks
+    if (RADAR_PROXY_BASE) {
+      return RADAR_PROXY_BASE.replace('{lat}', encodeURIComponent(lat)).replace('{lon}', encodeURIComponent(lon));
+    }
+
     const zoom = 6;
     const scale = Math.pow(2, zoom);
     const x = Math.floor(((lon + 180) / 360) * scale);
     const latRad = lat * Math.PI / 180;
     const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
 
-    const base = 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
-    return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(base);
+    return 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
   }
 
   function buildRadarBlock(lat, lon) {

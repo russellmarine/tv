@@ -11,10 +11,6 @@ body {
   color: #fff;
 }
 
-body.comm-page #gunny-chat-toggle-btn {
-  display: none !important;
-}
-
 main {
   min-height: 100vh;
 }
@@ -125,28 +121,7 @@ main {
   gap: 1.25rem;
   align-items: start;
   align-content: start;
-}
-
-#comm-planner-view .comm-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  min-width: 0;
-}
-
-#comm-planner-view .comm-column-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
-  align-items: stretch;
-}
-
-.comm-col-narrow {
-  grid-column: span 1;
-}
-
-.comm-col-wide {
-  grid-column: span 2;
+  grid-auto-flow: dense;
 }
 
 .comm-span-2 {
@@ -158,13 +133,8 @@ main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .comm-col-wide,
   .comm-span-2 {
     grid-column: span 2;
-  }
-
-  #comm-planner-view .comm-column-row {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -176,8 +146,6 @@ main {
     grid-template-columns: 1fr;
   }
 
-  .comm-col-narrow,
-  .comm-col-wide,
   .comm-span-2 {
     grid-column: span 1;
   }
@@ -201,10 +169,6 @@ main {
 
 #comm-planner-view .comm-grid-bottom .comm-card {
   height: auto;
-}
-
-.comm-page #space-weather-section #gunny-chat-toggle-btn {
-  display: none !important;
 }
 
 #comm-card-satcom,

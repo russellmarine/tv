@@ -49,8 +49,8 @@
   }
 
   function summarizeCoverage(data) {
-    const total = data?.summary?.total || data?.towers?.length || 0;
-    const grade = data?.summary?.coverage || 'Unknown';
+    const total = data?.summary?.total || (Array.isArray(data?.towers) ? data.towers.length : 0) || 0;
+    const grade = total === 0 ? 'Unavailable' : (data?.summary?.coverage || 'Unknown');
     const nearest = data?.summary?.nearestTower || null;
     const nearestText = nearest ? `Nearest: ${Math.round(nearest)}m` : '';
     return { grade, text: `${total} towers within ${SEARCH_RADIUS_METERS}m${nearestText ? ' · ' + nearestText : ''}` };
@@ -117,8 +117,11 @@
     const coverage = summarizeCoverage(cellData || {});
     const coverageCls = coverageClass(coverage.grade);
     const coverageLabel = coverage.grade ? coverage.grade.charAt(0).toUpperCase() + coverage.grade.slice(1) : 'Unknown';
-    const carriers = (cellData?.carriers || []).map(renderCarrier).join('');
-    const towers = renderTowerTable(cellData?.towers || []);
+    const carrierEntries = Array.isArray(cellData?.carriers)
+      ? cellData.carriers
+      : Object.values(cellData?.carriers || {});
+    const carriers = carrierEntries.map(renderCarrier).join('');
+    const towers = renderTowerTable(Array.isArray(cellData?.towers) ? cellData.towers : []);
 
     body.innerHTML = [
       header,
@@ -137,6 +140,12 @@
 
   async function fetchCellular(loc) {
     if (!loc) { renderCellular(null); return; }
+    if (Math.abs(loc.coords.lat) > 85) {
+      cellData = { carriers: [], towers: [], summary: { total: 0, coverage: 'Unavailable' } };
+      renderCellular(loc);
+      return;
+    }
+    cellData = { carriers: [], towers: [], summary: { total: 0, coverage: 'Unknown' } };
     isLoading = true;
     renderCellular(loc);
     try {
@@ -144,7 +153,7 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
       cellData = await res.json();
     } catch (e) {
-      cellData = cellData || { carriers: [] };
+      cellData = cellData || { carriers: [], towers: [], summary: { total: 0, coverage: 'Unavailable' } };
     }
     isLoading = false;
     renderCellular(loc);
