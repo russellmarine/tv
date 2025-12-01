@@ -86,7 +86,7 @@
     const sats = await Promise.all(def.satellites.map(async (s) => {
       const pos = await fetchSatellitePosition(s.id, loc);
       if (!pos) return null;
-      return { name: s.name, band: def.band, az: pos.az, el: pos.el, range: pos.range };
+      return { id: s.id, name: s.name, band: def.band, az: pos.az, el: pos.el, range: pos.range };
     }));
     const filtered = sats.filter(Boolean);
     if (!filtered.length && FALLBACK[key]) {
@@ -101,7 +101,7 @@
       return `<label class="look-toggle"><input type="checkbox" data-constellation="${key}" ${checked}>${escapeHtml(CONSTELLATIONS[key].name)}</label>`;
     }).join('');
     const lowLabel = hideBelowFive ? 'Hiding <5°' : 'Show <5°';
-    return `<div class="look-controls">${toggles}<label class="look-toggle secondary"><input type="checkbox" id="look-toggle-low" ${hideBelowFive ? 'checked' : ''}>${lowLabel}</label><button class="look-refresh wide" type="button" id="look-refresh">↻ Refresh</button></div>`;
+    return `<div class="look-controls"><div class="look-toggle-grid">${toggles}</div><div class="look-toggle-grid"><label class="look-toggle secondary"><input type="checkbox" id="look-toggle-low" ${hideBelowFive ? 'checked' : ''}>${lowLabel}</label><button class="look-refresh wide" type="button" id="look-refresh">↻ Refresh</button></div></div>`;
   }
 
   function renderSection(section) {
@@ -112,7 +112,8 @@
     if (!sats.length) return '';
     const rows = sats.map(s => {
       const cls = severityClass(s.el || 0);
-      return `<div class="look-row ${cls}"><span>${escapeHtml(s.name)}</span><span>${(s.az ?? 0).toFixed ? (s.az).toFixed(1) : escapeHtml(s.az)}</span><span>${(s.el ?? 0).toFixed ? (s.el).toFixed(1) : escapeHtml(s.el)}</span><span>${escapeHtml(s.range || '')}</span></div>`;
+      const satLabel = s.id ? `<a class="inline-link" href="https://www.n2yo.com/satellite/?s=${s.id}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.name)}</a>` : escapeHtml(s.name);
+      return `<div class="look-row ${cls}"><span>${satLabel}</span><span>${(s.az ?? 0).toFixed ? (s.az).toFixed(1) : escapeHtml(s.az)}</span><span>${(s.el ?? 0).toFixed ? (s.el).toFixed(1) : escapeHtml(s.el)}</span><span>${escapeHtml(s.range || '')}</span></div>`;
     }).join('');
     return [
       '<div class="look-section">',

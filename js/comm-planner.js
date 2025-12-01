@@ -1382,9 +1382,12 @@
         + '</div>'
       : '';
 
+    if (meta) {
+      meta.innerHTML = '<span class="spacewx-pill ' + spacewxOverall.className + '">' + escapeHtml(spacewxOverall.label) + '</span>';
+    }
+
     body.innerHTML = [
       '<div class="spacewx-summary-row">'
-      + '  <div class="spacewx-pill ' + spacewxOverall.className + '">' + escapeHtml(spacewxOverall.label) + '</div>'
       + '  <div class="spacewx-summary-desc">' + escapeHtml(spacewxOverall.desc) + '</div>'
       + '</div>',
       '<div class="spacewx-scales-row">' + scaleCards + '</div>',
@@ -1438,6 +1441,9 @@
     const bands = getRecommendedBands(muf, dayNight);
     const nvis = getNvisAssessment(loc.lat, data);
     const hfAssessment = getHfAssessment(loc.lat, loc.lon, data);
+    const dayTooltip = 'Today: ' + (dayNight.label || 'Current sun/geomagnetic state')
+      + '. Adjusted for Kp ' + data.kpIndex.toFixed(1)
+      + ' and solar R' + data.scales.R + ' background.';
 
     const hfSeverity = (r >= 4 || g >= 5) ? 'Severe disruption' :
       (r >= 3 || g >= 4 || kp >= 6) ? 'Degraded' :
@@ -1450,12 +1456,13 @@
     if (hfBody) {
       hfBody.innerHTML = [
         '<div class="muf-row compact">',
-        '  <div class="muf-value-box">',
+        '  <div class="muf-value-box tooltip-target" data-tooltip="' + escapeHtml(dayTooltip) + '">',
         '    <div class="muf-label">Est. MUF</div>',
         '    <div class="muf-value">' + escapeHtml(muf + ' MHz') + '</div>',
         '  </div>',
         '  <div class="muf-tag ' + hfInfo.className + ' ' + dayPhaseClass + '">' + dayPhaseIcon + '<span>' + escapeHtml(dayNight.label || '') + '</span></div>',
         '</div>',
+        '<div class="muf-definition tooltip-target" data-tooltip="Maximum Usable Frequency (MUF) is the highest HF frequency likely to refract via the F-layer for this path and time.">MUF is the highest HF frequency likely to refract via the F-layer right now.</div>',
         '<div class="muf-desc-row">' + escapeHtml(hfAssessment) + '</div>',
         '<div class="comm-prop-row accent hf-band-block">',
         '  <div class="hf-band-header">Recommended Bands (VOACAP)</div>',
@@ -1798,6 +1805,8 @@
     const latRad = lat * Math.PI / 180;
     const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
 
+    const rainviewerUrl = 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
+
     if (RADAR_PROXY_BASE) {
       return RADAR_PROXY_BASE
         .replace('{lat}', encodeURIComponent(lat))
@@ -1807,17 +1816,28 @@
         .replace('{z}', zoom);
     }
 
+    return rainviewerUrl;
+  }
+
+  function getRadarFallbackUrl(lat, lon) {
+    if (lat == null || lon == null) return '';
+    const zoom = 6;
+    const scale = Math.pow(2, zoom);
+    const x = Math.floor(((lon + 180) / 360) * scale);
+    const latRad = lat * Math.PI / 180;
+    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
     return 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
   }
 
   function buildRadarBlock(lat, lon) {
     const url = getRadarSnapshotUrl(lat, lon);
     if (!url) return '';
+    const fallback = getRadarFallbackUrl(lat, lon);
     return [
       '<div class="weather-radar">',
       '  <div class="weather-radar-head">Local Radar</div>',
       '  <div class="weather-radar-frame">',
-      '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" onerror="this.classList.add(\'img-error\')">',
+      '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" onerror="if(!this.dataset.fallbackUsed && \'' + fallback + '\'){this.dataset.fallbackUsed=\'1\';this.src=\'' + fallback + '\';}else{this.classList.add(\'img-error\');}">',
       '    <div class="radar-overlay"></div>',
       '    <div class="radar-caption"><span class="dot"></span><span>Live sweep</span></div>',
       '    <div class="radar-fallback">Radar preview unavailable — ensure RainViewer tiles are reachable.</div>',
@@ -1843,5 +1863,6 @@
 
   window.addEventListener('resize', queueLayout);
   document.addEventListener('DOMContentLoaded', queueLayout);
+  window.addEventListener('load', queueLayout);
 
 })();

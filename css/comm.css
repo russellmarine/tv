@@ -109,21 +109,34 @@ main {
 
 /* Comm planner layout */
 #comm-planner-view {
-  padding: 1.5rem 1.5rem 2rem;
+  padding: 1.25rem 1.25rem 2rem;
   box-sizing: border-box;
 }
 
 #comm-planner-view .comm-layout-grid {
-  width: min(1440px, calc(100% - 2rem));
-  margin: 2rem auto 3rem;
+  width: min(1440px, calc(100% - 1rem));
+  margin: 1.5rem auto 2rem;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-auto-rows: 12px;
-  gap: 1.25rem;
+  gap: 1rem;
   align-items: start;
   align-content: start;
   grid-auto-flow: dense;
 }
+
+#comm-card-weather {
+  grid-column: 3 / span 2;
+  grid-row: 1;
+}
+
+#comm-card-location { grid-column: 1; grid-row: 1; }
+#comm-card-spacewx { grid-column: 2; grid-row: 1; }
+#comm-card-gps { grid-column: 1; grid-row: 2; }
+#comm-card-hf { grid-column: 2; grid-row: 2; }
+#comm-card-satcom { grid-column: 3; grid-row: 2; }
+#comm-card-satangles { grid-column: 4; grid-row: 2; }
+#comm-card-cellular { grid-column: 1 / span 2; grid-row: 3; }
 
 .comm-span-2 {
   grid-column: span 2;
@@ -1450,7 +1463,8 @@ main {
 .look-table-head, .look-row { display: grid; grid-template-columns: repeat(4, 1fr); font-size: 0.85rem; }
 .look-table-head { opacity: 0.7; text-transform: uppercase; letter-spacing: 0.04em; }
 .look-row { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 0.3rem 0.4rem; }
-.look-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.35rem; margin-bottom: 0.4rem; align-items: stretch; }
+.look-controls { display: grid; gap: 0.35rem; margin-bottom: 0.4rem; }
+.look-toggle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.35rem; }
 .look-toggle { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.55rem; border-radius: 12px; border: 1px solid rgba(255, 170, 110, 0.5); background: rgba(255, 150, 80, 0.1); font-size: 0.72rem; color: #ffd8b0; }
 .look-toggle.secondary { border-style: dashed; opacity: 0.9; }
 .look-toggle input { accent-color: #ff9a4f; }
