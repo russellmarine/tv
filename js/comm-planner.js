@@ -27,9 +27,12 @@
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
   const SOLAR_CYCLE_ENDPOINT = 'https://r.jina.ai/https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json';
   const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/weather/radar?lat={lat}&lon={lon}';
+  const RADAR_ZOOM_MIN = 4;
+  const RADAR_ZOOM_MAX = 10;
   let masonryTimer = null;
   let resizeObserver = null;
-    const ROW_HEIGHT = 6;
+  const ROW_HEIGHT = 5;
+  let radarZoom = 6;
 
   // ---------- Layout helpers ----------
 
@@ -1230,6 +1233,9 @@
       });
     }
 
+    const radarFrame = body.querySelector('.weather-radar-frame');
+    wireRadarFrame(radarFrame);
+
     queueLayout();
   }
 
@@ -1372,13 +1378,22 @@
       { name: 'BeiDou B1/B2/B3', status: bandStatus(baseStatus), notes: 'BDS global + regional beams; monitor local interference.' }
     ];
 
+    const bandChips = bands.map(b => '<span class="gps-band-chip ' + satBandClass(b.status) + '"><span>' + escapeHtml(b.name)
+      + '</span><small>' + escapeHtml(toTitleCase(b.status)) + '</small></span>').join('');
     const bandRows = bands.map(b => '<div class="gps-band-row ' + satBandClass(b.status) + '">' +
       '<div class="band-name">' + escapeHtml(b.name) + '</div>' +
       '<div class="band-label">' + escapeHtml(toTitleCase(b.status)) + '</div>' +
       '<div class="band-notes">' + escapeHtml(b.notes) + '</div>' +
       '</div>').join('');
 
-    const bandDefinition = '<details class="comm-definition"><summary>Band health guide</summary>'
+    const bandDefinition = '<details class="comm-definition"><summary>Band health & constellations</summary>'
+      + '<div class="gps-band-grid">' + bandRows + '</div>'
+      + '<div class="gnss-constellations">' + [
+        { name: 'GPS (USA)', status: baseStatus, notes: 'Baseline PNT.' },
+        { name: 'Galileo (EU)', status: bandStatus(baseStatus), notes: 'High-accuracy E1/E5.' },
+        { name: 'BeiDou (BDS)', status: bandStatus(baseStatus), notes: 'Global + APAC beams.' },
+        { name: 'GLONASS', status: bandStatus(baseStatus), notes: 'Complementary visibility.' }
+      ].map(c => '<div class="gnss-row ' + satBandClass(c.status) + '"><span>' + escapeHtml(c.name) + '</span><span>' + escapeHtml(c.notes) + '</span></div>').join('') + '</div>'
       + '<ul class="definition-list">'
       + '  <li><strong>Nominal:</strong> Normal PNT performance.</li>'
       + '  <li><strong>Watch:</strong> Mild geomagnetic or scintillation risk; monitor timing.</li>'
@@ -1391,15 +1406,11 @@
       + '<p>Ionospheric scintillation is the rapid fluctuation of radio waves caused by small-scale electron density structures. '
       + 'Strong scintillation can prevent GPS/GNSS receivers from locking signals; mild scintillation reduces accuracy. Severity '
       + 'depends on local time, season, geomagnetic activity, solar cycle, and atmospheric waves.</p>'
-      + '<p>Scintillation impacts both signal power (S4) and phase (σφ). It is more common at low/high latitudes but can appear at '
-      + 'mid-latitudes during disturbed periods.</p></details>';
+      + '<p>Scintillation impacts both signal power (S4) and phase (σφ). It is more common at low/high latitudes but can appear at mid-latitudes during disturbed periods.</p>'
+      + '<div class="gps-stratum"><strong>Timing reference:</strong> USNO (Stratum-0) feeds GPS time; field receivers typically discipline to Stratum-1/2 sources.</div>'
+      + '</details>';
 
-    const constellations = [
-      { name: 'GPS (USA)', status: baseStatus, notes: 'Core constellation; PNT baseline.' },
-      { name: 'Galileo (EU)', status: bandStatus(baseStatus), notes: 'High-accuracy E1/E5 services.' },
-      { name: 'BeiDou (BDS)', status: bandStatus(baseStatus), notes: 'Global + Asia-Pacific coverage.' },
-      { name: 'GLONASS', status: bandStatus(baseStatus), notes: 'Legacy FDMA; complementary visibility.' }
-    ].map(c => '<div class="gnss-row ' + satBandClass(c.status) + '"><span>' + escapeHtml(c.name) + '</span><span>' + escapeHtml(c.notes) + '</span></div>').join('');
+    const usnoTime = formatUtcClock(true);
 
     gpsBody.innerHTML = [
       '<div class="comm-prop-status ' + satBandClass(baseStatus) + '">',
@@ -1409,11 +1420,11 @@
       '  </div>',
       '  <p class="status-desc">Scintillation: ' + escapeHtml(scint) + ' · Iono Delay: ' + escapeHtml(iono) + '</p>',
       '</div>',
-      '<div class="gps-band-heading">Band Health</div>',
-      '<div class="gps-band-grid">' + bandRows + '</div>',
+      '<div class="gps-meta-row"><div><span class="label">USNO (UTC)</span><div>' + escapeHtml(usnoTime) + ' UTC</div></div>' +
+      '<div><span class="label">Jamming/Interference</span><div>' + escapeHtml(jam) + '</div></div></div>',
+      '<div class="gps-chip-row">' + bandChips + '</div>',
+      '<div class="gps-meta">Key bands colored by current space-weather risk.</div>',
       bandDefinition,
-      '<details class="comm-definition"><summary>GNSS constellations</summary><div class="gnss-constellations">' + constellations + '</div></details>',
-      '<div class="gps-meta">Jamming/Interference: ' + escapeHtml(jam) + '</div>',
       scintDefinition,
       '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/" target="_blank" rel="noopener noreferrer">SWPC</a> · <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam</a> · <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN</a> • ' + escapeHtml(sourceText) + '</div>'
     ].join('');
@@ -1543,6 +1554,7 @@
         '<div class="desc">' + getScaleDescription(key, data.scales[key]) + '</div>' +
       '</a>'
     )).join('');
+    const scaleRow = '<div class="spacewx-scales-row">' + scaleCards + '</div>';
 
     const sunspots = await ensureSunspotSeries();
     const latestSunspot = sunspots.length ? Math.round(sunspots[sunspots.length - 1].value) : null;
@@ -1558,7 +1570,6 @@
       + '</span><small>' + escapeHtml(item.desc) + '</small></div>').join('');
     const kpDefinition = '<details class="comm-definition"><summary>What is Kp?</summary>'
       + '<div class="definition-body">'
-      + '  <div class="spacewx-scales-row">' + scaleCards + '</div>'
       + '  <div class="kp-scale" aria-label="Kp scale">' + kpScale + '</div>'
       + '  <p>The K-index and Planetary K-index (Kp) characterize geomagnetic storm magnitude. Kp is used to decide when to issue alerts for users impacted by geomagnetic disturbances.</p>'
       + '  <p>Primary users affected include power-grid operators, spacecraft controllers, HF/VHF radio users, and aurora observers. Higher Kp indicates stronger geomagnetic activity and greater disruption risk.</p>'
@@ -1584,6 +1595,7 @@
       '<div class="spacewx-summary-row">'
       + '  <div class="spacewx-summary-desc">' + escapeHtml(spacewxOverall.desc) + '</div>'
       + '</div>',
+      scaleRow,
       '<a class="spacewx-kp-row tooltip-target" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(kpTooltip) + '">',
       '  <span class="label">Kp Index</span>',
       '  <span class="value" style="color:' + kpColor + ';">' + data.kpIndex.toFixed(2) + '</span>',
@@ -1615,7 +1627,7 @@
         hfBody.innerHTML = '<p class="comm-placeholder">Select a location to see HF propagation.</p>';
       }
       if (satBody) {
-        satBody.innerHTML = '<p class="comm-placeholder">Select a location to see SATCOM & GPS guidance.</p>';
+        satBody.innerHTML = '<p class="comm-placeholder">Select a location to see SATCOM weather guidance.</p>';
       }
       const gpsBody = $('#comm-gps-body');
       const gpsStatus = $('#comm-gps-status');
@@ -1882,6 +1894,13 @@
     return date.toLocaleTimeString(undefined, opts).replace(/:/g, '');
   }
 
+  function formatUtcClock(includeSeconds) {
+    const now = new Date();
+    const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
+    if (includeSeconds) opts.second = '2-digit';
+    return now.toLocaleTimeString('en-GB', opts).replace(/:/g, '');
+  }
+
   function formatLocalDate(epochSeconds, offsetSeconds) {
     if (!epochSeconds && epochSeconds !== 0) return '';
     const tzOffset = offsetSeconds || 0;
@@ -1994,10 +2013,10 @@
     return '<div class="weather-forecast"><div class="forecast-head">9-Day Outlook</div><div class="forecast-row">' + items + '</div></div>';
   }
 
-  function getRadarSnapshotUrl(lat, lon) {
+  function getRadarSnapshotUrl(lat, lon, zoomLevel) {
     if (lat == null || lon == null) return '';
 
-    const zoom = 8;
+    const zoom = clampZoom(zoomLevel);
     const scale = Math.pow(2, zoom);
     const x = Math.floor(((lon + 180) / 360) * scale);
     const latRad = lat * Math.PI / 180;
@@ -2017,9 +2036,9 @@
     return rainviewerUrl;
   }
 
-  function getRadarFallbackUrl(lat, lon) {
+  function getRadarFallbackUrl(lat, lon, zoomLevel) {
     if (lat == null || lon == null) return '';
-    const zoom = 8;
+    const zoom = clampZoom(zoomLevel);
     const scale = Math.pow(2, zoom);
     const x = Math.floor(((lon + 180) / 360) * scale);
     const latRad = lat * Math.PI / 180;
@@ -2027,36 +2046,82 @@
     return 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
   }
 
+  function clampZoom(z) {
+    const zoomNum = Number.isFinite(z) ? Math.round(z) : radarZoom;
+    return Math.min(Math.max(zoomNum || 6, RADAR_ZOOM_MIN), RADAR_ZOOM_MAX);
+  }
 
-function getRadarBasemapUrl(lat, lon) {
-  if (lat == null || lon == null) return '';
-  const zoom = 8;
-  const scale = Math.pow(2, zoom);
-  const x = Math.floor(((lon + 180) / 360) * scale);
-  const latRad = lat * Math.PI / 180;
-  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
-  return 'https://tile.openstreetmap.org/' + zoom + '/' + x + '/' + y + '.png';
-}
+  function buildRadarUrls(lat, lon, zoomLevel) {
+    const z = clampZoom(zoomLevel);
+    return {
+      url: getRadarSnapshotUrl(lat, lon, z),
+      fallback: getRadarFallbackUrl(lat, lon, z),
+      zoom: z
+    };
+  }
 
   function buildRadarBlock(lat, lon) {
-    const url = getRadarSnapshotUrl(lat, lon);
-    if (!url) return '';
-    const basemap = getRadarBasemapUrl(lat, lon);
-    const fallback = getRadarFallbackUrl(lat, lon);
-    const onError = `if(!this.dataset.fallbackUsed && '${fallback}') { this.dataset.fallbackUsed='1'; this.src='${fallback}'; } else { this.classList.add('img-error'); window.RussellTV?.CommPlanner?.queueLayout?.(); }`;
-    const onLoad = 'window.RussellTV?.CommPlanner?.queueLayout?.();';
+    const urls = buildRadarUrls(lat, lon, radarZoom);
+    if (!urls.url) return '';
 
     return [
       '<div class="weather-radar">',
       '  <div class="weather-radar-head">Local Radar</div>',
-      '  <div class="weather-radar-frame" style="' + (basemap ? 'background-image:url(' + basemap + ');' : '') + 'background-size:cover;background-position:center;">',
-      `    <img src="${url}" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" onload="${onLoad}" onerror="${onError}">`,
+      '  <div class="weather-radar-frame" data-lat="' + escapeHtml(lat) + '" data-lon="' + escapeHtml(lon) + '" data-zoom="' + urls.zoom + '">',
+      '    <img class="radar-img" src="' + urls.url + '" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" data-fallback="' + urls.fallback + '">',
       '    <div class="radar-overlay"></div>',
       '    <div class="radar-caption"><span class="dot"></span><span>Live sweep</span></div>',
+      '    <div class="radar-zoom-controls">',
+      '      <button type="button" class="radar-zoom-btn" data-direction="out" aria-label="Zoom out">−</button>',
+      '      <button type="button" class="radar-zoom-btn" data-direction="in" aria-label="Zoom in">+</button>',
+      '    </div>',
       '    <div class="radar-fallback">Radar preview unavailable — ensure RainViewer tiles are reachable.</div>',
       '  </div>',
       '</div>'
     ].join('');
+  }
+
+  function wireRadarFrame(container) {
+    if (!container) return;
+    const img = container.querySelector('.radar-img');
+    if (!img) return;
+
+    const lat = Number(container.dataset.lat);
+    const lon = Number(container.dataset.lon);
+
+    function refresh(zoomLevel) {
+      const next = buildRadarUrls(lat, lon, zoomLevel ?? Number(container.dataset.zoom) ?? radarZoom);
+      radarZoom = next.zoom;
+      container.dataset.zoom = String(next.zoom);
+      img.dataset.fallbackUsed = '';
+      img.dataset.fallback = next.fallback;
+      img.classList.remove('img-error');
+      img.src = next.url;
+    }
+
+    img.addEventListener('load', () => queueLayout());
+    img.addEventListener('error', () => {
+      if (!img.dataset.fallbackUsed && img.dataset.fallback) {
+        img.dataset.fallbackUsed = '1';
+        img.src = img.dataset.fallback;
+        return;
+      }
+      img.classList.add('img-error');
+      queueLayout();
+    });
+
+    container.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      const delta = ev.deltaY > 0 ? -1 : 1;
+      refresh((Number(container.dataset.zoom) || radarZoom) + delta);
+    });
+
+    container.querySelectorAll('.radar-zoom-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const dir = btn.dataset.direction === 'in' ? 1 : -1;
+        refresh((Number(container.dataset.zoom) || radarZoom) + dir);
+      });
+    });
   }
 
   function getWeatherSeverityClass(main, humidity) {
