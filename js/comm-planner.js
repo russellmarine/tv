@@ -61,7 +61,10 @@
     try {
       const raw = localStorage.getItem('commRecentLocations');
       if (!raw) return;
-      recentLocations = JSON.parse(raw);
+      recentLocations = JSON.parse(raw).map(r => ({
+        ...r,
+        identifiers: r.identifiers || buildIdentifiers(r.coords)
+      }));
     } catch (e) {
       recentLocations = [];
     }
@@ -71,7 +74,11 @@
     try {
       const raw = localStorage.getItem('commSelectedLocation');
       if (!raw) return null;
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.coords) {
+        parsed.identifiers = parsed.identifiers || buildIdentifiers(parsed.coords);
+      }
+      return parsed;
     } catch (e) {
       return null;
     }
@@ -110,6 +117,8 @@
   function addRecent(loc) {
     if (!loc || !loc.label || !loc.coords) return;
 
+    loc.identifiers = loc.identifiers || buildIdentifiers(loc.coords);
+
     // de-dupe on coords
     recentLocations = recentLocations.filter(r =>
       Math.abs(r.coords.lat - loc.coords.lat) > 0.001 ||
@@ -129,6 +138,89 @@
     return document.querySelector(sel);
   }
 
+  function formatLatLon(lat, lon) {
+    if (!isFinite(lat) || !isFinite(lon)) return '';
+    return `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
+  }
+
+  function latLonToMaiden(lat, lon) {
+    if (!isFinite(lat) || !isFinite(lon)) return '';
+    let adjLon = lon + 180;
+    let adjLat = lat + 90;
+    adjLon = ((adjLon % 360) + 360) % 360;
+    adjLat = Math.min(Math.max(adjLat, 0), 180);
+
+    const FIELD = 'ABCDEFGHIJKLMNOPQR';
+    const SUB = 'ABCDEFGHIJKLMNOPQRSTUVWX';
+
+    const fieldLon = Math.floor(adjLon / 20);
+    const fieldLat = Math.floor(adjLat / 10);
+    const squareLon = Math.floor((adjLon % 20) / 2);
+    const squareLat = Math.floor(adjLat % 10);
+    const subsquareLon = Math.floor(((adjLon % 2) / 2) * 24);
+    const subsquareLat = Math.floor(((adjLat % 1) / 1) * 24);
+
+    return `${FIELD[fieldLon]}${FIELD[fieldLat]}${squareLon}${squareLat}${SUB[subsquareLon]}${SUB[subsquareLat]}`;
+  }
+
+  function latLonToMgrs(lat, lon, precision = 5) {
+    if (!isFinite(lat) || !isFinite(lon)) return '';
+    const a = 6378137.0;
+    const f = 1 / 298.257223563;
+    const k0 = 0.9996;
+    const e = Math.sqrt(f * (2 - f));
+    const eSq = e * e;
+    const ePrimeSq = eSq / (1 - eSq);
+
+    const zone = Math.floor((lon + 180) / 6) + 1;
+    const lonOrigin = (zone - 1) * 6 - 180 + 3;
+    const latRad = lat * Math.PI / 180;
+    const lonRad = lon * Math.PI / 180;
+    const lonOriginRad = lonOrigin * Math.PI / 180;
+
+    const N = a / Math.sqrt(1 - eSq * Math.sin(latRad) * Math.sin(latRad));
+    const T = Math.tan(latRad) ** 2;
+    const C = ePrimeSq * Math.cos(latRad) ** 2;
+    const A = Math.cos(latRad) * (lonRad - lonOriginRad);
+
+    const M = a * ((1 - eSq / 4 - 3 * eSq * eSq / 64 - 5 * eSq ** 3 / 256) * latRad
+      - (3 * eSq / 8 + 3 * eSq * eSq / 32 + 45 * eSq ** 3 / 1024) * Math.sin(2 * latRad)
+      + (15 * eSq * eSq / 256 + 45 * eSq ** 3 / 1024) * Math.sin(4 * latRad)
+      - (35 * eSq ** 3 / 3072) * Math.sin(6 * latRad));
+
+    let easting = k0 * N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ePrimeSq) * A ** 5 / 120) + 500000;
+    let northing = k0 * (M + N * Math.tan(latRad) * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ePrimeSq) * A ** 6 / 720));
+    if (lat < 0) northing += 10000000;
+
+    const bandLetters = 'CDEFGHJKLMNPQRSTUVWXX';
+    const bandIndex = Math.min(Math.max(Math.floor((lat + 80) / 8), 0), bandLetters.length - 1);
+    const band = bandLetters[bandIndex];
+
+    const columnSets = ['ABCDEFGH', 'JKLMNPQR', 'STUVWXYZ'];
+    const rowSets = ['ABCDEFGHJKLMNPQRSTUV', 'FGHJKLMNPQRSTUVABCDE'];
+
+    const colSet = (zone - 1) % 3;
+    const rowSet = (zone % 2);
+
+    const col = columnSets[colSet][Math.floor(easting / 100000) % 8];
+    const row = rowSets[rowSet][Math.floor((northing % 2000000) / 100000) % 20];
+
+    const accuracy = Math.min(Math.max(precision, 1), 5);
+    const eastingStr = Math.floor((easting % 100000) / (10 ** (5 - accuracy))).toString().padStart(accuracy, '0');
+    const northingStr = Math.floor((northing % 100000) / (10 ** (5 - accuracy))).toString().padStart(accuracy, '0');
+
+    return `${zone}${band}${col}${row}${eastingStr}${northingStr}`;
+  }
+
+  function buildIdentifiers(coords) {
+    if (!coords) return {};
+    return {
+      latlon: formatLatLon(coords.lat, coords.lon),
+      mgrs: latLonToMgrs(coords.lat, coords.lon),
+      grid: latLonToMaiden(coords.lat, coords.lon)
+    };
+  }
+
   function formatLocationLabel(loc) {
     if (!loc) return '';
     const base = loc.label || 'Location';
@@ -141,8 +233,16 @@
     if (!selectedLocation) {
       meta.textContent = 'No location selected';
     } else {
-      const { lat, lon } = selectedLocation.coords;
-      meta.textContent = `${formatLocationLabel(selectedLocation)} (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`;
+      selectedLocation.identifiers = selectedLocation.identifiers || buildIdentifiers(selectedLocation.coords);
+      const ids = selectedLocation.identifiers || {};
+      meta.innerHTML = [
+        '<div class="comm-location-lines">',
+        '  <div class="loc-primary">' + escapeHtml(formatLocationLabel(selectedLocation)) + '</div>',
+        ids.latlon ? '  <div class="loc-sub">Lat/Long: ' + escapeHtml(ids.latlon) + '</div>' : '',
+        ids.mgrs ? '  <div class="loc-sub">MGRS: ' + escapeHtml(ids.mgrs) + '</div>' : '',
+        ids.grid ? '  <div class="loc-sub">Grid: ' + escapeHtml(ids.grid) + '</div>' : '',
+        '</div>'
+      ].join('');
     }
   }
 
@@ -896,7 +996,8 @@
       coords: {
         lat: loc.coords.lat,
         lon: loc.coords.lon
-      }
+      },
+      identifiers: loc.identifiers || buildIdentifiers(loc.coords)
     };
     updateLocationStatus();
     await resolveLocationContext(selectedLocation);
@@ -961,11 +1062,14 @@
     }
 
     if (clearBtn) clearBtn.style.display = '';
-    container.innerHTML = recentLocations.map((r, idx) => (
-      '<button type="button" class="recent-location-pill" data-idx="' + idx + '">' +
-        escapeHtml(formatLocationLabel(r)) +
-      '</button>'
-    )).join('');
+    container.innerHTML = recentLocations.map((r, idx) => {
+      const ids = r.identifiers || buildIdentifiers(r.coords);
+      const sub = [ids.latlon, ids.mgrs].filter(Boolean).join(' • ');
+      return '<button type="button" class="recent-location-pill" data-idx="' + idx + '">' +
+        '<span class="recent-label">' + escapeHtml(formatLocationLabel(r)) + '</span>' +
+        (sub ? '<span class="recent-sub">' + escapeHtml(sub) + '</span>' : '') +
+      '</button>';
+    }).join('');
 
     container.querySelectorAll('.recent-location-pill').forEach(el => {
       el.addEventListener('click', () => {
@@ -1431,10 +1535,12 @@
       { label: 'Kp ≥ 6', desc: 'Storm/Severe', color: '#ff4444' }
     ].map(item => '<div class="kp-segment" style="--kp-color:' + item.color + '"><span>' + escapeHtml(item.label)
       + '</span><small>' + escapeHtml(item.desc) + '</small></div>').join('');
-    const kpDefinition = '<details class="comm-definition"><summary>What is Kp?</summary>'
-      + '<p>The K-index and Planetary K-index (Kp) characterize geomagnetic storm magnitude. Kp is a key indicator used by SWPC '
-      + 'to trigger alerts for users affected by disturbances in Earth\'s magnetic field—including power grids, spacecraft '
-      + 'operators, HF/VHF radio users, and aurora observers.</p></details>';
+      const kpDefinition = '<details class="comm-definition"><summary>What is Kp?</summary>'
+        + '<div class="definition-body">'
+        + '  <p>The K-index and Planetary K-index (Kp) characterize geomagnetic storm magnitude. Kp is used to decide when to issue alerts for users impacted by geomagnetic disturbances.</p>'
+        + '  <p>Primary users affected include power-grid operators, spacecraft controllers, HF/VHF radio users, and aurora observers. Higher Kp indicates stronger geomagnetic activity and greater disruption risk.</p>'
+        + '</div>'
+        + '</details>';
     const scaleCards = ['R', 'S', 'G'].map(key => (
       '<a class="spacewx-scale-card tooltip-target" href="' + scaleLinks[key] + '" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(scaleTooltips[key]) + '">' +
         '<div class="label">' + (key === 'R' ? 'Radio' : key === 'S' ? 'Solar' : 'Geomag') + '</div>' +

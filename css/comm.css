@@ -118,8 +118,8 @@ main {
     margin: 1.5rem auto 2rem;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-auto-rows: minmax(12px, auto);
-    gap: 1rem;
+    grid-auto-rows: 10px;
+    gap: 0.9rem;
     align-items: start;
     align-content: start;
     grid-auto-flow: row dense;
@@ -175,6 +175,22 @@ main {
   flex-direction: column;
   gap: 0.5rem;
   grid-row-end: span var(--row-span, 1);
+}
+
+.comm-location-lines {
+  display: grid;
+  gap: 0.15rem;
+  line-height: 1.2;
+}
+
+.comm-location-lines .loc-primary {
+  font-weight: 700;
+  color: #ffdcb5;
+}
+
+.comm-location-lines .loc-sub {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 #comm-planner-view .comm-grid-bottom .comm-card {
@@ -555,8 +571,8 @@ main {
     radial-gradient(circle at 10% 10%, rgba(255, 200, 140, 0.18), transparent 55%),
     rgba(15, 6, 0, 0.65);
   color: rgba(215, 185, 155, 0.95);
-  padding: 0.35rem 0.65rem;
-  font-size: 0.8rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.88rem;
   cursor: pointer;
   box-shadow: inset 0 0 0 1px rgba(255, 120, 0, 0.22), 0 0 8px rgba(255, 120, 0, 0.28);
   transition: all 0.18s ease;
@@ -570,6 +586,18 @@ main {
     linear-gradient(135deg, rgba(255, 150, 90, 0.35), rgba(120, 40, 0, 0.35));
   border-color: rgba(255, 210, 160, 1);
   box-shadow: 0 0 12px rgba(255, 180, 120, 0.6);
+}
+
+.recent-location-pill .recent-label {
+  font-weight: 700;
+  color: #ffdcb5;
+}
+
+.recent-location-pill .recent-sub {
+  display: block;
+  margin-top: 0.08rem;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.78);
 }
 
 /* Space-weather mini cards (match propagation panel) */
@@ -1541,6 +1569,8 @@ main {
 .look-availability-table { display: grid; gap: 0.2rem; margin-bottom: 0.4rem; }
 .look-availability-row { display: grid; grid-template-columns: 1.2fr 0.7fr 0.8fr 0.8fr 1fr; gap: 0.35rem; align-items: center; font-size: 0.85rem; padding: 0.3rem 0.35rem; border-radius: 10px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255, 190, 140, 0.18); }
 .look-availability-row.head { text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; background: transparent; border: none; padding-bottom: 0; }
+.look-availability-row span { min-width: 0; word-break: break-word; }
+.look-availability-row span:last-child { justify-self: end; }
 
 /* Cellular coverage */
 .cell-header { display: grid; gap: 0.2rem; margin-bottom: 0.35rem; }
