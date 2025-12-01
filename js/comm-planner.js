@@ -25,7 +25,7 @@
   let tempUnit = 'F';
   const MAX_RECENT = 7;
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
-  const SOLAR_CYCLE_ENDPOINT = '/api/spaceweather/solar-cycle/observed-solar-cycle.json';
+  const SOLAR_CYCLE_ENDPOINT = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json');
 
   // ---------- Storage helpers ----------
 
@@ -1731,6 +1731,8 @@
       '  <div class="weather-radar-head">Local Radar</div>',
       '  <div class="weather-radar-frame">',
       '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" onerror="this.classList.add(\'img-error\')">',
+      '    <div class="radar-overlay"></div>',
+      '    <div class="radar-caption"><span class="dot"></span><span>Live sweep</span></div>',
       '    <div class="radar-fallback">Radar preview unavailable — ensure RainViewer tiles are reachable.</div>',
       '  </div>',
       '</div>'
