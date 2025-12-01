@@ -715,6 +715,10 @@
     }
 
     const headerEl = panelEl.querySelector('.gunny-chat-header');
+
+    // Trap scroll inside the chat so the page doesn't pan when hovered
+    messagesEl?.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    messagesEl?.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
     makeDraggable(panelEl, headerEl);
     makeResizable(panelEl);
 

@@ -1343,8 +1343,8 @@
 
     sunspotPromise = (async () => {
       const sources = [
-        SOLAR_CYCLE_ENDPOINT,
-        'https://r.jina.ai/http://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json'
+        'https://r.jina.ai/https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json',
+        SOLAR_CYCLE_ENDPOINT
       ];
 
       for (const src of sources) {
@@ -1904,11 +1904,14 @@
     const url = getRadarSnapshotUrl(lat, lon);
     if (!url) return '';
     const fallback = getRadarFallbackUrl(lat, lon);
+    const onError = `if(!this.dataset.fallbackUsed && '${fallback}') { this.dataset.fallbackUsed='1'; this.src='${fallback}'; } else { this.classList.add('img-error'); window.RussellTV?.CommPlanner?.queueLayout?.(); }`;
+    const onLoad = 'window.RussellTV?.CommPlanner?.queueLayout?.();';
+
     return [
       '<div class="weather-radar">',
       '  <div class="weather-radar-head">Local Radar</div>',
       '  <div class="weather-radar-frame">',
-      '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" onload="window.RussellTV?.CommPlanner?.queueLayout?.();" onerror="if(!this.dataset.fallbackUsed && \'" + fallback + "\'){this.dataset.fallbackUsed='1';this.src='" + fallback + "';}else{this.classList.add('img-error');window.RussellTV?.CommPlanner?.queueLayout?.();}">',
+      `    <img src="${url}" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" onload="${onLoad}" onerror="${onError}">`,
       '    <div class="radar-overlay"></div>',
       '    <div class="radar-caption"><span class="dot"></span><span>Live sweep</span></div>',
       '    <div class="radar-fallback">Radar preview unavailable — ensure RainViewer tiles are reachable.</div>',

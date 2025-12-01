@@ -2234,6 +2234,10 @@
       hidePanel();
     });
 
+    const scrollArea = panel.querySelector('.panel-content');
+    scrollArea?.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    scrollArea?.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+
     // Close autocomplete on outside click
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#prop-location-autocomplete') && !e.target.closest('#prop-location-input')) {
