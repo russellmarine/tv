@@ -1989,6 +1989,7 @@
     const rainviewerUrl = 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
 
     if (RADAR_PROXY_BASE) {
+      console.log('[Comm] Radar URL building from', RADAR_PROXY_BASE, 'lat', lat, 'lon', lon);
       return RADAR_PROXY_BASE
         .replace('{lat}', encodeURIComponent(lat))
         .replace('{lon}', encodeURIComponent(lon))
