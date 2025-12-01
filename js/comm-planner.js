@@ -23,8 +23,6 @@
   let lastForecastRaw = null;
   let lastWeatherCoords = null;
   let tempUnit = 'F';
-  let timebarWeather = {};
-  let timebarClockTimer = null;
   const MAX_RECENT = 7;
   const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
 
@@ -950,86 +948,6 @@
     });
   }
 
-  // ---------- Top time/weather bar ----------
-
-  function weatherIconKey(main, desc) {
-    const text = `${main || ''} ${desc || ''}`.toLowerCase();
-    if (text.includes('thunder') || text.includes('storm')) return 'storm';
-    if (text.includes('rain') || text.includes('drizzle')) return 'rain';
-    if (text.includes('snow') || text.includes('sleet')) return 'snow';
-    if (text.includes('cloud')) return 'cloudy';
-    if (text.includes('fog') || text.includes('mist') || text.includes('haze') || text.includes('smoke')) return 'fog';
-    return 'sunny';
-  }
-
-  function timebarTempClass(tempF) {
-    if (tempF == null || isNaN(tempF)) return '';
-    if (tempF >= 90) return 'severity-watch';
-    if (tempF >= 75) return 'severity-fair';
-    if (tempF >= 55) return 'severity-good';
-    if (tempF >= 32) return 'severity-fair';
-    return 'severity-watch';
-  }
-
-  async function fetchTimebarWeather() {
-    if (!window.WEATHER_QUERIES || typeof window.fetchWeather !== 'function') {
-      timebarWeather = {};
-      renderTimebar();
-      return;
-    }
-
-    const newMap = {};
-    for (const [label, query] of Object.entries(window.WEATHER_QUERIES)) {
-      if (/zulu/i.test(label)) continue;
-      try {
-        const d = await window.fetchWeather(query);
-        if (!d || (d.cod && d.cod !== 200)) continue;
-        newMap[label] = {
-          main: d.weather?.[0]?.main || '',
-          desc: d.weather?.[0]?.description || '',
-          temp: Math.round(d.main?.temp ?? 0),
-          hi: Math.round(d.main?.temp_max ?? 0),
-          lo: Math.round(d.main?.temp_min ?? 0)
-        };
-      } catch (e) {
-        // swallow
-      }
-    }
-    timebarWeather = newMap;
-    renderTimebar();
-  }
-
-  function renderTimebar() {
-    const bar = document.getElementById('comm-timebar');
-    if (!bar || !window.TIME_ZONES) return;
-
-    const chips = window.TIME_ZONES.map(loc => {
-      const time = new Date().toLocaleString('en-US', {
-        timeZone: loc.tz,
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit'
-      }).replace(':', '');
-
-      const weather = timebarWeather[loc.label];
-      const cls = weather ? 'timebar-chip ' + timebarTempClass(weather.temp ?? weather.hi) : 'timebar-chip';
-      const weatherHtml = weather
-        ? '<div class="timebar-weather">'
-          + '<img src="/icons/weather/' + weatherIconKey(weather.main, weather.desc) + '.svg" alt="' + escapeHtml(weather.main || '') + '" loading="lazy">'
-          + '<span>' + escapeHtml(Math.round(weather.hi || weather.temp || 0) + '°/' + Math.round(weather.lo || weather.temp || 0) + '°') + '</span>'
-          + '</div>'
-        : '';
-
-      return '<div class="' + cls + '">'
-        + '<div class="timebar-label">' + escapeHtml(loc.label) + '</div>'
-        + '<div class="timebar-time">' + escapeHtml(time) + '</div>'
-        + weatherHtml
-        + '</div>';
-    }).join('');
-
-    bar.innerHTML = chips;
-  }
-
   async function fetchLocalWeather(lat, lon) {
     const body = $('#comm-weather-body');
     const meta = $('#comm-weather-meta');
@@ -1612,7 +1530,6 @@
 
   function init() {
     if (!document.querySelector('.comm-layout-grid')) return;
-    initTimebar();
     initLocationCard();
     initSpaceWeatherCard();
     console.log('[CommPlanner] Dashboard initialized');
@@ -1624,14 +1541,6 @@
   };
 
   document.addEventListener('DOMContentLoaded', init);
-
-  function initTimebar() {
-    renderTimebar();
-    fetchTimebarWeather();
-    if (timebarClockTimer) clearInterval(timebarClockTimer);
-    timebarClockTimer = setInterval(renderTimebar, 30000);
-    setInterval(fetchTimebarWeather, 15 * 60 * 1000);
-  }
 
   function metricHtml(label, value, hint, icon) {
     return '<div class="comm-weather-metric">' +

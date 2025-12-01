@@ -31,8 +31,6 @@
     </div>
   </header>
 
-  <div class="comm-timebar" id="comm-timebar"></div>
-
   <main>
     <section id="comm-planner-view">
       <div class="comm-layout-grid">
@@ -155,14 +153,22 @@
     </section>
   </main>
 
+  <!-- Mobile info-bar ticker -->
+  <div id="info-bar-mobile">
+    <div id="info-bar-mobile-inner"></div>
+  </div>
+
   <!-- Core + config -->
   <script src="/js/russelltv-core.js"></script>
   <script src="/config/time-config.js"></script>
   <script src="/config/weather-config.js"></script>
   <script src="/config/space-weather-config.js"></script>
+  <script src="/config/news-config.js"></script>
 
   <!-- Space weather + comm planner modules -->
   <script src="/js/space-weather.js"></script>
+  <script src="/js/info-bar.js"></script>
+  <script src="/js/feature-toggles.js"></script>
   <script src="/js/comm-planner.js"></script>
   <script src="/js/comm-lookangles.js"></script>
   <script src="/js/comm-cellular.js"></script>
