@@ -29,7 +29,7 @@
   const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/weather/radar?lat={lat}&lon={lon}';
   let masonryTimer = null;
   let resizeObserver = null;
-  const ROW_HEIGHT = 10;
+  const ROW_HEIGHT = 8;
 
   // ---------- Layout helpers ----------
 
@@ -1064,7 +1064,11 @@
     if (clearBtn) clearBtn.style.display = '';
     container.innerHTML = recentLocations.map((r, idx) => {
       const ids = r.identifiers || buildIdentifiers(r.coords);
-      const sub = [ids.latlon, ids.mgrs].filter(Boolean).join(' • ');
+      const subParts = [];
+      if (ids.latlon) subParts.push('Lat/Long: ' + ids.latlon);
+      if (ids.mgrs) subParts.push('MGRS: ' + ids.mgrs);
+      if (ids.grid) subParts.push('Grid: ' + ids.grid);
+      const sub = subParts.join(' • ');
       return '<button type="button" class="recent-location-pill" data-idx="' + idx + '">' +
         '<span class="recent-label">' + escapeHtml(formatLocationLabel(r)) + '</span>' +
         (sub ? '<span class="recent-sub">' + escapeHtml(sub) + '</span>' : '') +
@@ -1535,12 +1539,15 @@
       { label: 'Kp ≥ 6', desc: 'Storm/Severe', color: '#ff4444' }
     ].map(item => '<div class="kp-segment" style="--kp-color:' + item.color + '"><span>' + escapeHtml(item.label)
       + '</span><small>' + escapeHtml(item.desc) + '</small></div>').join('');
-      const kpDefinition = '<details class="comm-definition"><summary>What is Kp?</summary>'
-        + '<div class="definition-body">'
-        + '  <p>The K-index and Planetary K-index (Kp) characterize geomagnetic storm magnitude. Kp is used to decide when to issue alerts for users impacted by geomagnetic disturbances.</p>'
-        + '  <p>Primary users affected include power-grid operators, spacecraft controllers, HF/VHF radio users, and aurora observers. Higher Kp indicates stronger geomagnetic activity and greater disruption risk.</p>'
-        + '</div>'
-        + '</details>';
+    const kpDefinition = '<details class="comm-definition"><summary>What is Kp?</summary>'
+      + '<div class="definition-body">'
+      + '  <div class="spacewx-scales-row">' + scaleCards + '</div>'
+      + '  <div class="kp-scale" aria-label="Kp scale">' + kpScale + '</div>'
+      + '  <p>The K-index and Planetary K-index (Kp) characterize geomagnetic storm magnitude. Kp is used to decide when to issue alerts for users impacted by geomagnetic disturbances.</p>'
+      + '  <p>Primary users affected include power-grid operators, spacecraft controllers, HF/VHF radio users, and aurora observers. Higher Kp indicates stronger geomagnetic activity and greater disruption risk.</p>'
+      + '  <div class="spacewx-footnote">R = HF Radio Blackouts · S = Solar Radiation · G = Geomagnetic Storms</div>'
+      + '</div>'
+      + '</details>';
     const scaleCards = ['R', 'S', 'G'].map(key => (
       '<a class="spacewx-scale-card tooltip-target" href="' + scaleLinks[key] + '" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(scaleTooltips[key]) + '">' +
         '<div class="label">' + (key === 'R' ? 'Radio' : key === 'S' ? 'Solar' : 'Geomag') + '</div>' +
@@ -1567,16 +1574,13 @@
       '<div class="spacewx-summary-row">'
       + '  <div class="spacewx-summary-desc">' + escapeHtml(spacewxOverall.desc) + '</div>'
       + '</div>',
-      '<div class="spacewx-scales-row">' + scaleCards + '</div>',
       '<a class="spacewx-kp-row tooltip-target" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(kpTooltip) + '">',
       '  <span class="label">Kp Index</span>',
       '  <span class="value" style="color:' + kpColor + ';">' + data.kpIndex.toFixed(2) + '</span>',
       '  <span class="status">' + kpCondition + '</span>',
       '</a>',
-      '<div class="kp-scale" aria-label="Kp scale">' + kpScale + '</div>',
       sunspotBlock,
       kpDefinition,
-      '<div class="spacewx-footnote">R = HF Radio Blackouts · S = Solar Radiation · G = Geomagnetic Storms</div>',
       '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank" rel="noopener noreferrer">NOAA SWPC</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">NOAA Scales</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer">Kp Source</a> • ' + escapeHtml(updatedText) + '</div>'
     ].join('');
 
@@ -1955,7 +1959,7 @@
     const lows = forecast.daily.temperature_2m_min || [];
     const codes = forecast.daily.weathercode || [];
 
-    const items = days.slice(0, 7).map((dateStr, idx) => {
+    const items = days.slice(0, 9).map((dateStr, idx) => {
       const dt = new Date(dateStr);
       const label = dt.toLocaleDateString(undefined, { weekday: 'short' });
       const main = weatherCodeToMain(codes[idx]);
@@ -1970,7 +1974,7 @@
     }).join('');
 
     if (!items) return '';
-    return '<div class="weather-forecast"><div class="forecast-head">7-Day Outlook</div><div class="forecast-row">' + items + '</div></div>';
+    return '<div class="weather-forecast"><div class="forecast-head">9-Day Outlook</div><div class="forecast-row">' + items + '</div></div>';
   }
 
   function getRadarSnapshotUrl(lat, lon) {

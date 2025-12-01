@@ -113,7 +113,6 @@
       return;
     }
 
-    const header = `<div class="cell-header"><div class="cell-location">${escapeHtml(loc.label)}</div><div class="cell-coords">${loc.coords.lat.toFixed(4)}°, ${loc.coords.lon.toFixed(4)}°</div></div>`;
     const coverage = summarizeCoverage(cellData || {});
     const coverageCls = coverageClass(coverage.grade);
     const coverageLabel = coverage.grade ? coverage.grade.charAt(0).toUpperCase() + coverage.grade.slice(1) : 'Unknown';
@@ -125,7 +124,6 @@
     const towers = renderTowerTable(Array.isArray(cellData?.towers) ? cellData.towers : []);
 
     body.innerHTML = [
-      header,
       '<div class="cell-summary">',
       '  <div class="cell-grade ' + coverageCls + '">' + escapeHtml(coverageLabel) + '</div>',
       '  <div class="cell-towers">' + escapeHtml(coverage.text) + '</div>',

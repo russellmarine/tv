@@ -157,7 +157,10 @@
       + '<span><span class="look-pill ' + p.status + '">' + escapeHtml(p.note) + '</span></span>'
       + '</div>'
     ).join('');
-    return '<div class="look-availability-table">' + head + rows + '</div>';
+    return '<details class="look-availability-panel">'
+      + '<summary>Constellation availability (reference)</summary>'
+      + '<div class="look-availability-table">' + head + rows + '</div>'
+      + '</details>';
   }
 
   function renderLookAngles(loc) {
@@ -178,12 +181,12 @@
 
     const controls = renderControls();
     const sections = constellationData.map(renderSection).join('') || '<p class="comm-placeholder">' + (isLoading ? 'Loading satellite geometry…' : 'No satellites in view above horizon.') + '</p>';
+    const availability = renderAvailability();
 
     body.innerHTML = [
       '<div class="look-header">',
-      '<div class="look-location">' + escapeHtml(loc.context ? `${loc.label} (${loc.context})` : loc.label) + '<div class="look-coords">' + loc.coords.lat.toFixed(4) + '°, ' + loc.coords.lon.toFixed(4) + '°</div></div>',
       wxLine,
-      renderAvailability(),
+      availability,
       '</div>',
       controls,
       '<div class="look-note">Azimuth is TRUE north (not magnetic)</div>',
