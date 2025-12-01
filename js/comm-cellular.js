@@ -117,9 +117,10 @@
     const coverage = summarizeCoverage(cellData || {});
     const coverageCls = coverageClass(coverage.grade);
     const coverageLabel = coverage.grade ? coverage.grade.charAt(0).toUpperCase() + coverage.grade.slice(1) : 'Unknown';
-    const carrierEntries = Array.isArray(cellData?.carriers)
+    const carrierEntriesRaw = Array.isArray(cellData?.carriers)
       ? cellData.carriers
-      : Object.values(cellData?.carriers || {});
+      : (cellData?.carriers && typeof cellData.carriers === 'object' ? Object.values(cellData.carriers) : []);
+    const carrierEntries = Array.isArray(carrierEntriesRaw) ? carrierEntriesRaw : [];
     const carriers = carrierEntries.map(renderCarrier).join('');
     const towers = renderTowerTable(Array.isArray(cellData?.towers) ? cellData.towers : []);
 

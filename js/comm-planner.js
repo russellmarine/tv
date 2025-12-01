@@ -1250,7 +1250,9 @@
     const bands = [
       { name: 'L1 C/A', status: baseStatus, notes: 'Standard positioning & timing.' },
       { name: 'L2 P(Y)', status: bandStatus(baseStatus), notes: 'Military precision; iono corrections.' },
-      { name: 'L5', status: bandStatus(baseStatus), notes: 'Modern safety-of-life; strongest against interference.' }
+      { name: 'L5', status: bandStatus(baseStatus), notes: 'Modern safety-of-life; strongest against interference.' },
+      { name: 'Galileo E1/E5', status: bandStatus(baseStatus), notes: 'Multi-frequency EU PNT; strong multipath rejection.' },
+      { name: 'BeiDou B1/B2/B3', status: bandStatus(baseStatus), notes: 'BDS global + regional beams; monitor local interference.' }
     ];
 
     const bandRows = bands.map(b => '<div class="gps-band-row ' + satBandClass(b.status) + '">' +
@@ -1258,6 +1260,20 @@
       '<div class="band-label">' + escapeHtml(toTitleCase(b.status)) + '</div>' +
       '<div class="band-notes">' + escapeHtml(b.notes) + '</div>' +
       '</div>').join('');
+
+    const scintDefinition = '<details class="comm-definition"><summary>Ionospheric Scintillation</summary>'
+      + '<p>Ionospheric scintillation is the rapid fluctuation of radio waves caused by small-scale electron density structures. '
+      + 'Strong scintillation can prevent GPS/GNSS receivers from locking signals; mild scintillation reduces accuracy. Severity '
+      + 'depends on local time, season, geomagnetic activity, solar cycle, and atmospheric waves.</p>'
+      + '<p>Scintillation impacts both signal power (S4) and phase (σφ). It is more common at low/high latitudes but can appear at '
+      + 'mid-latitudes during disturbed periods.</p></details>';
+
+    const constellations = [
+      { name: 'GPS (USA)', status: baseStatus, notes: 'Core constellation; PNT baseline.' },
+      { name: 'Galileo (EU)', status: bandStatus(baseStatus), notes: 'High-accuracy E1/E5 services.' },
+      { name: 'BeiDou (BDS)', status: bandStatus(baseStatus), notes: 'Global + Asia-Pacific coverage.' },
+      { name: 'GLONASS', status: bandStatus(baseStatus), notes: 'Legacy FDMA; complementary visibility.' }
+    ].map(c => '<div class="gnss-row ' + satBandClass(c.status) + '"><span>' + escapeHtml(c.name) + '</span><span>' + escapeHtml(c.notes) + '</span></div>').join('');
 
     gpsBody.innerHTML = [
       '<div class="comm-prop-status ' + satBandClass(baseStatus) + '">',
@@ -1269,7 +1285,10 @@
       '</div>',
       '<div class="gps-band-heading">Band Health</div>',
       '<div class="gps-band-grid">' + bandRows + '</div>',
+      '<div class="gps-band-heading">GNSS Constellations</div>',
+      '<div class="gnss-constellations">' + constellations + '</div>',
       '<div class="gps-meta">Jamming/Interference: ' + escapeHtml(jam) + '</div>',
+      scintDefinition,
       '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov/" target="_blank" rel="noopener noreferrer">SWPC</a> · <a class="inline-link" href="https://gpsjam.org" target="_blank" rel="noopener noreferrer">GPSJam</a> · <a class="inline-link" href="https://www.navcen.uscg.gov/" target="_blank" rel="noopener noreferrer">NAVCEN</a> • ' + escapeHtml(sourceText) + '</div>'
     ].join('');
 
@@ -1364,6 +1383,18 @@
       G: 'G-scale: Geomagnetic storms from CMEs/solar wind. Can trigger aurora, absorption, and scintillation.'
     };
     const kpTooltip = 'Planetary K index (0–9) measures geomagnetic disturbance. Kp≥5 is storm level.';
+    const kpScale = [
+      { label: 'Kp < 3', desc: 'Quiet', color: '#44cc44' },
+      { label: 'Kp = 3', desc: 'Unsettled', color: '#88cc44' },
+      { label: 'Kp = 4', desc: 'Active', color: '#ffcc00' },
+      { label: 'Kp = 5', desc: 'Minor storm', color: '#ff9900' },
+      { label: 'Kp ≥ 6', desc: 'Storm/Severe', color: '#ff4444' }
+    ].map(item => '<div class="kp-segment" style="--kp-color:' + item.color + '"><span>' + escapeHtml(item.label)
+      + '</span><small>' + escapeHtml(item.desc) + '</small></div>').join('');
+    const kpDefinition = '<details class="comm-definition"><summary>What is Kp?</summary>'
+      + '<p>The K-index and Planetary K-index (Kp) characterize geomagnetic storm magnitude. Kp is a key indicator used by SWPC '
+      + 'to trigger alerts for users affected by disturbances in Earth\'s magnetic field—including power grids, spacecraft '
+      + 'operators, HF/VHF radio users, and aurora observers.</p></details>';
     const scaleCards = ['R', 'S', 'G'].map(key => (
       '<a class="spacewx-scale-card tooltip-target" href="' + scaleLinks[key] + '" target="_blank" rel="noopener noreferrer" data-tooltip="' + escapeHtml(scaleTooltips[key]) + '">' +
         '<div class="label">' + (key === 'R' ? 'Radio' : key === 'S' ? 'Solar' : 'Geomag') + '</div>' +
@@ -1396,12 +1427,12 @@
       '  <span class="value" style="color:' + kpColor + ';">' + data.kpIndex.toFixed(2) + '</span>',
       '  <span class="status">' + kpCondition + '</span>',
       '</a>',
+      '<div class="kp-scale" aria-label="Kp scale">' + kpScale + '</div>',
       sunspotBlock,
+      kpDefinition,
       '<div class="spacewx-footnote">R = HF Radio Blackouts · S = Solar Radiation · G = Geomagnetic Storms</div>',
       '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank" rel="noopener noreferrer">NOAA SWPC</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">NOAA Scales</a> · <a class="inline-link" href="https://www.swpc.noaa.gov/products/planetary-k-index" target="_blank" rel="noopener noreferrer">Kp Source</a> • ' + escapeHtml(updatedText) + '</div>'
     ].join('');
-
-    if (meta) meta.textContent = '';
 
     updatePropagationCards(data, updatedText);
 
@@ -1837,7 +1868,7 @@
       '<div class="weather-radar">',
       '  <div class="weather-radar-head">Local Radar</div>',
       '  <div class="weather-radar-frame">',
-      '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" onerror="if(!this.dataset.fallbackUsed && \'' + fallback + '\'){this.dataset.fallbackUsed=\'1\';this.src=\'' + fallback + '\';}else{this.classList.add(\'img-error\');}">',
+      '    <img src="' + url + '" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" onerror="if(!this.dataset.fallbackUsed && \'' + fallback + '\'){this.dataset.fallbackUsed=\'1\';this.src=\'' + fallback + '\';}else{this.classList.add(\'img-error\');}">',
       '    <div class="radar-overlay"></div>',
       '    <div class="radar-caption"><span class="dot"></span><span>Live sweep</span></div>',
       '    <div class="radar-fallback">Radar preview unavailable — ensure RainViewer tiles are reachable.</div>',
