@@ -1997,7 +1997,7 @@
   function getRadarSnapshotUrl(lat, lon) {
     if (lat == null || lon == null) return '';
 
-    const zoom = 6;
+    const zoom = 8;
     const scale = Math.pow(2, zoom);
     const x = Math.floor(((lon + 180) / 360) * scale);
     const latRad = lat * Math.PI / 180;
@@ -2019,7 +2019,7 @@
 
   function getRadarFallbackUrl(lat, lon) {
     if (lat == null || lon == null) return '';
-    const zoom = 6;
+    const zoom = 8;
     const scale = Math.pow(2, zoom);
     const x = Math.floor(((lon + 180) / 360) * scale);
     const latRad = lat * Math.PI / 180;
@@ -2027,9 +2027,21 @@
     return 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
   }
 
+
+function getRadarBasemapUrl(lat, lon) {
+  if (lat == null || lon == null) return '';
+  const zoom = 8;
+  const scale = Math.pow(2, zoom);
+  const x = Math.floor(((lon + 180) / 360) * scale);
+  const latRad = lat * Math.PI / 180;
+  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
+  return 'https://tile.openstreetmap.org/' + zoom + '/' + x + '/' + y + '.png';
+}
+
   function buildRadarBlock(lat, lon) {
     const url = getRadarSnapshotUrl(lat, lon);
     if (!url) return '';
+    const basemap = getRadarBasemapUrl(lat, lon);
     const fallback = getRadarFallbackUrl(lat, lon);
     const onError = `if(!this.dataset.fallbackUsed && '${fallback}') { this.dataset.fallbackUsed='1'; this.src='${fallback}'; } else { this.classList.add('img-error'); window.RussellTV?.CommPlanner?.queueLayout?.(); }`;
     const onLoad = 'window.RussellTV?.CommPlanner?.queueLayout?.();';
@@ -2037,7 +2049,7 @@
     return [
       '<div class="weather-radar">',
       '  <div class="weather-radar-head">Local Radar</div>',
-      '  <div class="weather-radar-frame">',
+      '  <div class="weather-radar-frame" style="' + (basemap ? 'background-image:url(' + basemap + ');' : '') + 'background-size:cover;background-position:center;">',
       `    <img src="${url}" alt="Radar snapshot" loading="lazy" referrerpolicy="no-referrer" onload="${onLoad}" onerror="${onError}">`,
       '    <div class="radar-overlay"></div>',
       '    <div class="radar-caption"><span class="dot"></span><span>Live sweep</span></div>',

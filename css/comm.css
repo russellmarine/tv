@@ -1620,3 +1620,190 @@ main {
 .cell-bands { font-size: 0.85rem; opacity: 0.88; }
 .cell-band { display: inline-flex; padding: 0.18rem 0.4rem; border-radius: 8px; margin-right: 0.25rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
 .cell-legend { font-size: 0.8rem; opacity: 0.72; margin-top: 0.5rem; }
+\n
+/* === Local Radar panel === */
+.weather-radar {
+  margin-top: 0.75rem;
+}
+
+.weather-radar-head {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+  opacity: 0.9;
+}
+
+.weather-radar-frame {
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: radial-gradient(circle at top, #0b1120, #020617);
+  min-height: 200px;
+}
+
+.weather-radar-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.weather-radar-frame .radar-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.weather-radar-frame .radar-caption {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  background: rgba(15, 23, 42, 0.85);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+}
+
+.weather-radar-frame .radar-caption .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #22c55e;
+}
+
+.weather-radar-frame .radar-fallback {
+  position: absolute;
+  inset: 0.75rem;
+  display: none;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: #9ca3af;
+}
+
+.weather-radar-frame img.img-error ~ .radar-fallback {
+  display: block;
+}
+\n
+/* Radar overlay tuning */
+.weather-radar-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+}
+\n
+/* === Comm Dashboard: Local Radar controls & zoom === */
+.weather-radar {
+  position: relative;
+}
+
+.radar-controls {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.radar-modes {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.radar-mode-btn {
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(15, 23, 42, 0.7);
+  color: #e5e7eb;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.radar-mode-btn.active {
+  background: rgba(251, 146, 60, 0.9);
+  border-color: rgba(248, 250, 252, 0.9);
+  color: #020617;
+}
+
+.radar-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.radar-zoom-btn {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.8);
+  color: #e5e7eb;
+  font-size: 0.8rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.radar-zoom-label {
+  min-width: 2.4rem;
+  text-align: center;
+  opacity: 0.8;
+}
+
+/* Zoom affects both basemap and overlay */
+.weather-radar-frame {
+  --radar-zoom: 1;
+  background-size: calc(100% * var(--radar-zoom)) !important;
+  background-position: center;
+}
+
+.weather-radar-frame img {
+  transform: scale(var(--radar-zoom));
+  transform-origin: center;
+}
+
+/* 'Satellite' mode: punch up colors/contrast on the basemap  */
+.weather-radar-frame[data-mode="sat"] {
+  filter: saturate(1.4) contrast(1.15) brightness(1.05);
+}
+
+/* Ensure overlay stays fully visible */
+.weather-radar-frame img {
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+\n
+/* === Comm Dashboard: Local Radar tweaks v2 === */
+.weather-radar-frame {
+  position: relative;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  min-height: 220px;
+  background-color: #020617;
+}
+
+/* Ensure overlay is fully visible on top of the basemap */
+.weather-radar-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
+/* Hide the "Live sweep" caption bar */
+.weather-radar-frame .radar-caption {
+  display: none;
+}
