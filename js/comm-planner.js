@@ -1669,7 +1669,7 @@
     else if (m.includes('clear')) icon = 'sunny';
 
     const alt = (main || 'Weather') + ' icon';
-    return '<img src="/icons/weather/' + icon + '.svg" alt="' + escapeHtml(alt) + '" loading="lazy" />';
+    return '<img class="weather-icon-img weather-' + icon + '" src="/icons/weather/' + icon + '.svg" alt="' + escapeHtml(alt) + '" loading="lazy" />';
   }
 
   function weatherCodeToMain(code) {
@@ -1719,8 +1719,8 @@
     const latRad = lat * Math.PI / 180;
     const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale);
 
-    return 'https://tilecache.rainviewer.com/v2/radar/last/512/'
-      + zoom + '/' + x + '/' + y + '/2/1_1.png';
+    const base = 'https://tilecache.rainviewer.com/v2/radar/last/512/' + zoom + '/' + x + '/' + y + '/2/1_1.png';
+    return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(base);
   }
 
   function buildRadarBlock(lat, lon) {

@@ -26,7 +26,6 @@
 
     <div class="mode-toggle">
       <a href="/" class="btn" title="Back to TV">← TV</a>
-      <button type="button" id="gunny-chat-toggle" class="btn gunny-btn" title="Toggle GunnyGPT">🔥 GunnyGPT</button>
       <span class="btn active" style="pointer-events:none;">Comm</span>
     </div>
   </header>
@@ -34,73 +33,40 @@
   <main>
     <section id="comm-planner-view">
       <div class="comm-layout-grid">
-        <!-- TOP ROW: Location + Space Weather -->
-        <div class="comm-grid-top">
-          <!-- Location card (top-left, 1/4 width) -->
-          
-    <article id="comm-card-location" class="comm-card">
-      <div class="comm-card-header">
-        <div class="comm-card-title"><span>Location</span></div>
-        <div class="comm-card-meta" id="comm-location-status">No location selected</div>
-      </div>
-      <div class="comm-card-body">
-        <div class="comm-location-tabs">
-          <button type="button" class="location-mode-tab active" data-mode="search">Search</button>
-          <button type="button" class="location-mode-tab" data-mode="mgrs">MGRS</button>
-          <button type="button" class="location-mode-tab" data-mode="latlon">Lat/Long</button>
-          <button type="button" class="location-mode-tab" data-mode="maiden">Grid</button>
-        </div>
-        <div id="comm-location-input-area" class="comm-location-input-area"></div>
-        <div class="comm-location-footer">
-          <div class="location-action-card">
-            <div class="location-action-copy">
-              <div class="location-action-label">Quick locate</div>
-            </div>
-            <button type="button" id="comm-use-browser" class="location-util-btn">
-              Use Current Location
-            </button>
-          </div>
-          <div class="comm-recent-wrapper">
-            <div class="comm-recent-header">
-              <span class="comm-recent-label">Recent</span>
-              <button type="button" id="comm-clear-recents" class="comm-recent-clear" aria-label="Clear recent locations">Clear</button>
-            </div>
-            <div id="comm-recent-list" class="comm-recent-list"></div>
-          </div>
-        </div>
-      </div>
-    </article>
-
-
-          <!-- Global Space Weather (middle-left, 1/4 width) -->
-          <article id="comm-card-spacewx" class="comm-card">
+        <div class="comm-column comm-col-narrow">
+          <article id="comm-card-location" class="comm-card">
             <div class="comm-card-header">
-              <div class="comm-card-title"><span>Space Weather</span></div>
-              <div class="comm-card-meta" id="comm-spacewx-meta"></div>
+              <div class="comm-card-title"><span>Location</span></div>
+              <div class="comm-card-meta" id="comm-location-status">No location selected</div>
             </div>
-            <div class="comm-card-body" id="comm-spacewx-body">
-              <p class="comm-placeholder">
-                Global space-weather scales (R/S/G) and Kp index will appear here.
-              </p>
+            <div class="comm-card-body">
+              <div class="comm-location-tabs">
+                <button type="button" class="location-mode-tab active" data-mode="search">Search</button>
+                <button type="button" class="location-mode-tab" data-mode="mgrs">MGRS</button>
+                <button type="button" class="location-mode-tab" data-mode="latlon">Lat/Long</button>
+                <button type="button" class="location-mode-tab" data-mode="maiden">Grid</button>
+              </div>
+              <div id="comm-location-input-area" class="comm-location-input-area"></div>
+              <div class="comm-location-footer">
+                <div class="location-action-card">
+                  <div class="location-action-copy">
+                    <div class="location-action-label">Quick locate</div>
+                  </div>
+                  <button type="button" id="comm-use-browser" class="location-util-btn">
+                    Use Current Location
+                  </button>
+                </div>
+                <div class="comm-recent-wrapper">
+                  <div class="comm-recent-header">
+                    <span class="comm-recent-label">Recent</span>
+                    <button type="button" id="comm-clear-recents" class="comm-recent-clear" aria-label="Clear recent locations">Clear</button>
+                  </div>
+                  <div id="comm-recent-list" class="comm-recent-list"></div>
+                </div>
+              </div>
             </div>
           </article>
 
-          <!-- Local Weather (right half) -->
-          <article id="comm-card-weather" class="comm-card comm-span-2">
-            <div class="comm-card-header">
-              <div class="comm-card-title"><span>Local Weather</span></div>
-              <div class="comm-card-meta" id="comm-weather-meta">Select a location</div>
-            </div>
-            <div class="comm-card-body" id="comm-weather-body">
-              <p class="comm-placeholder">
-                Detailed weather for the selected location will appear here.
-              </p>
-            </div>
-          </article>
-        </div>
-
-        <!-- BOTTOM ROW: HF, SATCOM, Look Angles, Cellular -->
-        <div class="comm-grid-bottom">
           <article id="comm-card-hf" class="comm-card">
             <div class="comm-card-header">
               <div class="comm-card-title"><span>HF Propagation</span></div>
@@ -109,6 +75,20 @@
             <div class="comm-card-body" id="comm-hf-body">
               <p class="comm-placeholder">
                 HF band recommendations and NVIS assessment will appear here.
+              </p>
+            </div>
+          </article>
+        </div>
+
+        <div class="comm-column comm-col-narrow">
+          <article id="comm-card-spacewx" class="comm-card">
+            <div class="comm-card-header">
+              <div class="comm-card-title"><span>Space Weather</span></div>
+              <div class="comm-card-meta" id="comm-spacewx-meta"></div>
+            </div>
+            <div class="comm-card-body" id="comm-spacewx-body">
+              <p class="comm-placeholder">
+                Global space-weather scales (R/S/G) and Kp index will appear here.
               </p>
             </div>
           </article>
@@ -124,30 +104,46 @@
               </p>
             </div>
           </article>
+        </div>
 
-          <article id="comm-card-satangles" class="comm-card">
+        <div class="comm-column comm-col-wide comm-span-2">
+          <article id="comm-card-weather" class="comm-card">
             <div class="comm-card-header">
-              <div class="comm-card-title"><span>Satellite Planner</span></div>
-              <div class="comm-card-status"><span id="comm-satla-status">n/a</span></div>
+              <div class="comm-card-title"><span>Local Weather</span></div>
+              <div class="comm-card-meta" id="comm-weather-meta">Select a location</div>
             </div>
-            <div class="comm-card-body" id="comm-satla-body">
+            <div class="comm-card-body" id="comm-weather-body">
               <p class="comm-placeholder">
-                Per-satellite azimuth, elevation, and polarization data will appear here.
+                Detailed weather for the selected location will appear here.
               </p>
             </div>
           </article>
 
-          <article id="comm-card-cellular" class="comm-card">
-            <div class="comm-card-header">
-              <div class="comm-card-title"><span>Cellular Coverage</span></div>
-              <div class="comm-card-status"><span id="comm-cell-status">n/a</span></div>
-            </div>
-            <div class="comm-card-body" id="comm-cell-body">
-              <p class="comm-placeholder">
-                Carrier footprint, technologies, and reliability assessment will appear here.
-              </p>
-            </div>
-          </article>
+          <div class="comm-column-row">
+            <article id="comm-card-satangles" class="comm-card">
+              <div class="comm-card-header">
+                <div class="comm-card-title"><span>Satellite Planner</span></div>
+                <div class="comm-card-status"><span id="comm-satla-status">n/a</span></div>
+              </div>
+              <div class="comm-card-body" id="comm-satla-body">
+                <p class="comm-placeholder">
+                  Per-satellite azimuth, elevation, and polarization data will appear here.
+                </p>
+              </div>
+            </article>
+
+            <article id="comm-card-cellular" class="comm-card">
+              <div class="comm-card-header">
+                <div class="comm-card-title"><span>Cellular Coverage</span></div>
+                <div class="comm-card-status"><span id="comm-cell-status">n/a</span></div>
+              </div>
+              <div class="comm-card-body" id="comm-cell-body">
+                <p class="comm-placeholder">
+                  Carrier footprint, technologies, and reliability assessment will appear here.
+                </p>
+              </div>
+            </article>
+          </div>
         </div>
       </div>
     </section>
@@ -173,24 +169,6 @@
   <script src="/js/comm-lookangles.js"></script>
   <script src="/js/comm-cellular.js"></script>
   <script src="/js/comm-sat.js"></script>
-  <script src="/js/gunny-chat.js"></script>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const gunnyBtn = document.getElementById('gunny-chat-toggle');
-      if (gunnyBtn) {
-        gunnyBtn.addEventListener('click', () => {
-          if (window.GunnyChat && typeof window.GunnyChat.toggle === 'function') {
-            window.GunnyChat.toggle();
-          } else if (window.RussellTV?.GunnyChat && typeof window.RussellTV.GunnyChat.toggle === 'function') {
-            window.RussellTV.GunnyChat.toggle();
-          } else {
-            console.warn('[Comm] GunnyChat module not ready yet');
-          }
-        });
-      }
-    });
-  </script>
 
   <!-- Brand click mailto handler -->
   <script>
