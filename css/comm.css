@@ -132,40 +132,75 @@ main {
   box-sizing: border-box;
 }
 
+/* === Comm panel toggles – fiery pill row === */
+
 .panel-toggle-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  padding: 0;
-  margin-top: 0.1rem;
+  flex-wrap: nowrap;          /* keep them on one row on desktop */
+  gap: 0.45rem;
+  padding: 0.1rem 0;
+  margin-top: 0.2rem;
+  justify-content: flex-end;  /* or flex-start if you want them left */
+  align-items: center;
+  overflow-x: auto;           /* if they overflow, allow horizontal scroll */
+  -webkit-overflow-scrolling: touch;
 }
 
-.panel-toggle {
-  border: 1px solid rgba(255, 190, 140, 0.5);
-  background: rgba(0, 0, 0, 0.45);
-  color: #ffe2c5;
-  padding: 0.35rem 0.65rem;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
-}
-
-.panel-toggle:hover { border-color: rgba(255, 210, 170, 0.9); transform: translateY(-1px); }
-.panel-toggle.active { background: linear-gradient(120deg, rgba(255, 140, 70, 0.35), rgba(30, 12, 0, 0.5)); }
-
+/* Base style for all top toggles */
+.panel-toggle,
 .panel-toggle-all {
-  border: 1px solid rgba(255, 210, 170, 0.7);
-  background: linear-gradient(120deg, rgba(255, 120, 40, 0.35), rgba(0, 0, 0, 0.45));
-  color: #ffeede;
-  padding: 0.35rem 0.7rem;
+  position: relative;
+  padding: 0.32rem 0.9rem;
   border-radius: 999px;
-  font-size: 0.9rem;
+  border: 1px solid rgba(255, 170, 100, 0.75);
+  background: rgba(0, 0, 0, 0.15);  /* transparent so background shows through */
+  color: #ffdcb3;
+  font-size: 0.82rem;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.12s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background 0.22s ease,
+    border-color 0.22s ease,
+    color 0.22s ease,
+    box-shadow 0.22s ease,
+    transform 0.12s ease;
 }
 
-.panel-toggle-all:hover { border-color: rgba(255, 230, 200, 0.9); transform: translateY(-1px); }
+/* Hover – subtle highlight */
+.panel-toggle:hover,
+.panel-toggle-all:hover {
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 170, 80, 0.30), transparent 60%),
+    rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 210, 150, 0.95);
+  box-shadow:
+    0 0 8px rgba(255, 160, 80, 0.6),
+    0 0 14px rgba(255, 110, 30, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Selected state – brighter glow */
+.panel-toggle.active,
+.panel-toggle-all.active {
+  background:
+    radial-gradient(circle at 25% 25%, rgba(255, 220, 170, 0.6), rgba(70, 25, 0, 0.85)),
+    linear-gradient(120deg, rgba(255, 150, 80, 0.65), rgba(40, 10, 0, 0.9));
+  border-color: rgba(255, 220, 180, 0.98);
+  color: #fff7e4;
+  box-shadow:
+    0 0 12px rgba(255, 190, 120, 0.9),
+    0 0 22px rgba(255, 120, 40, 0.9);
+}
+
+/* On small screens let them wrap so nothing gets stupid */
+@media (max-width: 900px) {
+  .panel-toggle-bar {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    overflow-x: visible;
+  }
+}
 
   #comm-planner-view .comm-layout-grid {
     width: min(100%, calc(100% - 1rem));
