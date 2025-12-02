@@ -21,9 +21,9 @@ main {
   padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 1.25rem;
   box-sizing: border-box;
 }
 
@@ -1862,66 +1862,103 @@ main {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Shared dark pill style for header + panel toggles */
+/* === Header & panel toggles – dark MGRS-style pills, no glow === */
+
+/* Layout: keep everything in one row, with some space between pills */
+.mode-toggle-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.6rem;                   /* more spacing between buttons */
+  align-items: center;
+  justify-content: flex-start;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.panel-toggle-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.6rem;
+  padding: 0.1rem 0;
+  margin-top: 0.2rem;
+  align-items: center;
+  justify-content: flex-start;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Shared dark pill style for all header/panel buttons */
 .mode-toggle-row .btn,
 .panel-toggle-bar .btn,
 .panel-toggle-bar .panel-toggle,
 .panel-toggle-bar .panel-toggle-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
   padding: 0.36rem 1.1rem;
-  min-width: 120px;               /* uniform width */
+  min-width: 120px;              /* uniform width */
   text-align: center;
+
   border-radius: 999px;
-  border: 1px solid rgba(255, 190, 140, 0.8);
+  border: 1px solid rgba(255, 190, 140, 0.85);
   background: linear-gradient(
     145deg,
     rgba(35, 14, 0, 0.96),
     rgba(90, 40, 0, 0.96)
-  );                               /* darker, like the MGRS pill */
+  );
   color: #ffe6cc;
+
   font-size: 0.8rem;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.85);
+
+  box-shadow: none;              /* no orange glow line */
   transition:
-    background 0.18s ease,
-    border-color 0.18s ease,
-    color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.1s ease;
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.08s ease;
 }
 
-/* Hover – slight brighten, still dark */
+/* Make “ghost” buttons look the same in this bar */
+.mode-toggle-row .btn.ghost {
+  border-color: rgba(255, 190, 140, 0.85);
+  background: linear-gradient(
+    145deg,
+    rgba(35, 14, 0, 0.96),
+    rgba(90, 40, 0, 0.96)
+  );
+}
+
+/* Hover – just a subtle dark brighten, no glow */
 .mode-toggle-row .btn:hover,
 .panel-toggle-bar .btn:hover,
 .panel-toggle-bar .panel-toggle:hover,
 .panel-toggle-bar .panel-toggle-all:hover {
   background: linear-gradient(
     145deg,
-    rgba(60, 25, 0, 0.98),
-    rgba(120, 55, 0, 0.98)
+    rgba(55, 22, 0, 0.98),
+    rgba(110, 48, 0, 0.98)
   );
   border-color: rgba(255, 210, 160, 0.95);
-  box-shadow:
-    0 0 10px rgba(255, 160, 80, 0.5),
-    0 0 18px rgba(0, 0, 0, 0.9);
   transform: translateY(-1px);
 }
 
-/* Active – brighter inner glow when selected */
+/* Active – slightly brighter, still clean */
 .mode-toggle-row .btn.active,
 .panel-toggle-bar .btn.active,
 .panel-toggle-bar .panel-toggle.active,
 .panel-toggle-bar .panel-toggle-all.active {
   background: linear-gradient(
     145deg,
-    rgba(110, 45, 0, 0.98),
-    rgba(170, 85, 0, 0.98)
+    rgba(80, 34, 0, 0.98),
+    rgba(135, 65, 0, 0.98)
   );
   border-color: rgba(255, 220, 180, 1);
   color: #fff9e9;
-  box-shadow:
-    0 0 14px rgba(255, 190, 120, 0.9),
-    0 0 24px rgba(255, 120, 40, 0.9);
+  transform: translateY(-1px);
 }
