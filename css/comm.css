@@ -69,6 +69,56 @@ main {
   transform: translateY(-1px);
 }
 
+
+/* Back to TV pill link */
+.rtv-header a[href="/"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.32rem 0.9rem;
+  margin-left: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 190, 140, 0.85);
+  background: linear-gradient(
+    145deg,
+    rgba(35, 14, 0, 0.96),
+    rgba(90, 40, 0, 0.96)
+  );
+  color: #ffe6cc;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.08s ease;
+}
+
+.rtv-header a[href="/"]:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(55, 22, 0, 0.98),
+    rgba(110, 48, 0, 0.98)
+  );
+  border-color: rgba(255, 210, 160, 0.95);
+  color: #ffd19a;
+  transform: translateY(-1px);
+}
+
+.rtv-header a[href="/"]:active {
+  background: linear-gradient(
+    145deg,
+    rgba(80, 34, 0, 0.98),
+    rgba(135, 65, 0, 0.98)
+  );
+  border-color: rgba(255, 220, 180, 1);
+  color: #fff9e9;
+}
+
 /* Back/Comm toggle */
 .mode-toggle {
   display: flex;
