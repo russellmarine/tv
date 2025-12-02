@@ -79,7 +79,7 @@
       ? `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${WEATHER_TILE_KEY}`
       : '');
     if (!url) return null;
-    return L.tileLayer(url, { opacity: 0.72, crossOrigin: true, tileSize: 256, maxZoom: 12, maxNativeZoom: 12, className: 'ow-radar-tiles' });
+    return L.tileLayer(url, { opacity: 0.45, crossOrigin: true, tileSize: 256, maxZoom: 12, maxNativeZoom: 12, className: 'ow-radar-tiles' });
   }
 
   async function buildCellLayer(loc) {
