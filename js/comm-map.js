@@ -233,9 +233,15 @@
     card.classList.toggle('comm-hidden', !next);
     if (statusEl) statusEl.textContent = next ? 'on' : 'off';
     if (next) {
-      renderShell();
-      ensureMap(lastLocation);
-      wireControls();
+      // First time: build shell + map. Later toggles: just re-use map.
+      if (!map) {
+        renderShell();
+        ensureMap(lastLocation);
+        wireControls();
+      } else {
+        ensureMap(lastLocation);
+        setTimeout(() => map.invalidateSize(), 100);
+      }
     }
     if (window.RussellTV?.CommPlanner?.queueLayout) window.RussellTV.CommPlanner.queueLayout();
   }
@@ -247,5 +253,14 @@
     if (!card || card.classList.contains('comm-hidden')) return;
     ensureMap(loc);
   });
+
+// Auto-enable overlays map on first load if the card exists
+if (card) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => toggleCard(true));
+  } else {
+    toggleCard(true);
+  }
+}
 
 })();

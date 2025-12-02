@@ -40,7 +40,6 @@
   const PANEL_IDS = [
     'comm-card-location',
     'comm-card-spacewx',
-    'comm-card-overlay',
     'comm-card-weather',
     'comm-card-gps',
     'comm-card-hf',
