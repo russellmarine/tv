@@ -2246,8 +2246,21 @@
     const winds = forecast.daily.windspeed_10m_max || [];
 
     const items = days.slice(0, 10).map((dateStr, idx) => {
-      const dt = new Date(dateStr);
-      const label = dt.toLocaleDateString(undefined, { weekday: 'short' });
+      const parts = String(dateStr).split('-');
+      let dt;
+      if (parts.length === 3) {
+        const y = Number(parts[0]);
+        const m = Number(parts[1]) - 1;
+        const d = Number(parts[2]);
+        // Interpret as local calendar date so weekday matches the date
+        dt = new Date(y, m, d);
+      } else {
+        dt = new Date(dateStr);
+      }
+
+      const dayLabel = dt.toLocaleDateString(undefined, { weekday: 'short' });
+      const dateLabel = dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+
       const main = weatherCodeToMain(codes[idx]);
       const icon = getWeatherGlyph(main);
       const high = highs[idx] != null ? formatTempDisplay(highs[idx]) : '—';
@@ -2257,7 +2270,8 @@
       const detail = [popLabel, windLabel].filter(Boolean).join(' · ');
 
       return '<div class="forecast-card">'
-        + '  <div class="forecast-day">' + escapeHtml(label) + '</div>'
+        + '  <div class="forecast-day">' + escapeHtml(dayLabel) + '</div>'
+        + '  <div class="forecast-date">' + escapeHtml(dateLabel) + '</div>'
         + '  <div class="forecast-icon">' + icon + '</div>'
         + '  <div class="forecast-temps"><span>' + escapeHtml(high) + '</span><span>' + escapeHtml(low) + '</span></div>'
         + (detail ? '  <div class="forecast-detail">' + escapeHtml(detail) + '</div>' : '')
