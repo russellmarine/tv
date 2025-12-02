@@ -1063,6 +1063,8 @@
   }
 
   // ---------- Location application & weather ----------
+  let localOffset = 0;  // global default seconds offset for selected location
+
 
   async function applyLocation(loc) {
     selectedLocation = {
@@ -1081,6 +1083,9 @@
     saveSelectedLocation();
     lastWeather = null;
     queueLayout();
+
+    // Start live updates for Local Time / UTC Time metrics
+    startWeatherClock(localOffset);
     const swData = window.RussellTV?.SpaceWeather?.getCurrentData?.();
     if (swData) {
       const updated = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
@@ -1187,7 +1192,7 @@
       let climate = null;
       try {
         const unitParam = tempUnit === 'C' ? 'celsius' : 'fahrenheit';
-        const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max,sunrise,sunset&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=9&timezone=auto`);
+        const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max,sunrise,sunset&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=10&timezone=auto`);
         if (forecastRes.ok) {
           forecast = await forecastRes.json();
         }
@@ -1220,6 +1225,56 @@
     }
   }
 
+  // Live clock for the weather card.
+  // Uses true UTC plus the location's UTC offset (in seconds),
+  // so it stays correct regardless of the browser's time zone.
+  function startWeatherClock(offsetSeconds) {
+    if (!window.RussellTV) window.RussellTV = {};
+    if (!window.RussellTV.CommPlanner) window.RussellTV.CommPlanner = {};
+
+    const mgr = window.RussellTV.CommPlanner;
+
+    if (mgr._weatherClock) {
+      clearInterval(mgr._weatherClock);
+    }
+
+    const localEl = document.getElementById('weather-local-time');
+    const utcEl = document.getElementById('weather-utc-time');
+
+    // If the card isn't rendered yet, nothing to do.
+    if (!localEl && !utcEl) return;
+
+    const off = Number.isFinite(offsetSeconds) ? offsetSeconds : 0;
+
+    function pad2(n) {
+      return n < 10 ? '0' + n : '' + n;
+    }
+
+    function tick() {
+      const nowUtcSec = Math.floor(Date.now() / 1000);
+
+      // UTC clock: always show current UTC based on system epoch.
+      if (utcEl) {
+        const dUtc = new Date(nowUtcSec * 1000);
+        const h = dUtc.getUTCHours();
+        const m = dUtc.getUTCMinutes();
+        utcEl.textContent = pad2(h) + pad2(m) + 'Z';
+      }
+
+      // Local clock for selected location: UTC + offsetSeconds.
+      if (localEl) {
+        const locSec = nowUtcSec + off;
+        const dLoc = new Date(locSec * 1000);
+        const h = dLoc.getUTCHours();
+        const m = dLoc.getUTCMinutes();
+        localEl.textContent = pad2(h) + pad2(m) + 'L';
+      }
+    }
+
+    tick();
+    mgr._weatherClock = setInterval(tick, 30_000);
+  }
+
   function renderWeather(wx, forecast, lat, lon, climate) {
     const body = $('#comm-weather-body');
     const meta = $('#comm-weather-meta');
@@ -1237,6 +1292,7 @@
     const sunrise = wx.sys ? wx.sys.sunrise : null;
     const sunset = wx.sys ? wx.sys.sunset : null;
     const timezone = wx.timezone || 0;
+    const localOffset = Number.isFinite(forecast?.utc_offset_seconds) ? forecast.utc_offset_seconds : timezone;
     const sunCalc = calculateSunTimes(lat, lon, new Date());
     const sunriseCalc = sunCalc?.sunrise ? Math.round(sunCalc.sunrise.getTime() / 1000) : null;
     const sunsetCalc = sunCalc?.sunset ? Math.round(sunCalc.sunset.getTime() / 1000) : null;
@@ -1244,8 +1300,8 @@
     const sunsetIso = forecast?.daily?.sunset?.[0];
     const forecastOffset = Number.isFinite(forecast?.utc_offset_seconds) ? forecast.utc_offset_seconds : timezone;
     const updatedLocal = wx.dt ? 'Last Updated: ' + formatUserStamp(wx.dt * 1000) + ' (local) • ' + formatUtcStamp(wx.dt * 1000) + 'Z' : 'Last Updated: --';
-    const localTime = formatLocalClock(Date.now() / 1000, timezone, false) + 'L';
-    const localDate = formatLocalDate(Date.now() / 1000, timezone);
+    const localTime = formatLocalClock(Date.now() / 1000, localOffset, false) + 'L';
+    const localDate = formatLocalDate(Date.now() / 1000, localOffset);
     const weatherSeverity = getWeatherSeverityClass(main.main, humidity);
 
     lastWeather = {
@@ -1290,17 +1346,19 @@
     if (pressure !== null) metrics.push(metricHtml('Pressure', pressure + ' hPa', null, getWeatherMetricIcon('Pressure')));
     if (wind.speed != null) metrics.push(metricHtml('Wind', Math.round(wind.speed) + ' mph' + (windDirection ? ' ' + windDirection : ''), null, getWeatherMetricIcon('Wind')));
     if (visibility != null) metrics.push(metricHtml('Visibility', (visibility / 1609).toFixed(1) + ' mi', null, getWeatherMetricIcon('Visibility')));
-    metrics.push(metricHtml('Local Time', localTime, null, getWeatherMetricIcon('Local Time')));
-    metrics.push(metricHtml('UTC Time', formatUtcClock(false) + 'Z', null, getWeatherMetricIcon('Time')));
+    metrics.push(metricHtml('Local Time', localTime, 'weather-metric-local-time', getWeatherMetricIcon('Local Time')));
+    metrics.push(metricHtml('UTC Time', formatUtcClock(false) + 'Z', 'weather-metric-utc-time', getWeatherMetricIcon('Time')));
     metrics.push(metricHtml('Local Date', localDate, null, getWeatherMetricIcon('Date')));
-    const sunriseTs = parseIsoToEpoch(sunriseIso) || sunriseCalc || sunrise;
-    const sunsetTs = parseIsoToEpoch(sunsetIso) || sunsetCalc || sunset;
-    const sunriseLabel = sunriseIso ? formatIsoLocalClockWithOffset(sunriseIso, forecastOffset) : (sunriseTs ? formatLocalTime(sunriseTs, timezone) : '');
-    const sunsetLabel = sunsetIso ? formatIsoLocalClockWithOffset(sunsetIso, forecastOffset) : (sunsetTs ? formatLocalTime(sunsetTs, timezone) : '');
+    // Prefer OpenWeather sunrise/sunset epochs with its timezone offset,
+    // fall back to calculated / ISO values if needed.
+    const sunriseTs = sunrise || sunriseCalc || parseIsoToEpoch(sunriseIso);
+    const sunsetTs = sunset || sunsetCalc || parseIsoToEpoch(sunsetIso);
+    const sunriseLabel = sunriseTs ? formatLocalTime(sunriseTs, timezone) : '';
+    const sunsetLabel = sunsetTs ? formatLocalTime(sunsetTs, timezone) : '';
     if (sunriseLabel) metrics.push(metricHtml('Sunrise', sunriseLabel, null, getWeatherMetricIcon('Sunrise')));
     if (sunsetLabel) metrics.push(metricHtml('Sunset', sunsetLabel, null, getWeatherMetricIcon('Sunset')));
 
-    const radarBlock = buildRadarBlock(lat, lon);
+    const radarBlock = '';
     const forecastBlock = buildForecastHtml(forecast);
 
     if (meta) meta.innerHTML = '<div class="weather-meta-bar"><span class="status-pill ' + weatherSeverity + '">' + escapeHtml(toTitleCase(main.description || main.main || 'Weather')) + '</span><button type="button" id="temp-unit-toggle" class="temp-toggle">°' + (tempUnit === 'F' ? 'C' : 'F') + '</button></div>';
@@ -1328,6 +1386,19 @@
       '</div>'
     ].join('');
 
+// Tag Local/UTC time metric values so the live clock can target them reliably
+(function tagWeatherTimeMetrics() {
+  const metrics = document.querySelectorAll('.comm-weather-metric');
+  metrics.forEach(m => {
+    const label = m.querySelector('.label')?.textContent?.trim();
+    const valueEl = m.querySelector('.value');
+    if (!valueEl || !label) return;
+    if (label === 'Local Time') valueEl.id = 'weather-local-time';
+    if (label === 'UTC Time') valueEl.id = 'weather-utc-time';
+  });
+})();
+
+
     const swRefresh = window.RussellTV?.SpaceWeather?.getCurrentData?.();
     if (swRefresh) {
       const updatedSw = window.RussellTV?.SpaceWeather?.getLastUpdate?.();
@@ -1345,10 +1416,11 @@
       });
     }
 
-    const radarFrame = body.querySelector('.weather-radar-frame');
-    wireRadarFrame(radarFrame);
 
     queueLayout();
+
+    // Start live updates for Local Time / UTC Time metrics
+    startWeatherClock(localOffset);
   }
 
   // ---------- Space weather card ----------
@@ -1721,6 +1793,9 @@
     updatePropagationCards(data, updatedText);
 
     queueLayout();
+
+    // Start live updates for Local Time / UTC Time metrics
+    startWeatherClock(localOffset);
   }
 
   function updatePropagationCards(data, sourceText) {
@@ -1852,6 +1927,9 @@
     renderGpsCard(satAssessment, sourceText, gpsBody, gpsStatus, kp);
 
     queueLayout();
+
+    // Start live updates for Local Time / UTC Time metrics
+    startWeatherClock(localOffset);
   }
 
   // ---------- Init ----------
@@ -1942,6 +2020,9 @@
     if (exportBtn) exportBtn.addEventListener('click', exportPptx);
     initResizeObserver();
     queueLayout();
+
+    // Start live updates for Local Time / UTC Time metrics
+    startWeatherClock(localOffset);
     window.addEventListener('resize', queueLayout);
     window.addEventListener('load', queueLayout);
     console.log('[CommPlanner] Dashboard initialized');
@@ -2022,12 +2103,12 @@
     if (!epochSeconds && epochSeconds !== 0) return '';
     const tzOffset = offsetSeconds || 0;
     const date = new Date((epochSeconds + tzOffset) * 1000);
-    const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
-    const time = date.toLocaleTimeString(undefined, opts).replace(/:/g, '');
+    const opts = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' };
+    const time = date.toLocaleTimeString('en-GB', opts).replace(/:/g, '');
     if (!includeDate) return time + 'L';
-    const month = date.toLocaleDateString(undefined, { month: 'short' });
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear().toString().slice(-2);
+    const month = date.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' });
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const year = date.getUTCFullYear().toString().slice(-2);
     return `${time}L ${day} ${month} ${year}`;
   }
 
@@ -2035,9 +2116,9 @@
     if (!epochSeconds && epochSeconds !== 0) return '';
     const tzOffset = offsetSeconds || 0;
     const date = new Date((epochSeconds + tzOffset) * 1000);
-    const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
+    const opts = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' };
     if (includeSeconds) opts.second = '2-digit';
-    return date.toLocaleTimeString(undefined, opts).replace(/:/g, '');
+    return date.toLocaleTimeString('en-GB', opts).replace(/:/g, '');
   }
 
   function formatUtcClock(includeSeconds) {
@@ -2051,9 +2132,9 @@
     if (!epochSeconds && epochSeconds !== 0) return '';
     const tzOffset = offsetSeconds || 0;
     const date = new Date((epochSeconds + tzOffset) * 1000);
-    const month = date.toLocaleDateString(undefined, { month: 'short' });
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear().toString().slice(-2);
+    const month = date.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' });
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const year = date.getUTCFullYear().toString().slice(-2);
     return `${day} ${month} ${year}`;
   }
 
@@ -2164,7 +2245,7 @@
     const pop = forecast.daily.precipitation_probability_max || [];
     const winds = forecast.daily.windspeed_10m_max || [];
 
-    const items = days.slice(0, 9).map((dateStr, idx) => {
+    const items = days.slice(0, 10).map((dateStr, idx) => {
       const dt = new Date(dateStr);
       const label = dt.toLocaleDateString(undefined, { weekday: 'short' });
       const main = weatherCodeToMain(codes[idx]);
@@ -2184,7 +2265,7 @@
     }).join('');
 
     if (!items) return '';
-    return '<div class="weather-forecast"><div class="forecast-head">9-Day Outlook</div><div class="forecast-row">' + items + '</div></div>';
+    return '<div class="weather-forecast"><div class="forecast-head">10-Day Outlook</div><div class="forecast-row">' + items + '</div></div>';
   }
 
   function clampZoom(z) {
@@ -2279,6 +2360,9 @@
     map.whenReady(() => {
       map.invalidateSize();
       queueLayout();
+
+    // Start live updates for Local Time / UTC Time metrics
+    startWeatherClock(localOffset);
     });
 
     map.on('moveend zoomend', () => queueLayout());
@@ -2340,6 +2424,9 @@
         if (btn) btn.classList.toggle('active', on);
       });
       queueLayout();
+
+    // Start live updates for Local Time / UTC Time metrics
+    startWeatherClock(localOffset);
       savePanelState(state);
       updateAllLabel();
     }
