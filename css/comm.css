@@ -1839,52 +1839,89 @@ main {
 .cell-band { display: inline-flex; padding: 0.18rem 0.4rem; border-radius: 8px; margin-right: 0.25rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
 .cell-legend { font-size: 0.8rem; opacity: 0.72; margin-top: 0.5rem; }
 
-/* === Fiery header & comm toggles (scoped) === */
+/* Lay out the top nav row (← TV / Comm / Overlays / Export PPTX) */
+.mode-toggle-row {
+  display: flex;
+  flex-wrap: nowrap;              /* keep on one row */
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: flex-end;
+  overflow-x: auto;               /* scroll instead of wrapping if too many */
+  -webkit-overflow-scrolling: touch;
+}
 
-/* These containers hold your top buttons and panel toggles */
+/* Lay out the comm panel toggle row (All On / Location / Space Wx / …) */
+.panel-toggle-bar {
+  display: flex;
+  flex-wrap: nowrap;              /* keep on one row */
+  gap: 0.4rem;
+  padding: 0.1rem 0;
+  margin-top: 0.3rem;
+  justify-content: flex-end;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Shared dark pill style for header + panel toggles */
 .mode-toggle-row .btn,
-.panel-toggle-bar .btn {
-  position: relative;
-  padding: 0.32rem 0.9rem;
+.panel-toggle-bar .btn,
+.panel-toggle-bar .panel-toggle,
+.panel-toggle-bar .panel-toggle-all {
+  padding: 0.36rem 1.1rem;
+  min-width: 120px;               /* uniform width */
+  text-align: center;
   border-radius: 999px;
-  border: 1px solid rgba(255, 170, 100, 0.75);
-  background: rgba(0, 0, 0, 0.15);  /* transparent so background shows through */
-  color: #ffdcb3;
-  font-size: 0.82rem;
+  border: 1px solid rgba(255, 190, 140, 0.8);
+  background: linear-gradient(
+    145deg,
+    rgba(35, 14, 0, 0.96),
+    rgba(90, 40, 0, 0.96)
+  );                               /* darker, like the MGRS pill */
+  color: #ffe6cc;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.85);
   transition:
-    background 0.22s ease,
-    border-color 0.22s ease,
-    color 0.22s ease,
-    box-shadow 0.22s ease,
-    transform 0.12s ease;
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.1s ease;
 }
 
-/* Hover – subtle highlight */
+/* Hover – slight brighten, still dark */
 .mode-toggle-row .btn:hover,
-.panel-toggle-bar .btn:hover {
-  background:
-    radial-gradient(circle at 30% 20%, rgba(255, 170, 80, 0.30), transparent 60%),
-    rgba(0, 0, 0, 0.45);
-  border-color: rgba(255, 210, 150, 0.95);
+.panel-toggle-bar .btn:hover,
+.panel-toggle-bar .panel-toggle:hover,
+.panel-toggle-bar .panel-toggle-all:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(60, 25, 0, 0.98),
+    rgba(120, 55, 0, 0.98)
+  );
+  border-color: rgba(255, 210, 160, 0.95);
   box-shadow:
-    0 0 8px rgba(255, 160, 80, 0.6),
-    0 0 14px rgba(255, 110, 30, 0.5);
+    0 0 10px rgba(255, 160, 80, 0.5),
+    0 0 18px rgba(0, 0, 0, 0.9);
   transform: translateY(-1px);
 }
 
-/* Selected / active – brighter glow */
+/* Active – brighter inner glow when selected */
 .mode-toggle-row .btn.active,
-.panel-toggle-bar .btn.active {
-  background:
-    radial-gradient(circle at 25% 25%, rgba(255, 220, 170, 0.6), rgba(70, 25, 0, 0.85)),
-    linear-gradient(120deg, rgba(255, 150, 80, 0.65), rgba(40, 10, 0, 0.9));
-  border-color: rgba(255, 220, 180, 0.98);
-  color: #fff7e4;
+.panel-toggle-bar .btn.active,
+.panel-toggle-bar .panel-toggle.active,
+.panel-toggle-bar .panel-toggle-all.active {
+  background: linear-gradient(
+    145deg,
+    rgba(110, 45, 0, 0.98),
+    rgba(170, 85, 0, 0.98)
+  );
+  border-color: rgba(255, 220, 180, 1);
+  color: #fff9e9;
   box-shadow:
-    0 0 12px rgba(255, 190, 120, 0.9),
-    0 0 22px rgba(255, 120, 40, 0.9);
+    0 0 14px rgba(255, 190, 120, 0.9),
+    0 0 24px rgba(255, 120, 40, 0.9);
 }
-
