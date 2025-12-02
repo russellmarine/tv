@@ -5,7 +5,7 @@
   if (!Events || typeof L === 'undefined') return;
 
   const WEATHER_TILE_KEY = window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY || '';
-  const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '';
+  const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/wx-tiles/{z}/{x}/{y}.png';
   const RAINVIEWER_TILE = 'https://tilecache.rainviewer.com/v2/radar/last/{z}/{x}/{y}/2/1_1.png';
   const CELL_API = '/cell';
   const CABLE_URL = 'https://raw.githubusercontent.com/telegeography/www.submarinecablemap.com/master/web/public/api/cable.geo.json';
@@ -79,7 +79,7 @@
     const url = template || (WEATHER_TILE_KEY
       ? `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${WEATHER_TILE_KEY}`
       : RAINVIEWER_TILE);
-    return L.tileLayer(url, { opacity: 0.55, crossOrigin: true });
+    return L.tileLayer(url, { opacity: 0.55, crossOrigin: true, tileSize: 256, maxZoom: 12, maxNativeZoom: 12 });
   }
 
   async function buildCellLayer(loc) {

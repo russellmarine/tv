@@ -22,6 +22,7 @@
   let lastWeatherRaw = null;
   let lastForecastRaw = null;
   let lastWeatherCoords = null;
+  let lastClimo = null;
   let currentDeclination = null;
   let tempUnit = 'F';
   const MAX_RECENT = 7;
@@ -32,7 +33,7 @@
   const SOLAR_CYCLE_FALLBACK = 'https://r.jina.ai/https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json';
   const DECLINATION_ENDPOINT = 'https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&model=WMM&startYear=2025&resultFormat=json';
   const DECLINATION_FALLBACK = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&model=WMM&startYear=2025&resultFormat=json');
-  const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '';
+  const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/wx-tiles/{z}/{x}/{y}.png';
   const RAINVIEWER_TILE = 'https://tilecache.rainviewer.com/v2/radar/last/{z}/{x}/{y}/2/1_1.png';
   const RAINVIEWER_CLOUDS = 'https://tilecache.rainviewer.com/v2/satellite/last/{z}/{x}/{y}/2/1_1.png';
   const RADAR_ZOOM_MIN = 4;
@@ -54,6 +55,7 @@
   const ROW_HEIGHT = 4;
   let radarZoom = 6;
   let radarLayer = 'radar';
+  let radarPlayTimer = null;
 
   // ---------- Layout helpers ----------
 
@@ -1186,6 +1188,7 @@
       const wx = await res.json();
 
       let forecast = null;
+      let climate = null;
       try {
         const unitParam = tempUnit === 'C' ? 'celsius' : 'fahrenheit';
         const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=9&timezone=auto`);
@@ -1196,9 +1199,21 @@
         console.warn('[CommPlanner] Forecast fetch failed', err);
       }
 
+      try {
+        const unitParam = tempUnit === 'C' ? 'celsius' : 'fahrenheit';
+        const month = (new Date()).getMonth() + 1;
+        const climateRes = await fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lon}&start_year=1991&end_year=2020&month=${month}&daily=temperature_2m_max_mean,temperature_2m_min_mean,temperature_2m_max_max,temperature_2m_min_min&temperature_unit=${unitParam}`);
+        if (climateRes.ok) {
+          climate = await climateRes.json();
+          lastClimo = climate;
+        }
+      } catch (err) {
+        console.warn('[CommPlanner] Climate normals fetch failed', err);
+      }
+
       lastWeatherRaw = wx;
       lastForecastRaw = forecast;
-      renderWeather(wx, forecast, lat, lon);
+      renderWeather(wx, forecast, lat, lon, climate);
     } catch (e) {
       console.warn('[CommPlanner] Weather fetch failed:', e);
       lastWeather = null;
@@ -1209,7 +1224,7 @@
     }
   }
 
-  function renderWeather(wx, forecast, lat, lon) {
+  function renderWeather(wx, forecast, lat, lon, climate) {
     const body = $('#comm-weather-body');
     const meta = $('#comm-weather-meta');
     const card = $('#comm-card-weather');
@@ -1226,6 +1241,9 @@
     const sunrise = wx.sys ? wx.sys.sunrise : null;
     const sunset = wx.sys ? wx.sys.sunset : null;
     const timezone = wx.timezone || 0;
+    const sunCalc = calculateSunTimes(lat, lon, new Date());
+    const sunriseCalc = sunCalc?.sunrise ? Math.round(sunCalc.sunrise.getTime() / 1000) : null;
+    const sunsetCalc = sunCalc?.sunset ? Math.round(sunCalc.sunset.getTime() / 1000) : null;
     const updatedLocal = wx.dt ? 'Last Updated: ' + formatUserStamp(wx.dt * 1000) + ' (local) • ' + formatUtcStamp(wx.dt * 1000) + 'Z' : 'Last Updated: --';
     const localTime = formatLocalClock(Date.now() / 1000, timezone, false) + 'L';
     const localDate = formatLocalDate(Date.now() / 1000, timezone);
@@ -1254,6 +1272,19 @@
       summaryLine.push('Clouds ' + clouds + '%');
     }
 
+    const climoDaily = climate?.daily || lastClimo?.daily || {};
+    const avgHigh = firstNumber(climoDaily.temperature_2m_max_mean);
+    const avgLow = firstNumber(climoDaily.temperature_2m_min_mean);
+    const recHigh = firstNumber(climoDaily.temperature_2m_max_max);
+    const recLow = firstNumber(climoDaily.temperature_2m_min_min);
+
+    const climateRow = (avgHigh != null || avgLow != null || recHigh != null || recLow != null)
+      ? '<div class="comm-weather-climo">'
+        + '<div><span>Avg Hi/Lo</span><strong>' + escapeHtml(formatTempDisplay(avgHigh)) + ' / ' + escapeHtml(formatTempDisplay(avgLow)) + '</strong></div>'
+        + '<div><span>Record Hi/Lo</span><strong>' + escapeHtml(formatTempDisplay(recHigh)) + ' / ' + escapeHtml(formatTempDisplay(recLow)) + '</strong></div>'
+        + '</div>'
+      : '';
+
     const windDirection = degreesToCardinal(wind.deg);
     const metrics = [];
     if (humidity !== null) metrics.push(metricHtml('Humidity', humidity + '%', null, getWeatherMetricIcon('Humidity')));
@@ -1263,8 +1294,10 @@
     metrics.push(metricHtml('Local Time', localTime, null, getWeatherMetricIcon('Local Time')));
     metrics.push(metricHtml('UTC Time', formatUtcClock(false) + 'Z', null, getWeatherMetricIcon('Time')));
     metrics.push(metricHtml('Local Date', localDate, null, getWeatherMetricIcon('Date')));
-    if (sunrise) metrics.push(metricHtml('Sunrise', formatLocalTime(sunrise, timezone), null, getWeatherMetricIcon('Sunrise')));
-    if (sunset) metrics.push(metricHtml('Sunset', formatLocalTime(sunset, timezone), null, getWeatherMetricIcon('Sunset')));
+    const sunriseTs = sunriseCalc || sunrise;
+    const sunsetTs = sunsetCalc || sunset;
+    if (sunriseTs) metrics.push(metricHtml('Sunrise', formatLocalTime(sunriseTs, timezone), null, getWeatherMetricIcon('Sunrise')));
+    if (sunsetTs) metrics.push(metricHtml('Sunset', formatLocalTime(sunsetTs, timezone), null, getWeatherMetricIcon('Sunset')));
 
     const radarBlock = buildRadarBlock(lat, lon);
     const forecastBlock = buildForecastHtml(forecast);
@@ -1285,6 +1318,7 @@
       '        </div>',
       '      </div>',
       summaryLine.length ? '      <div class="comm-weather-summary-row">' + summaryLine.map(escapeHtml).join('<span>•</span>') + '</div>' : '',
+      climateRow,
       '    </div>',
       '  </div>',
       metrics.length ? '  <div class="comm-weather-grid">' + metrics.join('') + '</div>' : '',
@@ -1305,7 +1339,7 @@
       toggle.addEventListener('click', () => {
         tempUnit = tempUnit === 'F' ? 'C' : 'F';
         if (lastWeatherRaw && lastWeatherCoords) {
-          renderWeather(lastWeatherRaw, lastForecastRaw, lastWeatherCoords.lat, lastWeatherCoords.lon);
+          renderWeather(lastWeatherRaw, lastForecastRaw, lastWeatherCoords.lat, lastWeatherCoords.lon, lastClimo);
         }
       });
     }
@@ -2005,6 +2039,12 @@
     return tempUnit === 'C' ? ((tempF - 32) * 5) / 9 : tempF;
   }
 
+  function firstNumber(arr) {
+    if (!Array.isArray(arr) || !arr.length) return null;
+    const val = Number(arr[0]);
+    return Number.isFinite(val) ? val : null;
+  }
+
   function formatTempDisplay(tempF) {
     const v = convertTempToUnit(tempF);
     return v === null ? '--' : `${Math.round(v)}°${tempUnit}`;
@@ -2134,9 +2174,9 @@
   function getRadarTileTemplate(layer) {
     const layerKey = layer === 'clouds' ? 'clouds_new' : 'precipitation_new';
     if (RADAR_PROXY_BASE) {
-      return RADAR_PROXY_BASE.includes('{layer}')
-        ? RADAR_PROXY_BASE.replace('{layer}', layerKey)
-        : RADAR_PROXY_BASE;
+      if (RADAR_PROXY_BASE.includes('{layer}')) return RADAR_PROXY_BASE.replace('{layer}', layerKey);
+      if (layer === 'clouds' && !RADAR_PROXY_BASE.includes('{layer}')) return RAINVIEWER_CLOUDS;
+      return RADAR_PROXY_BASE;
     }
     if (window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY) {
       const key = window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY;
@@ -2161,8 +2201,9 @@
       '      <button type="button" class="radar-zoom-btn" data-direction="out" aria-label="Zoom out">−</button>',
       '      <button type="button" class="radar-zoom-btn" data-direction="in" aria-label="Zoom in">+</button>',
       '    </div>',
-      '    <div class="radar-fallback">Radar preview unavailable — ensure RainViewer tiles are reachable.</div>',
+      '    <div class="radar-fallback">Radar preview unavailable — ensure /wx-tiles proxy or RainViewer fallback is reachable.</div>',
       '  </div>',
+      '  <div class="radar-play-row"><button type="button" class="radar-play-btn" aria-pressed="false">▶ Play</button></div>',
       '</div>'
     ].join('');
   }
@@ -2171,6 +2212,11 @@
     if (!container || typeof L === 'undefined') return;
     const mapEl = container.querySelector('.radar-leaflet');
     if (!mapEl) return;
+
+    if (radarPlayTimer) {
+      clearInterval(radarPlayTimer);
+      radarPlayTimer = null;
+    }
 
     const lat = Number(container.dataset.lat);
     const lon = Number(container.dataset.lon);
@@ -2188,14 +2234,23 @@
     base.addTo(map);
 
     let overlay = null;
+    let overlayTemplate = null;
 
     function setLayer(layerName) {
       if (overlay) overlay.remove();
       const tpl = getRadarTileTemplate(layerName);
-      overlay = L.tileLayer(tpl, { opacity: 0.85, crossOrigin: true });
+      overlayTemplate = tpl;
+      overlay = L.tileLayer(tpl, { opacity: 0.85, crossOrigin: true, tileSize: 256, maxZoom: RADAR_ZOOM_MAX, maxNativeZoom: RADAR_ZOOM_MAX });
       overlay.addTo(map);
       container.dataset.layer = layerName;
       radarLayer = layerName;
+    }
+
+    function refreshOverlaySource() {
+      if (!overlay || !overlayTemplate) return;
+      const bust = (overlayTemplate.includes('?') ? '&' : '?') + 't=' + Date.now();
+      const nextUrl = overlayTemplate + bust;
+      overlay.setUrl(nextUrl);
     }
 
     function refreshZoom(next) {
@@ -2234,6 +2289,23 @@
           layerButtons.forEach(b => b.classList.toggle('active', b === btn));
           setLayer(btn.dataset.layer);
         });
+      });
+    }
+
+    const playBtn = container.parentElement?.querySelector('.radar-play-btn');
+    if (playBtn) {
+      playBtn.addEventListener('click', () => {
+        const playing = playBtn.getAttribute('aria-pressed') === 'true';
+        if (playing) {
+          playBtn.textContent = '▶ Play';
+          playBtn.setAttribute('aria-pressed', 'false');
+          if (radarPlayTimer) { clearInterval(radarPlayTimer); radarPlayTimer = null; }
+        } else {
+          playBtn.textContent = '⏸ Pause';
+          playBtn.setAttribute('aria-pressed', 'true');
+          refreshOverlaySource();
+          radarPlayTimer = setInterval(refreshOverlaySource, 8000);
+        }
       });
     }
   }
