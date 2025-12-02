@@ -34,8 +34,6 @@
   const DECLINATION_ENDPOINT = 'https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&model=WMM&startYear=2025&resultFormat=json';
   const DECLINATION_FALLBACK = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&model=WMM&startYear=2025&resultFormat=json');
   const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/wx-tiles/{z}/{x}/{y}.png';
-  const RAINVIEWER_TILE = 'https://tilecache.rainviewer.com/v2/radar/last/{z}/{x}/{y}/2/1_1.png';
-  const RAINVIEWER_CLOUDS = 'https://tilecache.rainviewer.com/v2/satellite/last/{z}/{x}/{y}/2/1_1.png';
   const RADAR_ZOOM_MIN = 4;
   const RADAR_ZOOM_MAX = 10;
   const PANEL_STATE_KEY = 'commPanelVisibility';
@@ -1191,7 +1189,7 @@
       let climate = null;
       try {
         const unitParam = tempUnit === 'C' ? 'celsius' : 'fahrenheit';
-        const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=9&timezone=auto`);
+        const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max,sunrise,sunset&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=9&timezone=auto`);
         if (forecastRes.ok) {
           forecast = await forecastRes.json();
         }
@@ -1244,6 +1242,8 @@
     const sunCalc = calculateSunTimes(lat, lon, new Date());
     const sunriseCalc = sunCalc?.sunrise ? Math.round(sunCalc.sunrise.getTime() / 1000) : null;
     const sunsetCalc = sunCalc?.sunset ? Math.round(sunCalc.sunset.getTime() / 1000) : null;
+    const sunriseIso = forecast?.daily?.sunrise?.[0];
+    const sunsetIso = forecast?.daily?.sunset?.[0];
     const updatedLocal = wx.dt ? 'Last Updated: ' + formatUserStamp(wx.dt * 1000) + ' (local) • ' + formatUtcStamp(wx.dt * 1000) + 'Z' : 'Last Updated: --';
     const localTime = formatLocalClock(Date.now() / 1000, timezone, false) + 'L';
     const localDate = formatLocalDate(Date.now() / 1000, timezone);
@@ -1294,10 +1294,12 @@
     metrics.push(metricHtml('Local Time', localTime, null, getWeatherMetricIcon('Local Time')));
     metrics.push(metricHtml('UTC Time', formatUtcClock(false) + 'Z', null, getWeatherMetricIcon('Time')));
     metrics.push(metricHtml('Local Date', localDate, null, getWeatherMetricIcon('Date')));
-    const sunriseTs = sunriseCalc || sunrise;
-    const sunsetTs = sunsetCalc || sunset;
-    if (sunriseTs) metrics.push(metricHtml('Sunrise', formatLocalTime(sunriseTs, timezone), null, getWeatherMetricIcon('Sunrise')));
-    if (sunsetTs) metrics.push(metricHtml('Sunset', formatLocalTime(sunsetTs, timezone), null, getWeatherMetricIcon('Sunset')));
+    const sunriseTs = parseIsoToEpoch(sunriseIso) || sunriseCalc || sunrise;
+    const sunsetTs = parseIsoToEpoch(sunsetIso) || sunsetCalc || sunset;
+    const sunriseLabel = sunriseIso ? formatIsoLocalClock(sunriseIso) : (sunriseTs ? formatLocalTime(sunriseTs, timezone) : '');
+    const sunsetLabel = sunsetIso ? formatIsoLocalClock(sunsetIso) : (sunsetTs ? formatLocalTime(sunsetTs, timezone) : '');
+    if (sunriseLabel) metrics.push(metricHtml('Sunrise', sunriseLabel, null, getWeatherMetricIcon('Sunrise')));
+    if (sunsetLabel) metrics.push(metricHtml('Sunset', sunsetLabel, null, getWeatherMetricIcon('Sunset')));
 
     const radarBlock = buildRadarBlock(lat, lon);
     const forecastBlock = buildForecastHtml(forecast);
@@ -1995,6 +1997,19 @@
     return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 12h16" stroke="#ffcba4" stroke-width="1.6" stroke-linecap="round"/></svg>';
   }
 
+  function parseIsoToEpoch(isoString) {
+    if (!isoString) return null;
+    const ts = Date.parse(isoString);
+    return Number.isFinite(ts) ? Math.round(ts / 1000) : null;
+  }
+
+  function formatIsoLocalClock(isoString) {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
+    return d.toLocaleTimeString(undefined, opts).replace(/:/g, '') + 'L';
+  }
+
   function formatLocalTime(epochSeconds, offsetSeconds, includeDate) {
     if (!epochSeconds && epochSeconds !== 0) return '';
     const tzOffset = offsetSeconds || 0;
@@ -2175,16 +2190,17 @@
     const layerKey = layer === 'clouds' ? 'clouds_new' : 'precipitation_new';
     if (RADAR_PROXY_BASE) {
       if (RADAR_PROXY_BASE.includes('{layer}')) return RADAR_PROXY_BASE.replace('{layer}', layerKey);
-      if (layer === 'clouds' && !RADAR_PROXY_BASE.includes('{layer}')) return RAINVIEWER_CLOUDS;
+      if (layer === 'clouds' && RADAR_PROXY_BASE.includes('{z}') && (window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY)) {
+        const key = window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY;
+        return `https://tile.openweathermap.org/map/${layerKey}/{z}/{x}/{y}.png?appid=${key}`;
+      }
       return RADAR_PROXY_BASE;
     }
     if (window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY) {
       const key = window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY;
-      const base = layer === 'clouds' ? 'clouds_new' : 'precipitation_new';
-      return `https://tile.openweathermap.org/map/${base}/{z}/{x}/{y}.png?appid=${key}`;
+      return `https://tile.openweathermap.org/map/${layerKey}/{z}/{x}/{y}.png?appid=${key}`;
     }
-    if (layer === 'clouds') return RAINVIEWER_CLOUDS;
-    return RAINVIEWER_TILE;
+    return '';
   }
 
   function buildRadarBlock(lat, lon) {
@@ -2201,7 +2217,7 @@
       '      <button type="button" class="radar-zoom-btn" data-direction="out" aria-label="Zoom out">−</button>',
       '      <button type="button" class="radar-zoom-btn" data-direction="in" aria-label="Zoom in">+</button>',
       '    </div>',
-      '    <div class="radar-fallback">Radar preview unavailable — ensure /wx-tiles proxy or RainViewer fallback is reachable.</div>',
+      '    <div class="radar-fallback">Radar preview unavailable — ensure the /wx-tiles proxy or OpenWeather tiles are reachable.</div>',
       '  </div>',
       '  <div class="radar-play-row"><button type="button" class="radar-play-btn" aria-pressed="false">▶ Play</button></div>',
       '</div>'
@@ -2240,7 +2256,8 @@
       if (overlay) overlay.remove();
       const tpl = getRadarTileTemplate(layerName);
       overlayTemplate = tpl;
-      overlay = L.tileLayer(tpl, { opacity: 0.85, crossOrigin: true, tileSize: 256, maxZoom: RADAR_ZOOM_MAX, maxNativeZoom: RADAR_ZOOM_MAX });
+      if (!tpl) return;
+      overlay = L.tileLayer(tpl, { opacity: 0.68, crossOrigin: true, tileSize: 256, maxZoom: RADAR_ZOOM_MAX, maxNativeZoom: RADAR_ZOOM_MAX });
       overlay.addTo(map);
       container.dataset.layer = layerName;
       radarLayer = layerName;

@@ -6,7 +6,6 @@
 
   const WEATHER_TILE_KEY = window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY || '';
   const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/wx-tiles/{z}/{x}/{y}.png';
-  const RAINVIEWER_TILE = 'https://tilecache.rainviewer.com/v2/radar/last/{z}/{x}/{y}/2/1_1.png';
   const CELL_API = '/cell';
   const CABLE_URL = 'https://raw.githubusercontent.com/telegeography/www.submarinecablemap.com/master/web/public/api/cable.geo.json';
   const LANDING_URL = 'https://raw.githubusercontent.com/telegeography/www.submarinecablemap.com/master/web/public/api/landing-point.geo.json';
@@ -43,7 +42,7 @@
       '  <div class="overlay-map-frame">',
       '    <div id="comm-overlay-map" class="overlay-map-canvas"></div>',
       '  </div>',
-      '  <div class="comm-card-micro comm-card-footer">Sources: OSM · OpenWeather/RainViewer tiles · OpenCellID · TeleGeography submarine cables · PeeringDB (IXP, via proxy)</div>',
+      '  <div class="comm-card-micro comm-card-footer">Sources: OSM · OpenWeather tiles · OpenCellID · TeleGeography submarine cables · PeeringDB (IXP, via proxy)</div>',
       '</div>'
     ].join('');
   }
@@ -78,8 +77,9 @@
       : RADAR_PROXY_BASE;
     const url = template || (WEATHER_TILE_KEY
       ? `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${WEATHER_TILE_KEY}`
-      : RAINVIEWER_TILE);
-    return L.tileLayer(url, { opacity: 0.55, crossOrigin: true, tileSize: 256, maxZoom: 12, maxNativeZoom: 12 });
+      : '');
+    if (!url) return null;
+    return L.tileLayer(url, { opacity: 0.5, crossOrigin: true, tileSize: 256, maxZoom: 12, maxNativeZoom: 12 });
   }
 
   async function buildCellLayer(loc) {

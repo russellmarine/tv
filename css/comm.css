@@ -1388,8 +1388,12 @@ main {
 .weather-extended {
   display: grid;
   gap: 0.65rem;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+}
+
+.weather-extended > * {
+  min-width: 0;
 }
 
 .weather-radar, .weather-forecast {
@@ -1443,7 +1447,7 @@ main {
   border: 1px solid rgba(255, 200, 140, 0.35);
   aspect-ratio: 4 / 3;
   min-height: 220px;
-  height: clamp(220px, 26vw, 360px);
+  height: clamp(240px, 26vw, 360px);
   width: 100%;
   max-width: 100%;
   background: radial-gradient(circle at 30% 30%, rgba(255, 160, 80, 0.08), rgba(0, 0, 0, 0.55)),
@@ -1486,7 +1490,7 @@ main {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(120deg, rgba(255, 120, 0, 0.035), rgba(255, 200, 120, 0.06), rgba(255, 120, 0, 0.035));
+  background: linear-gradient(120deg, rgba(255, 120, 0, 0.02), rgba(255, 200, 120, 0.04), rgba(255, 120, 0, 0.02));
   mix-blend-mode: screen;
   animation: radarSweep 7s linear infinite;
   z-index: 3;
