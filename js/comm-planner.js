@@ -53,7 +53,6 @@
   const ROW_HEIGHT = 4;
   let radarZoom = 6;
   let radarLayer = 'radar';
-  let radarPlayTimer = null;
 
   // ---------- Layout helpers ----------
 
@@ -1244,6 +1243,7 @@
     const sunsetCalc = sunCalc?.sunset ? Math.round(sunCalc.sunset.getTime() / 1000) : null;
     const sunriseIso = forecast?.daily?.sunrise?.[0];
     const sunsetIso = forecast?.daily?.sunset?.[0];
+    const forecastOffset = Number.isFinite(forecast?.utc_offset_seconds) ? forecast.utc_offset_seconds : timezone;
     const updatedLocal = wx.dt ? 'Last Updated: ' + formatUserStamp(wx.dt * 1000) + ' (local) • ' + formatUtcStamp(wx.dt * 1000) + 'Z' : 'Last Updated: --';
     const localTime = formatLocalClock(Date.now() / 1000, timezone, false) + 'L';
     const localDate = formatLocalDate(Date.now() / 1000, timezone);
@@ -1296,8 +1296,8 @@
     metrics.push(metricHtml('Local Date', localDate, null, getWeatherMetricIcon('Date')));
     const sunriseTs = parseIsoToEpoch(sunriseIso) || sunriseCalc || sunrise;
     const sunsetTs = parseIsoToEpoch(sunsetIso) || sunsetCalc || sunset;
-    const sunriseLabel = sunriseIso ? formatIsoLocalClock(sunriseIso) : (sunriseTs ? formatLocalTime(sunriseTs, timezone) : '');
-    const sunsetLabel = sunsetIso ? formatIsoLocalClock(sunsetIso) : (sunsetTs ? formatLocalTime(sunsetTs, timezone) : '');
+    const sunriseLabel = sunriseIso ? formatIsoLocalClockWithOffset(sunriseIso, forecastOffset) : (sunriseTs ? formatLocalTime(sunriseTs, timezone) : '');
+    const sunsetLabel = sunsetIso ? formatIsoLocalClockWithOffset(sunsetIso, forecastOffset) : (sunsetTs ? formatLocalTime(sunsetTs, timezone) : '');
     if (sunriseLabel) metrics.push(metricHtml('Sunrise', sunriseLabel, null, getWeatherMetricIcon('Sunrise')));
     if (sunsetLabel) metrics.push(metricHtml('Sunset', sunsetLabel, null, getWeatherMetricIcon('Sunset')));
 
@@ -2010,6 +2010,15 @@
     return d.toLocaleTimeString(undefined, opts).replace(/:/g, '') + 'L';
   }
 
+  function formatIsoLocalClockWithOffset(isoString, offsetSeconds) {
+    if (!isoString) return '';
+    const base = new Date(isoString + 'Z');
+    const offsetMs = (offsetSeconds || 0) * 1000;
+    const local = new Date(base.getTime() + offsetMs);
+    const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
+    return local.toLocaleTimeString('en-GB', opts).replace(/:/g, '') + 'L';
+  }
+
   function formatLocalTime(epochSeconds, offsetSeconds, includeDate) {
     if (!epochSeconds && epochSeconds !== 0) return '';
     const tzOffset = offsetSeconds || 0;
@@ -2187,14 +2196,9 @@
   let radarId = 0;
 
   function getRadarTileTemplate(layer) {
-    const layerKey = layer === 'clouds' ? 'clouds_new' : 'precipitation_new';
+    const layerKey = 'precipitation_new';
     if (RADAR_PROXY_BASE) {
-      if (RADAR_PROXY_BASE.includes('{layer}')) return RADAR_PROXY_BASE.replace('{layer}', layerKey);
-      if (layer === 'clouds' && RADAR_PROXY_BASE.includes('{z}') && (window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY)) {
-        const key = window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY;
-        return `https://tile.openweathermap.org/map/${layerKey}/{z}/{x}/{y}.png?appid=${key}`;
-      }
-      return RADAR_PROXY_BASE;
+      return RADAR_PROXY_BASE.includes('{layer}') ? RADAR_PROXY_BASE.replace('{layer}', layerKey) : RADAR_PROXY_BASE;
     }
     if (window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY) {
       const key = window.OPENWEATHER_TILE_KEY || window.OPENWEATHER_API_KEY;
@@ -2208,7 +2212,7 @@
     const radarMapId = 'radar-map-' + (++radarId);
     return [
       '<div class="weather-radar">',
-      '  <div class="weather-radar-head">Local Radar<div class="radar-layer-toggle"><button type="button" class="radar-layer-btn active" data-layer="radar">Precip</button><button type="button" class="radar-layer-btn" data-layer="clouds">Clouds</button></div></div>',
+      '  <div class="weather-radar-head">Local Radar</div>',
       '  <div class="weather-radar-frame" data-lat="' + escapeHtml(lat) + '" data-lon="' + escapeHtml(lon) + '" data-zoom="' + radarZoom + '" data-layer="' + radarLayer + '">',
       '    <div class="radar-leaflet" id="' + radarMapId + '"></div>',
       '    <div class="radar-overlay"></div>',
@@ -2219,7 +2223,6 @@
       '    </div>',
       '    <div class="radar-fallback">Radar preview unavailable — ensure the /wx-tiles proxy or OpenWeather tiles are reachable.</div>',
       '  </div>',
-      '  <div class="radar-play-row"><button type="button" class="radar-play-btn" aria-pressed="false">▶ Play</button></div>',
       '</div>'
     ].join('');
   }
@@ -2229,17 +2232,11 @@
     const mapEl = container.querySelector('.radar-leaflet');
     if (!mapEl) return;
 
-    if (radarPlayTimer) {
-      clearInterval(radarPlayTimer);
-      radarPlayTimer = null;
-    }
-
     const lat = Number(container.dataset.lat);
     const lon = Number(container.dataset.lon);
     const fallback = selectedLocation?.coords || lastWeatherCoords || { lat: 38.9, lon: -77.0 };
     const viewLat = Number.isFinite(lat) ? lat : fallback.lat;
     const viewLon = Number.isFinite(lon) ? lon : fallback.lon;
-    const layerButtons = container.parentElement?.querySelectorAll('.radar-layer-btn');
 
     const map = L.map(mapEl, { zoomControl: false, attributionControl: false, scrollWheelZoom: true });
     const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -2257,7 +2254,7 @@
       const tpl = getRadarTileTemplate(layerName);
       overlayTemplate = tpl;
       if (!tpl) return;
-      overlay = L.tileLayer(tpl, { opacity: 0.68, crossOrigin: true, tileSize: 256, maxZoom: RADAR_ZOOM_MAX, maxNativeZoom: RADAR_ZOOM_MAX });
+      overlay = L.tileLayer(tpl, { opacity: 0.82, crossOrigin: true, tileSize: 256, maxZoom: RADAR_ZOOM_MAX, maxNativeZoom: RADAR_ZOOM_MAX, className: 'ow-radar-tiles' });
       overlay.addTo(map);
       container.dataset.layer = layerName;
       radarLayer = layerName;
@@ -2300,31 +2297,7 @@
       });
     });
 
-    if (layerButtons) {
-      layerButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          layerButtons.forEach(b => b.classList.toggle('active', b === btn));
-          setLayer(btn.dataset.layer);
-        });
-      });
-    }
-
-    const playBtn = container.parentElement?.querySelector('.radar-play-btn');
-    if (playBtn) {
-      playBtn.addEventListener('click', () => {
-        const playing = playBtn.getAttribute('aria-pressed') === 'true';
-        if (playing) {
-          playBtn.textContent = '▶ Play';
-          playBtn.setAttribute('aria-pressed', 'false');
-          if (radarPlayTimer) { clearInterval(radarPlayTimer); radarPlayTimer = null; }
-        } else {
-          playBtn.textContent = '⏸ Pause';
-          playBtn.setAttribute('aria-pressed', 'true');
-          refreshOverlaySource();
-          radarPlayTimer = setInterval(refreshOverlaySource, 8000);
-        }
-      });
-    }
+    refreshOverlaySource();
   }
 
   function loadPanelState() {
@@ -2344,6 +2317,7 @@
   function initPanelToggles() {
     const bar = $('#comm-panel-toggle-bar');
     if (!bar) return;
+    const allBtn = bar.querySelector('#comm-panel-toggle-all');
     const state = PANEL_IDS.reduce((acc, id) => {
       const card = document.getElementById(id);
       acc[id] = card ? !card.classList.contains('comm-hidden') : true;
@@ -2351,6 +2325,12 @@
     }, {});
     const saved = loadPanelState();
     Object.assign(state, saved);
+
+    function updateAllLabel() {
+      if (!allBtn) return;
+      const anyOff = PANEL_IDS.some(id => state[id] === false);
+      allBtn.textContent = anyOff ? 'All On' : 'All Off';
+    }
 
     function apply() {
       PANEL_IDS.forEach(id => {
@@ -2362,6 +2342,7 @@
       });
       queueLayout();
       savePanelState(state);
+      updateAllLabel();
     }
 
     bar.querySelectorAll('.panel-toggle').forEach(btn => {
@@ -2372,6 +2353,14 @@
         apply();
       });
     });
+
+    if (allBtn) {
+      allBtn.addEventListener('click', () => {
+        const anyOff = PANEL_IDS.some(id => state[id] === false);
+        PANEL_IDS.forEach(id => { state[id] = anyOff; });
+        apply();
+      });
+    }
 
     apply();
   }

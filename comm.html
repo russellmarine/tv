@@ -26,25 +26,28 @@
     </div>
 
     <div class="mode-toggle">
-      <a href="/" class="btn" title="Back to TV">← TV</a>
-      <span class="btn active" style="pointer-events:none;">Comm</span>
-      <button type="button" class="btn ghost" id="comm-map-toggle">Overlays Map</button>
-      <button type="button" class="btn ghost" id="comm-export-pptx">Export PPTX</button>
+      <div class="mode-toggle-row">
+        <a href="/" class="btn" title="Back to TV">← TV</a>
+        <span class="btn active" style="pointer-events:none;">Comm</span>
+        <button type="button" class="btn ghost" id="comm-map-toggle">Overlays Map</button>
+        <button type="button" class="btn ghost" id="comm-export-pptx">Export PPTX</button>
+      </div>
+      <div class="mode-toggle-row panel-toggle-bar" id="comm-panel-toggle-bar" aria-label="Toggle dashboard panels">
+        <button type="button" class="panel-toggle-all" id="comm-panel-toggle-all">All On/Off</button>
+        <button type="button" class="panel-toggle active" data-target="comm-card-location">Location</button>
+        <button type="button" class="panel-toggle active" data-target="comm-card-spacewx">Space Wx</button>
+        <button type="button" class="panel-toggle active" data-target="comm-card-overlay">Overlays Map</button>
+        <button type="button" class="panel-toggle active" data-target="comm-card-weather">Local Wx</button>
+        <button type="button" class="panel-toggle active" data-target="comm-card-gps">GPS &amp; PNT</button>
+        <button type="button" class="panel-toggle active" data-target="comm-card-hf">HF Prop</button>
+        <button type="button" class="panel-toggle active" data-target="comm-card-satcom">SATCOM Wx</button>
+        <button type="button" class="panel-toggle active" data-target="comm-card-satangles">Satellite Planner</button>
+        <button type="button" class="panel-toggle active" data-target="comm-card-cellular">Cellular</button>
+      </div>
     </div>
   </header>
 
   <main>
-    <div class="panel-toggle-bar" id="comm-panel-toggle-bar" aria-label="Toggle dashboard panels">
-      <button type="button" class="panel-toggle active" data-target="comm-card-location">Location</button>
-      <button type="button" class="panel-toggle active" data-target="comm-card-spacewx">Space Wx</button>
-      <button type="button" class="panel-toggle active" data-target="comm-card-overlay">Overlays Map</button>
-      <button type="button" class="panel-toggle active" data-target="comm-card-weather">Local Wx</button>
-      <button type="button" class="panel-toggle active" data-target="comm-card-gps">GPS &amp; PNT</button>
-      <button type="button" class="panel-toggle active" data-target="comm-card-hf">HF Prop</button>
-      <button type="button" class="panel-toggle active" data-target="comm-card-satcom">SATCOM Wx</button>
-      <button type="button" class="panel-toggle active" data-target="comm-card-satangles">Satellite Planner</button>
-      <button type="button" class="panel-toggle active" data-target="comm-card-cellular">Cellular</button>
-    </div>
     <section id="comm-planner-view">
       <div class="comm-layout-grid">
         <article id="comm-card-location" class="comm-card">

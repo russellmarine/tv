@@ -79,7 +79,7 @@
       ? `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${WEATHER_TILE_KEY}`
       : '');
     if (!url) return null;
-    return L.tileLayer(url, { opacity: 0.5, crossOrigin: true, tileSize: 256, maxZoom: 12, maxNativeZoom: 12 });
+    return L.tileLayer(url, { opacity: 0.72, crossOrigin: true, tileSize: 256, maxZoom: 12, maxNativeZoom: 12, className: 'ow-radar-tiles' });
   }
 
   async function buildCellLayer(loc) {
@@ -91,16 +91,38 @@
       const data = await res.json();
       const towers = Array.isArray(data?.towers) ? data.towers : [];
       const group = L.layerGroup();
-      (towers || []).forEach(t => {
-        if (!t.lat || !t.lon) return;
-        const marker = L.circleMarker([t.lat, t.lon], {
-          radius: 6,
-          color: '#ffb36b',
-          fillColor: '#ff7f2a',
-          fillOpacity: 0.7
-        }).bindPopup(`<strong>${t.carrier || 'Carrier'}</strong><br>${t.technology || t.radio || 'Tech'} · ${Math.round(t.distance || 0)}m`);
-        marker.addTo(group);
-      });
+      const MAX_MARKERS = 150;
+      if (towers.length > MAX_MARKERS) {
+        const buckets = {};
+        towers.forEach(t => {
+          if (!t.lat || !t.lon) return;
+          const key = `${t.lat.toFixed(2)}|${t.lon.toFixed(2)}`;
+          if (!buckets[key]) buckets[key] = { count: 0, sample: t };
+          buckets[key].count += 1;
+          if (!buckets[key].sample) buckets[key].sample = t;
+        });
+        Object.values(buckets).forEach(b => {
+          const t = b.sample;
+          const marker = L.circleMarker([t.lat, t.lon], {
+            radius: Math.min(10, 5 + Math.log2(b.count + 1)),
+            color: '#ffb36b',
+            fillColor: '#ff7f2a',
+            fillOpacity: 0.65
+          }).bindPopup(`<strong>${t.carrier || 'Carrier'}</strong><br>${t.technology || t.radio || 'Tech'} · ~${Math.round(t.distance || 0)}m<br>${b.count} tower(s)`);
+          marker.addTo(group);
+        });
+      } else {
+        towers.forEach(t => {
+          if (!t.lat || !t.lon) return;
+          const marker = L.circleMarker([t.lat, t.lon], {
+            radius: 6,
+            color: '#ffb36b',
+            fillColor: '#ff7f2a',
+            fillOpacity: 0.7
+          }).bindPopup(`<strong>${t.carrier || 'Carrier'}</strong><br>${t.technology || t.radio || 'Tech'} · ${Math.round(t.distance || 0)}m`);
+          marker.addTo(group);
+        });
+      }
       return group;
     } catch (e) {
       console.warn('[CommOverlay] Cell overlay failed', e);

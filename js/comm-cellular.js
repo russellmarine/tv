@@ -70,8 +70,10 @@
 
   function renderCarrier(carrier) {
     const towers = carrier.towers || [];
-    const plmn = carrier.plmn || carrier.mccmnc || (carrier.mcc && carrier.mnc ? `${carrier.mcc}/${carrier.mnc}` : '—');
-    const mccmnc = carrier.mccmnc || (carrier.mcc && carrier.mnc ? `${carrier.mcc}-${carrier.mnc}` : '—');
+    const plmnRaw = carrier.plmn || carrier.mccmnc || (carrier.mcc && carrier.mnc ? `${carrier.mcc}${carrier.mnc}` : '');
+    const plmn = plmnRaw ? String(plmnRaw).replace(/-/g, '') : '—';
+    const mccmncRaw = carrier.mccmnc || (carrier.mcc && carrier.mnc ? `${carrier.mcc}${carrier.mnc}` : '');
+    const mccmnc = mccmncRaw ? String(mccmncRaw).replace(/-/g, '') : '—';
     const decl = getDeclination();
     const rows = towers.map(t => {
       const mapLink = buildMapLink(t.lat, t.lon);
@@ -89,7 +91,7 @@
       '    <div class="cell-carrier-meta">MCC/MNC: ' + escapeHtml(mccmnc) + ' · PLMN: ' + escapeHtml(plmn) + (carrier.towers ? ' · Towers: ' + carrier.towers.length : '') + '</div>',
       '  </div>',
       rows ? '  <div class="cell-nearest">' + rows + '</div>' : '',
-      bandBadges ? '  <div class="cell-bands">Typical Bands: ' + bandBadges + '</div>' : '',
+      bandBadges ? '  <div class="cell-bands">Bands: ' + bandBadges + '</div>' : '',
       '</div>'
     ].join('');
   }
