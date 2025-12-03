@@ -26,28 +26,70 @@
     </div>
 
     <div class="mode-toggle">
-      <!-- Top row: nav links on the right -->
-      <div class="mode-links-row">
+      <div class="mode-toggle-row">
+        <!-- Far left: Back to TV -->
         <a href="/" class="mode-link-btn" title="Back to TV">Back to TV</a>
-        <span class="mode-link-btn active" aria-current="page"></span>
-      </div>
 
-      <!-- Second row: panel toggles + actions -->
-      <div class="mode-toggle-row panel-toggle-bar" id="comm-panel-toggle-bar" aria-label="Toggle dashboard panels">
-        <div class="panel-toggle-group">
-          <button type="button" class="btn ghost" id="comm-map-toggle">Overlays Map</button>
-          <button type="button" class="panel-toggle active" data-target="comm-card-location">Location</button>
-          <button type="button" class="panel-toggle active" data-target="comm-card-spacewx">Space Weather</button>
-          <button type="button" class="panel-toggle active" data-target="comm-card-weather">Local Weather</button>
-          <button type="button" class="panel-toggle active" data-target="comm-card-gps">GPS &amp; PNT</button>
-          <button type="button" class="panel-toggle active" data-target="comm-card-hf">HF Propagation</button>
-          <button type="button" class="panel-toggle active" data-target="comm-card-satcom">SATCOM Weather</button>
-          <button type="button" class="panel-toggle active" data-target="comm-card-satangles">SATCOM Planner</button>
-          <button type="button" class="panel-toggle active" data-target="comm-card-cellular">Cellular Coverage</button>
-        </div>
-        <div class="panel-actions">
-          <button type="button" class="panel-toggle-all" id="comm-panel-toggle-all">All On/Off</button>
-          <button type="button" class="btn ghost" id="comm-export-pptx">Export Dashboard to Slides</button>
+        <!-- Far right: Menu dropdown -->
+        <div class="mode-row-actions">
+          <details class="panel-toggle-dropdown" id="comm-panel-toggle-dropdown">
+            <summary class="btn panel-toggle-summary">Menu ▾</summary>
+            <div
+              class="panel-toggle-menu"
+              id="comm-panel-toggle-bar"
+              aria-label="Toggle dashboard panels"
+            >
+              <!-- Dashboard actions -->
+              <button
+                type="button"
+                class="panel-menu-item"
+                id="comm-export-pptx"
+              >
+                Export Dashboard
+              </button>
+
+              <hr class="panel-menu-divider" />
+
+              <!-- Panel toggles -->
+              <button
+                type="button"
+                class="panel-toggle active"
+                id="comm-map-toggle"
+                data-target="comm-card-overlay"
+              >
+                Overlays Map
+              </button>
+
+              <button type="button" class="panel-toggle active" data-target="comm-card-location">
+                Location
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-spacewx">
+                Space Weather
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-weather">
+                Local Weather
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-gps">
+                GPS &amp; PNT
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-hf">
+                HF Propagation
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-satcom">
+                SATCOM Weather
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-satangles">
+                SATCOM Planner
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-cellular">
+                Cellular Coverage
+              </button>
+
+              <button type="button" class="panel-toggle-all" id="comm-panel-toggle-all">
+                All On/Off
+              </button>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -203,6 +245,7 @@
     window.SOLAR_CYCLE_ENDPOINT = '/api/spaceweather/json/solar-cycle/observed-solar-cycle.json';
   </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/js/comm-declination.js"></script>
   <script src="/js/comm-planner.js"></script>
   <script src="/js/comm-lookangles.js"></script>
   <script src="/js/comm-cellular.js"></script>

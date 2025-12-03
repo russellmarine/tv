@@ -75,7 +75,7 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.32rem 0.9rem;
+  padding: 0.36rem 1.1rem;
   margin-left: 0.75rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 190, 140, 0.85);
@@ -2003,6 +2003,357 @@ main {
 .panel-toggle-bar .btn.active,
 .panel-toggle-bar .panel-toggle.active,
 .panel-toggle-bar .panel-toggle-all.active {
+  background: linear-gradient(
+    145deg,
+    rgba(80, 34, 0, 0.98),
+    rgba(135, 65, 0, 0.98)
+  );
+  border-color: rgba(255, 220, 180, 1);
+  color: #fff9e9;
+  transform: translateY(-1px);
+}
+
+
+/* === Comm panel toggle dropdown === */
+
+.panel-toggle-dropdown {
+  margin-top: 0.2rem;
+}
+
+/* Make the summary look like a normal pill button, hide default marker */
+.panel-toggle-dropdown > summary.panel-toggle-summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-toggle-dropdown > summary.panel-toggle-summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Box that appears when the dropdown is open */
+.panel-toggle-dropdown .panel-toggle-bar {
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.6rem 0.7rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 200, 140, 0.4);
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: flex-start;
+  overflow-x: visible;
+}
+
+/* Group + actions layout inside the dropdown */
+.panel-toggle-dropdown .panel-toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.panel-toggle-dropdown .panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+/* Make sure pills in the dropdown aren’t forced overly wide on small screens */
+@media (max-width: 900px) {
+  .panel-toggle-dropdown .panel-toggle-bar .btn,
+  .panel-toggle-dropdown .panel-toggle-bar .panel-toggle,
+  .panel-toggle-dropdown .panel-toggle-bar .panel-toggle-all {
+    min-width: 0;
+    padding-inline: 0.75rem;
+  }
+}
+
+
+/* === Panel dropdown v2: vertical menu === */
+
+.mode-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: visible;
+}
+
+/* Panels ▾ container */
+.panel-toggle-dropdown {
+  position: relative;
+}
+
+/* Make summary look like a normal pill button, hide default marker */
+.panel-toggle-dropdown > summary.panel-toggle-summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.panel-toggle-dropdown > summary.panel-toggle-summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The vertical dropdown menu */
+.panel-toggle-menu {
+  position: absolute;
+  right: 0;
+  margin-top: 0.4rem;
+  min-width: 230px;
+  max-width: 280px;
+  padding: 0.6rem 0.7rem 0.55rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 200, 140, 0.45);
+  background: rgba(5, 3, 0, 0.95);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.9),
+    0 0 14px rgba(255, 150, 80, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  z-index: 1500;
+}
+
+/* Vertical list – full-width pills */
+.panel-toggle-menu .panel-toggle,
+.panel-toggle-menu .panel-toggle-all,
+.panel-toggle-menu .panel-menu-item {
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+}
+
+/* Tighten padding slightly inside dropdown */
+.panel-toggle-menu .panel-toggle,
+.panel-toggle-menu .panel-toggle-all,
+.panel-toggle-menu .panel-menu-item {
+  padding-inline: 0.8rem;
+}
+
+/* Mobile: dropdown becomes full-width under the summary */
+@media (max-width: 720px) {
+  .panel-toggle-dropdown {
+    width: 100%;
+  }
+
+  .panel-toggle-dropdown > summary.panel-toggle-summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .panel-toggle-menu {
+    position: static;
+    width: 100%;
+    margin-top: 0.35rem;
+  }
+}
+
+
+/* === Header layout v3: single row with right actions === */
+
+.mode-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Right-side actions: Export + Panels dropdown */
+.mode-row-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Panels dropdown (vertical menu) stays as before */
+.panel-toggle-dropdown {
+  position: relative;
+}
+
+.panel-toggle-dropdown > summary.panel-toggle-summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.panel-toggle-dropdown > summary.panel-toggle-summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel-toggle-menu {
+  position: absolute;
+  right: 0;
+  margin-top: 0.4rem;
+  min-width: 230px;
+  max-width: 280px;
+  padding: 0.6rem 0.7rem 0.55rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 200, 140, 0.45);
+  background: rgba(5, 3, 0, 0.95);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.9),
+    0 0 14px rgba(255, 150, 80, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  z-index: 1500;
+}
+
+/* Full-width vertical pills inside the dropdown */
+.panel-toggle-menu .panel-toggle,
+.panel-toggle-menu .panel-toggle-all,
+.panel-toggle-menu .panel-menu-item {
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+  padding-inline: 0.8rem;
+}
+
+/* Mobile: dropdown widens under the button */
+@media (max-width: 720px) {
+  .mode-toggle-row {
+    justify-content: flex-start;
+  }
+
+  .mode-row-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  .panel-toggle-dropdown {
+    width: auto;
+  }
+
+  .panel-toggle-menu {
+    position: static;
+    width: 100%;
+    margin-top: 0.35rem;
+  }
+}
+
+
+/* Menu extras: Export item + divider */
+.panel-menu-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 200, 140, 0.3);
+  margin: 0.35rem 0 0.25rem;
+}
+
+.panel-toggle-menu .panel-menu-item {
+  font-weight: 600;
+}
+
+/* === Comm header layout v2: Back left, Menu far right === */
+.rtv-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  justify-content: flex-start;
+}
+
+.mode-toggle {
+  flex: 1 1 auto;
+}
+
+.mode-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mode-row-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+/* Dropdown menu pinned to right with consistent pills */
+.panel-toggle-dropdown {
+  position: relative;
+}
+
+.panel-toggle-summary {
+  min-width: 120px;
+  text-align: center;
+}
+
+.panel-toggle-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.3rem);
+  z-index: 1500;
+  min-width: 240px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0.4rem 0.45rem 0.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 200, 140, 0.75);
+  background: radial-gradient(circle at 20% 0%, rgba(255, 190, 120, 0.15), transparent 55%),
+              rgba(10, 5, 0, 0.96);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.9);
+}
+
+/* Vertical pill buttons inside menu (including Export) */
+.panel-toggle-menu .panel-toggle,
+.panel-toggle-menu .panel-toggle-all,
+.panel-toggle-menu .panel-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.38rem 0.8rem;
+  margin: 0.12rem 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 190, 140, 0.85);
+  background: linear-gradient(
+    145deg,
+    rgba(35, 14, 0, 0.96),
+    rgba(90, 40, 0, 0.96)
+  );
+  color: #ffe6cc;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.08s ease;
+}
+
+.panel-toggle-menu .panel-menu-item {
+  font-weight: 600;
+}
+
+/* Hover / active states in menu */
+.panel-toggle-menu .panel-toggle:hover,
+.panel-toggle-menu .panel-toggle-all:hover,
+.panel-toggle-menu .panel-menu-item:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(55, 22, 0, 0.98),
+    rgba(110, 48, 0, 0.98)
+  );
+  border-color: rgba(255, 210, 160, 0.95);
+  transform: translateY(-1px);
+}
+
+.panel-toggle-menu .panel-toggle.active,
+.panel-toggle-menu .panel-toggle-all.active {
   background: linear-gradient(
     145deg,
     rgba(80, 34, 0, 0.98),
