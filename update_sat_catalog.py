@@ -8,7 +8,7 @@ N2YO_BASE = "http://127.0.0.1/api/n2yo"
 
 # Curated SATCOM set (mil + commercial you'd actually plan on)
 SATELLITES = {
-    # === MILSATCOM ===
+    # === MILSATCOM: US ===
     "wgs": {
         "constellation": "wgs",
         "role": "milsatcom",
@@ -16,17 +16,16 @@ SATELLITES = {
         "orbit_type": "GEO",
         "operator": "US DoD",
         "satellites": [
-            {"norad_id": 32258, "name": "WGS-1"},
-            {"norad_id": 33055, "name": "WGS-2"},
-            {"norad_id": 34713, "name": "WGS-3"},
-            {"norad_id": 38070, "name": "WGS-4"},
-            {"norad_id": 39168, "name": "WGS-5"},
-            {"norad_id": 39222, "name": "WGS-6"},
-            {"norad_id": 40746, "name": "WGS-7"},
-            {"norad_id": 41879, "name": "WGS-8"},
-            {"norad_id": 42075, "name": "WGS-9"},
-            {"norad_id": 44071, "name": "WGS-10"},
-            {"norad_id": 53937, "name": "WGS-11"},
+            {"norad_id": 32258, "name": "WGS-1"},   # USA 195
+            {"norad_id": 34713, "name": "WGS-2"},   # USA 204
+            {"norad_id": 36108, "name": "WGS-3"},   # USA 211
+            {"norad_id": 38070, "name": "WGS-4"},   # USA 233
+            {"norad_id": 39168, "name": "WGS-5"},   # USA 243
+            {"norad_id": 39222, "name": "WGS-6"},   # USA 244
+            {"norad_id": 40746, "name": "WGS-7"},   # USA 263
+            {"norad_id": 41879, "name": "WGS-8"},   # USA 272
+            {"norad_id": 42075, "name": "WGS-9"},   # USA 275
+            {"norad_id": 44071, "name": "WGS-10"},  # USA 291
         ],
     },
     "aehf": {
@@ -56,6 +55,24 @@ SATELLITES = {
             {"norad_id": 40374, "name": "MUOS-3"},
             {"norad_id": 40887, "name": "MUOS-4"},
             {"norad_id": 41622, "name": "MUOS-5"},
+        ],
+    },
+
+    # === MILSATCOM: Coalition / partner ===
+    "coalition_mil": {
+        "constellation": "coalition_mil",
+        "role": "milsatcom",
+        "band": "mixed",
+        "orbit_type": "GEO",
+        "operator": "Coalition partners",
+        "satellites": [
+            {"norad_id": 30794, "name": "Skynet 5A"},
+            {"norad_id": 32294, "name": "Skynet 5B"},
+            {"norad_id": 33055, "name": "Skynet 5C"},
+            {"norad_id": 28786, "name": "XTAR-EUR"},
+            {"norad_id": 28945, "name": "SpainSat"},
+            {"norad_id": 40614, "name": "Sicral 2"},
+            {"norad_id": 49333, "name": "Syracuse 4A"},
         ],
     },
 
@@ -111,9 +128,10 @@ SATELLITES = {
             {"norad_id": 37775, "name": "SES-4"},
             {"norad_id": 40946, "name": "SES-9"},
             {"norad_id": 41382, "name": "SES-10"},
-            {"norad_id": 43157, "name": "SES-14"},
-            {"norad_id": 44334, "name": "SES-17"},
+            # SES-14: keep, but NORAD may need future correction if N2YO updates
+            {"norad_id": 43175, "name": "SES-14"},
             {"norad_id": 41903, "name": "SES-15"},
+            {"norad_id": 44334, "name": "SES-17"},
         ],
     },
     "telesat": {
@@ -248,7 +266,8 @@ def main():
                         orbit_type    = EXCLUDED.orbit_type,
                         source        = EXCLUDED.source,
                         last_updated  = now();
-                    """,
+                    """
+                    ,
                     (norad_id, name, operator, constellation, role, band, orbit_type),
                 )
 
@@ -263,7 +282,8 @@ def main():
                         SET tle1 = EXCLUDED.tle1,
                             tle2 = EXCLUDED.tle2,
                             last_updated = now();
-                        """,
+                        """
+                        ,
                         (norad_id, tle1, tle2),
                     )
                     updated += 1
