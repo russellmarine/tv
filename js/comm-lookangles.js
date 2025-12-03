@@ -5,6 +5,7 @@
   if (!Events) return;
 
   const API_PROXY = '/api/n2yo';
+  const SAT_CATALOG_URL = '/weather/sat/catalog';
   const MIN_ELEV_FILTER = 5;
   const CONSTELLATION_ORDER = ['aehf', 'wgs', 'muos', 'intelsat', 'eutelsat', 'ses', 'telesat', 'mena', 'asia'];
 
@@ -48,6 +49,8 @@
   let lastLocation = null;
   let constellationData = [];
   let isLoading = false;
+  let constellationDefs = {};
+  let satCatalogLoaded = false;
 
   function escapeHtml(str) {
     if (!str) return '';
@@ -103,22 +106,72 @@ function formatAzimuthWithMag(az) {
     }
   }
 
-  async function buildConstellation(key, loc) {
-    const def = CONSTELLATIONS[key];
-    if (!def) return null;
-    const sats = await Promise.all(def.satellites.map(async (s) => {
-      const pos = await fetchSatellitePosition(s.id, loc);
-      if (!pos) return null;
-      return { id: s.id, name: s.name, band: def.band, az: pos.az, el: pos.el, range: pos.range };
-    }));
-    const filtered = sats.filter(Boolean);
-    if (!filtered.length && FALLBACK[key]) {
-      return { key, name: def.name, band: def.band, sats: FALLBACK[key] };
+async function ensureSatCatalogLoaded() {
+  if (satCatalogLoaded && Object.keys(constellationDefs).length) return;
+  try {
+    const res = await fetch(SAT_CATALOG_URL);
+    if (!res.ok) throw new Error('catalog_http_' + res.status);
+    const list = await res.json();
+    const map = {};
+    for (const row of list) {
+      const key = (row.constellation || '').toLowerCase() || 'other';
+      if (!map[key]) {
+        const meta = CONSTELLATIONS[key] || {};
+        map[key] = {
+          name: meta.name || (row.operator || key.toUpperCase()),
+          band: meta.band || row.band || '',
+          satellites: []
+        };
+      }
+      map[key].satellites.push({
+        id: row.norad_id,
+        name: row.name,
+        band: map[key].band
+      });
     }
-    return { key, name: def.name, band: def.band, sats: filtered };
+    constellationDefs = map;
+    satCatalogLoaded = true;
+  } catch (e) {
+    console.error('[sat-catalog] failed to load, using static CONSTELLATIONS only', e);
+    // Avoid hammering the endpoint if it keeps failing
+    satCatalogLoaded = true;
+  }
+}
+
+async function buildConstellation(key, loc) {
+  const def = constellationDefs[key] || CONSTELLATIONS[key];
+  if (!def) return null;
+
+  const satsSource = def.satellites || [];
+  if (!satsSource.length && FALLBACK[key]) {
+    const metaName = def.name || (CONSTELLATIONS[key]?.name) || key.toUpperCase();
+    const metaBand = def.band || (CONSTELLATIONS[key]?.band) || '';
+    return { key, name: metaName, band: metaBand, sats: FALLBACK[key] };
   }
 
-  function renderControls() {
+  const sats = await Promise.all(satsSource.map(async (s) => {
+    const pos = await fetchSatellitePosition(s.id, loc);
+    if (!pos) return null;
+    return {
+      id: s.id,
+      name: s.name,
+      band: def.band,
+      az: pos.az,
+      el: pos.el,
+      range: pos.range
+    };
+  }));
+
+  const filtered = sats.filter(Boolean);
+  const metaName = def.name || (CONSTELLATIONS[key]?.name) || key.toUpperCase();
+  const metaBand = def.band || (CONSTELLATIONS[key]?.band) || '';
+  if (!filtered.length && FALLBACK[key]) {
+    return { key, name: metaName, band: metaBand, sats: FALLBACK[key] };
+  }
+  return { key, name: metaName, band: metaBand, sats: filtered };
+}
+
+function renderControls() {
     const toggles = CONSTELLATION_ORDER.filter(key => CONSTELLATIONS[key]).map(key => {
       const checked = selectedConstellations.has(key) ? 'checked' : '';
       return `<label class="look-toggle"><input type="checkbox" data-constellation="${key}" ${checked}>${escapeHtml(CONSTELLATIONS[key].name)}</label>`;
@@ -242,6 +295,9 @@ function formatAzimuthWithMag(az) {
     }
     isLoading = true;
     renderLookAngles(loc);
+
+    await ensureSatCatalogLoaded();
+
     const selected = Array.from(selectedConstellations);
     const data = await Promise.all(selected.map(key => buildConstellation(key, loc)));
     constellationData = data.filter(Boolean).sort((a, b) => CONSTELLATION_ORDER.indexOf(a.key) - CONSTELLATION_ORDER.indexOf(b.key));

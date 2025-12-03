@@ -1,4 +1,15 @@
 import express from "express";
+import pkg from 'pg';
+const { Pool } = pkg;
+
+
+const satPool = new Pool({
+  host: '192.168.99.38',
+  port: 5432,
+  user: 'rtv',
+  password: 'MArine04__',
+  database: 'russelltv',
+});
 import fetch from "node-fetch";
 import dotenv from "dotenv";
 dotenv.config({ path: "/var/www/russelltv/.env" });
@@ -100,6 +111,18 @@ app.get("/spaceweather/solar-cycle", async (_req, res) => {
   } catch (err) {
     console.error("Solar cycle proxy error", err);
     res.status(500).send("Solar cycle fetch failed");
+  }
+});
+
+app.get('/weather/sat/catalog', async (req, res) => {
+  try {
+    const result = await satPool.query(
+      "SELECT norad_id, name, operator, constellation, role, band, orbit_type FROM sat_catalog ORDER BY (CASE WHEN role='milsatcom' THEN 0 ELSE 1 END), constellation, name"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('[sat-catalog] error:', err);
+    res.status(500).json({ error: 'sat_catalog_query_failed' });
   }
 });
 
