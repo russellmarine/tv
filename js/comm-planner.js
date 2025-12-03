@@ -31,8 +31,6 @@
   const SOLAR_CYCLE_ENDPOINT = window.SOLAR_CYCLE_ENDPOINT
     || '/api/spaceweather/json/solar-cycle/observed-solar-cycle.json';
   const SOLAR_CYCLE_FALLBACK = 'https://r.jina.ai/https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json';
-  const DECLINATION_ENDPOINT = 'https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&model=WMM&startYear=2025&resultFormat=json';
-  const DECLINATION_FALLBACK = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat={lat}&lon={lon}&altitude=0&model=WMM&startYear=2025&resultFormat=json');
   const RADAR_PROXY_BASE = window.RADAR_PROXY_BASE || '/wx-tiles/{z}/{x}/{y}.png';
   const RADAR_ZOOM_MIN = 4;
   const RADAR_ZOOM_MAX = 10;
@@ -248,34 +246,6 @@
     const dir = deg >= 0 ? 'E' : 'W';
     return Math.abs(deg).toFixed(1) + '°' + dir;
   }
-
-  async function fetchDeclination(lat, lon) {
-    if (!isFinite(lat) || !isFinite(lon)) return null;
-    const sources = [
-      DECLINATION_ENDPOINT.replace('{lat}', lat).replace('{lon}', lon),
-      DECLINATION_FALLBACK.replace('{lat}', lat).replace('{lon}', lon)
-    ];
-
-    for (const src of sources) {
-      try {
-        const res = await fetch(src, { cache: 'no-cache' });
-        if (!res.ok) continue;
-        const text = await res.text();
-        try {
-          const data = JSON.parse(text);
-          const val = data.result?.[0]?.declination || data.result?.declination || data.declination;
-          if (isFinite(val)) return Number(val);
-        } catch (e) {
-          const match = text.match(/"declination"\s*:\s*([-0-9\.]+)/i);
-          if (match && isFinite(Number(match[1]))) return Number(match[1]);
-        }
-      } catch (e) {
-        // try next
-      }
-    }
-    return null;
-  }
-
   function formatLocationLabel(loc) {
     if (!loc) return '';
     const base = loc.label || 'Location';
@@ -1077,7 +1047,19 @@
     };
     updateLocationStatus();
     await resolveLocationContext(selectedLocation);
-    selectedLocation.declination = await fetchDeclination(selectedLocation.coords.lat, selectedLocation.coords.lon);
+    try {
+      if (window.RussellTV?.Declination?.get) {
+        selectedLocation.declination = await window.RussellTV.Declination.get(
+          selectedLocation.coords.lat,
+          selectedLocation.coords.lon
+        );
+      } else {
+        selectedLocation.declination = null;
+      }
+    } catch (e) {
+      console.warn('[CommPlanner] Declination lookup failed:', e);
+      selectedLocation.declination = null;
+    }
     currentDeclination = selectedLocation.declination;
     addRecent(selectedLocation);
     saveSelectedLocation();

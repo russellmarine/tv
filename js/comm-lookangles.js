@@ -77,6 +77,18 @@
     return 'severity-poor';
   }
 
+
+function formatAzimuthWithMag(az) {
+  if (az === null || az === undefined || isNaN(az)) return '—';
+  const trueAz = ((az % 360) + 360) % 360;
+  const decl = window.RussellTV?.CommPlanner?.getDeclination?.();
+  if (typeof decl !== 'number' || !isFinite(decl)) {
+    return trueAz.toFixed(1) + '°T';
+  }
+  const mag = ((trueAz - decl) % 360 + 360) % 360;
+  return Math.round(trueAz) + '°T / ' + Math.round(mag) + '°M';
+}
+
   async function fetchSatellitePosition(noradId, loc) {
     try {
       const url = `${API_PROXY}/positions/${noradId}/${loc.coords.lat}/${loc.coords.lon}/0/1`;
@@ -128,7 +140,7 @@
       const cls = severityClass(s.el || 0);
       const wrapperStart = s.id ? `<a class="look-row ${cls} look-row-link" href="https://www.n2yo.com/satellite/?s=${s.id}" target="_blank" rel="noopener noreferrer">` : `<div class="look-row ${cls}">`;
       const wrapperEnd = s.id ? '</a>' : '</div>';
-      return `${wrapperStart}<span>${escapeHtml(s.name)}</span><span>${(s.az ?? 0).toFixed ? (s.az).toFixed(1) : escapeHtml(s.az)}</span><span>${(s.el ?? 0).toFixed ? (s.el).toFixed(1) : escapeHtml(s.el)}</span><span>${escapeHtml(s.range || '')}</span>${wrapperEnd}`;
+      return `${wrapperStart}<span>${escapeHtml(s.name)}</span><span>${formatAzimuthWithMag(s.az)}</span><span>${(s.el ?? 0).toFixed ? (s.el).toFixed(1) : escapeHtml(s.el)}</span><span>${escapeHtml(s.range || '')}</span>${wrapperEnd}`;
     }).join('');
     return [
       '<div class="look-section">',
@@ -140,7 +152,7 @@
       '    <div class="look-section-count">' + escapeHtml((section.sats || []).length + ' sats') + '</div>',
       '  </div>',
       '  <div class="look-table">',
-      '    <div class="look-table-head"><span>Sat</span><span>Az°</span><span>El°</span><span>Range</span></div>',
+      '    <div class="look-table-head"><span>Sat</span><span>Az (T/M)</span><span>El°</span><span>Range</span></div>',
       rows,
       '  </div>',
       '</div>'
@@ -184,7 +196,7 @@
       availability,
       '</div>',
       controls,
-      '<div class="look-note">Azimuth is TRUE north (not magnetic)</div>',
+      '<div class="look-note">Azimuth shown as True / Magnetic using local declination</div>',
       '<div class="look-grid">' + sections + '</div>',
       '<div class="comm-card-micro comm-card-footer">Source: <a class="inline-link" href="https://www.n2yo.com/" target="_blank" rel="noopener noreferrer">N2YO</a> • Last Updated: ' + escapeHtml(formatUserStamp(Date.now())) + '</div>'
     ].join('');
