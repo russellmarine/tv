@@ -39,6 +39,7 @@
     <div class="mode-toggle">
       <button id="btn-single" class="btn active">Single</button>
       <button id="btn-grid" class="btn">Grid (4)</button>
+      <a id="btn-comm-planner" class="btn" href="/comm.html" title="Comm Planner">Comm</a>
     </div>
   </header>
 
@@ -76,6 +77,60 @@
         <!-- Cells built dynamically -->
       </div>
     </section>
+    <!-- COMM PLANNER VIEW -->
+    <section id="comm-planner-view" style="display:none;">
+      <div class="comm-header">
+        <h2>Comm Planner Dashboard</h2>
+        <p class="comm-subtitle">
+          Set your location once, then read SATCOM, HF, cellular and space-weather at a glance.
+        </p>
+      </div>
+
+      <div class="comm-layout">
+        <!-- Left: location selector -->
+        <div class="comm-location-panel">
+          <div class="comm-location-card">
+            <div class="comm-location-header">
+              <span>Location</span>
+              <small id="comm-location-summary"></small>
+            </div>
+
+            <div class="comm-location-tabs">
+              <button type="button" class="location-mode-tab active" data-mode="search">Search</button>
+              <button type="button" class="location-mode-tab" data-mode="mgrs">MGRS</button>
+              <button type="button" class="location-mode-tab" data-mode="latlon">Lat/Lon</button>
+              <button type="button" class="location-mode-tab" data-mode="maiden">Grid</button>
+            </div>
+
+            <div id="comm-location-input-area"></div>
+
+            <div class="comm-location-footer">
+              <button type="button" id="comm-use-browser" class="location-util-btn">
+                Use browser location
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: cards (stub for now) -->
+        <div class="comm-main-panel">
+          <div class="comm-cards">
+            <article class="comm-card">
+              <div class="comm-card-header">
+                <div class="comm-card-title"><span>Comms Snapshot</span></div>
+                <div class="comm-card-status"><span>n/a</span></div>
+              </div>
+              <div class="comm-card-body">
+                <p class="comm-placeholder">
+                  Select a location to see SATCOM, HF, cellular, and space-weather summaries.
+                </p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- Mobile info-bar ticker -->
@@ -100,6 +155,8 @@
   <script src="/js/view-manager.js"></script>
   <script src="/js/mobile-ui.js"></script>
   <!-- Features -->
+  <script src="js/comm-planner.js"></script>
+  <script src="js/comm-sat.js"></script>
   <script src="/js/news.js"></script>
   <script src="/js/single-view-controls.js"></script>
   <script src="/js/keyboard-av-controls.js"></script>

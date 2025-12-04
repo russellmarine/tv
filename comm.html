@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Russell TV – Comm Planner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/favicon.png">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/css/comm.css">
+</head>
+
+<body class="comm-page">
+  <header class="rtv-header">
+    <div class="rtv-brand">
+      <button
+        type="button"
+        id="rtv-brand-button"
+        class="rtv-brand-button"
+        aria-label="Contact RussellTV"
+      >
+        <span class="rtv-brand-title">Russell TV</span>
+        <span class="rtv-brand-tagline">Transmit Feedback</span>
+      </button>
+    </div>
+
+    <div class="mode-toggle">
+      <div class="mode-toggle-row">
+        <!-- Far left: Back to TV -->
+        <a href="/" class="mode-link-btn" title="Back to TV">Back to TV</a>
+
+        <!-- Far right: Menu dropdown -->
+        <div class="mode-row-actions">
+          <details class="panel-toggle-dropdown" id="comm-panel-toggle-dropdown">
+            <summary class="btn panel-toggle-summary">Menu ▾</summary>
+            <div
+              class="panel-toggle-menu"
+              id="comm-panel-toggle-bar"
+              aria-label="Toggle dashboard panels"
+            >
+              <!-- Dashboard actions -->
+              <button
+                type="button"
+                class="panel-menu-item"
+                id="comm-export-pptx"
+              >
+                Export Dashboard
+              </button>
+
+              <hr class="panel-menu-divider" />
+
+              <!-- Panel toggles -->
+              <button
+                type="button"
+                class="panel-toggle active"
+                id="comm-map-toggle"
+                data-target="comm-card-overlay"
+              >
+                Overlays Map
+              </button>
+
+              <button type="button" class="panel-toggle active" data-target="comm-card-location">
+                Location
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-spacewx">
+                Space Weather
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-weather">
+                Local Weather
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-gps">
+                GPS &amp; PNT
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-hf">
+                HF Propagation
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-satcom">
+                SATCOM Weather
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-satangles">
+                SATCOM Planner
+              </button>
+              <button type="button" class="panel-toggle active" data-target="comm-card-cellular">
+                Cellular Coverage
+              </button>
+
+              <button type="button" class="panel-toggle-all" id="comm-panel-toggle-all">
+                All On/Off
+              </button>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="comm-planner-view">
+      <div class="comm-layout-grid">
+        <article id="comm-card-location" class="comm-card">
+          <div class="comm-card-header">
+            <div class="comm-card-title"><span>Location</span></div>
+            <div class="comm-card-meta" id="comm-location-status">No location selected</div>
+          </div>
+          <div class="comm-card-body">
+            <div class="comm-location-tabs">
+              <button type="button" class="location-mode-tab active" data-mode="search">Search</button>
+              <button type="button" class="location-mode-tab" data-mode="mgrs">MGRS</button>
+              <button type="button" class="location-mode-tab" data-mode="latlon">Lat/Long</button>
+              <button type="button" class="location-mode-tab" data-mode="maiden">Grid</button>
+            </div>
+            <div id="comm-location-input-area" class="comm-location-input-area"></div>
+            <div class="comm-location-footer">
+              <div class="comm-recent-wrapper">
+                <div class="comm-recent-header">
+                  <span class="comm-recent-label">Recent</span>
+                  <button type="button" id="comm-clear-recents" class="comm-recent-clear" aria-label="Clear recent locations">Clear</button>
+                </div>
+                <div id="comm-recent-list" class="comm-recent-list"></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article id="comm-card-spacewx" class="comm-card">
+          <div class="comm-card-header">
+            <div class="comm-card-title"><span>Space Weather</span></div>
+            <div class="comm-card-meta" id="comm-spacewx-meta"></div>
+          </div>
+          <div class="comm-card-body" id="comm-spacewx-body">
+            <p class="comm-placeholder">
+              Global space-weather scales (R/S/G) and Kp index will appear here.
+            </p>
+          </div>
+        </article>
+
+        <article id="comm-card-overlay" class="comm-card comm-span-2">
+          <div class="comm-card-header">
+            <div class="comm-card-title"><span>Operational Overlays</span></div>
+            <div class="comm-card-status"><span id="comm-overlay-status">off</span></div>
+          </div>
+          <div class="comm-card-body" id="comm-overlay-body">
+            <p class="comm-placeholder">Toggle the overlays map to view weather, towers, and critical infrastructure.</p>
+          </div>
+        </article>
+
+        <article id="comm-card-weather" class="comm-card comm-span-2">
+          <div class="comm-card-header">
+            <div class="comm-card-title"><span>Local Weather</span></div>
+            <div class="comm-card-meta" id="comm-weather-meta">Select a location</div>
+          </div>
+          <div class="comm-card-body" id="comm-weather-body">
+            <p class="comm-placeholder">
+              Detailed weather for the selected location will appear here.
+            </p>
+          </div>
+        </article>
+
+        <article id="comm-card-gps" class="comm-card">
+          <div class="comm-card-header">
+            <div class="comm-card-title"><span>GPS &amp; PNT</span></div>
+            <div class="comm-card-status"><span id="comm-gps-status">n/a</span></div>
+          </div>
+          <div class="comm-card-body" id="comm-gps-body">
+            <p class="comm-placeholder">
+              GPS/GNSS health, jamming, and constellation availability will appear here.
+            </p>
+          </div>
+        </article>
+
+        <article id="comm-card-hf" class="comm-card">
+          <div class="comm-card-header">
+            <div class="comm-card-title"><span>HF Propagation</span></div>
+            <div class="comm-card-status"><span id="comm-hf-status">n/a</span></div>
+          </div>
+          <div class="comm-card-body" id="comm-hf-body">
+            <p class="comm-placeholder">
+              HF band recommendations and NVIS assessment will appear here.
+            </p>
+          </div>
+        </article>
+
+        <article id="comm-card-satcom" class="comm-card">
+          <div class="comm-card-header">
+            <div class="comm-card-title"><span>SATCOM Weather</span></div>
+            <div class="comm-card-status"><span id="comm-sat-status">n/a</span></div>
+          </div>
+          <div class="comm-card-body" id="comm-sat-body">
+            <p class="comm-placeholder">
+              SATCOM band status and weather-driven guidance will appear here.
+            </p>
+          </div>
+        </article>
+
+        <article id="comm-card-satangles" class="comm-card">
+          <div class="comm-card-header">
+            <div class="comm-card-title"><span>SATCOM Planner</span></div>
+            <div class="comm-card-status"><span id="comm-satla-status">n/a</span></div>
+          </div>
+          <div class="comm-card-body" id="comm-satla-body">
+            <p class="comm-placeholder">
+              Per-satellite azimuth, elevation, and polarization data will appear here.
+            </p>
+          </div>
+        </article>
+
+        <article id="comm-card-cellular" class="comm-card">
+          <div class="comm-card-header">
+            <div class="comm-card-title"><span>Cellular Coverage</span></div>
+            <div class="comm-card-status"><span id="comm-cell-status">n/a</span></div>
+          </div>
+          <div class="comm-card-body" id="comm-cell-body">
+            <p class="comm-placeholder">
+              Carrier footprint, technologies, and reliability assessment will appear here.
+            </p>
+          </div>
+        </article>
+
+        <div id="step-status-panel" class="comm-card"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Mobile info-bar ticker -->
+  <div id="info-bar-mobile">
+    <div id="info-bar-mobile-inner"></div>
+  </div>
+
+  <!-- Core + config -->
+  <script src="/js/russelltv-core.js"></script>
+  <script src="/config/time-config.js"></script>
+  <script src="/config/weather-config.js"></script>
+  <script src="/config/space-weather-config.js"></script>
+  <script src="/config/news-config.js"></script>
+
+  <!-- Space weather + comm planner modules -->
+  <script src="/js/space-weather.js"></script>
+  <script src="/js/info-bar.js"></script>
+  <script src="/js/feature-toggles.js"></script>
+  <script src="/js/propagation-panel.js"></script>
+  <script src="/js/gunny-chat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PptxGenJS/3.10.1/pptxgen.bundle.js" referrerpolicy="no-referrer"></script>
+  <script>
+    window.RADAR_PROXY_BASE = '/wx-tiles/{z}/{x}/{y}.png';
+    window.SOLAR_CYCLE_ENDPOINT = '/api/spaceweather/json/solar-cycle/observed-solar-cycle.json';
+  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/js/comm-declination.js"></script>
+  <script src="/js/comm-planner.js"></script>
+  <script src="/js/comm-lookangles.js"></script>
+  <script src="/js/comm-cellular.js"></script>
+  <script src="/js/step-status-panel.js"></script>
+  <script src="/js/comm-map.js"></script>
+  <script src="/js/comm-sat.js"></script>
+
+  <!-- Brand click mailto handler -->
+  <script>
+    (function () {
+      const brandButton = document.getElementById('rtv-brand-button');
+      if (!brandButton) return;
+
+      brandButton.addEventListener('click', () => {
+        const email = 'mike@russellmarine.tech';
+        const subject = 'Russell TV';
+        const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+        window.location.href = mailtoUrl;
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -18,6 +18,8 @@
   let historyTimer = null;
   let authPollTimer = null;
   let authRequired = false;
+  let userPinnedToBottom = true;
+  let lastHistoryKey = null;
 
   // ---------- Styles ----------
   function injectStyles() {
@@ -423,9 +425,28 @@
     if (typingEl) typingEl.style.display = 'none';
   }
 
-  function scrollToBottom() {
-    if (!messagesEl) return;
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+  function isNearBottom(el, threshold = 40) {
+    if (!el) return true;
+    return (el.scrollHeight - el.scrollTop - el.clientHeight) <= threshold;
+  }
+
+  function getMsgKey(m, idx) {
+    if (!m) return 'idx-' + idx;
+    return (
+      m.id ||
+      m.messageId ||
+      m.mid ||
+      m.ts ||
+      m.timestamp ||
+      m.created_at ||
+      m.createdAt ||
+      ('idx-' + idx)
+    );
+  }
+
+  function scrollToBottom(force = false) {
+    // Autoscroll disabled; user controls scroll position.
+    return;
   }
 
   function formatTimestamp(ts) {
@@ -494,8 +515,19 @@
         });
       }
 
-      scrollToBottom();
-      if (!silent) clearStatus();
+      if (raw.length > 0) {
+        const last = raw[raw.length - 1];
+        lastHistoryKey = getMsgKey(last, raw.length - 1);
+      } else {
+        lastHistoryKey = null;
+      }
+
+      if (!silent) {
+        scrollToBottom(true);
+        clearStatus();
+      } else {
+        clearStatus();
+      }
     } catch (err) {
       console.error('[GunnyChat] history error', err);
       if (!silent) {
@@ -504,15 +536,73 @@
     }
   }
 
+
+  async function pollHistoryIncremental() {
+    try {
+      const data = await apiJson('/rtv/history');
+      if (!messagesEl) return;
+      const raw = (data && data.messages) || [];
+      if (!raw.length) return;
+
+      // If we don't yet know what we've seen, do a full silent load once.
+      if (!lastHistoryKey) {
+        await loadHistory(true);
+        return;
+      }
+
+      // Find the last message we've already rendered.
+      let matchIndex = -1;
+      for (let i = raw.length - 1; i >= 0; i--) {
+        const key = getMsgKey(raw[i], i);
+        if (key === lastHistoryKey) {
+          matchIndex = i;
+          break;
+        }
+      }
+
+      // If we can't find our last key, history changed in a non-append way: full reload.
+      if (matchIndex === -1) {
+        await loadHistory(true);
+        return;
+      }
+
+      const newMessages = raw.slice(matchIndex + 1);
+      if (!newMessages.length) return;
+
+      let idx = matchIndex + 1;
+      for (const m of newMessages) {
+        const text = m.text || m.markdown || m.content || '';
+        if (!text) {
+          idx++;
+          continue;
+        }
+
+        const role = m.role || '';
+        const fromGunny = role === 'assistant';
+        const fromMe = !fromGunny && role === 'user';
+
+        renderMessage({
+          text,
+          fromMe,
+          fromGunny,
+          timestamp: m.timestamp || m.ts || m.createdAt || m.created_at,
+        });
+
+        lastHistoryKey = getMsgKey(m, idx);
+        idx++;
+      }
+    } catch (err) {
+      console.error('[GunnyChat] incremental history error', err);
+    }
+  }
+
   function startHistoryPolling() {
     if (historyTimer) {
       clearInterval(historyTimer);
       historyTimer = null;
     }
-    historyTimer = setInterval(() => {
-      if (!isOpen) return;
-      loadHistory(true);
-    }, 10000);
+    // History polling disabled: no auto-refresh to avoid scroll jitter under proxies.
+    console.log('[GunnyChat] history polling disabled (no auto-refresh)');
   }
 
   // ---------- Sending ----------
@@ -523,7 +613,7 @@
 
     // Local echo
     renderMessage({ text, fromMe: true, timestamp: Date.now() });
-    scrollToBottom();
+    scrollToBottom(true);
     inputEl.value = '';
 
     showTyping();
@@ -547,7 +637,7 @@
           fromGunny: true,
           timestamp: resp.timestamp || Date.now(),
         });
-        scrollToBottom();
+        // Do not force scroll on Gunny replies; let the user control position
       }
 
       clearStatus();
@@ -703,6 +793,12 @@
     loginEl    = panelEl.querySelector('.gunny-chat-login');
     loginBtnEl = panelEl.querySelector('.gunny-chat-login-btn');
 
+    if (messagesEl) {
+      messagesEl.addEventListener('scroll', () => {
+        userPinnedToBottom = isNearBottom(messagesEl);
+      });
+    }
+
     const closeBtn = panelEl.querySelector('.gunny-chat-close');
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
@@ -715,6 +811,7 @@
     }
 
     const headerEl = panelEl.querySelector('.gunny-chat-header');
+
     makeDraggable(panelEl, headerEl);
     makeResizable(panelEl);
 
