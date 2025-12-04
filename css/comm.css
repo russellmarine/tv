@@ -2653,3 +2653,104 @@ main {
   0%, 100% { text-shadow: 0 0 4px rgba(255,255,255,0.25); }
   50%      { text-shadow: 0 0 8px rgba(255,255,255,0.55); }
 }
+
+
+/* STEP & Teleport card – compact layout */
+.step-status-card .comm-card-body {
+  font-size: 0.8rem;
+}
+
+.step-status-card .step-status-table {
+  font-size: 0.8rem;
+}
+
+.step-status-card .step-status-main-cell {
+  padding: 0.08rem 0;
+}
+
+.step-status-card .step-status-line {
+  padding: 0.26rem 0.55rem;
+}
+
+.step-status-card .step-status-name {
+  font-size: 0.82rem;
+}
+
+.step-status-card .step-status-wx {
+  font-size: 0.78rem;
+  gap: 0.35rem;
+}
+
+.step-status-card .step-wx-emoji {
+  font-size: 0.9rem;
+}
+
+/* STEP & Teleport status card — full row impact styling */
+
+.step-status-card .step-status-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+
+.step-status-row {
+  height: 34px;
+}
+
+.step-status-main-cell {
+  padding: 0;
+}
+
+.step-status-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.7rem;
+  border-radius: 14px;
+  font-size: 0.85rem;
+  gap: 0.45rem;
+  background: rgba(0,0,0,0.25);
+}
+
+/* Impact band colors */
+.step-impact-green .step-status-line {
+  background: rgba(42, 110, 42, 0.35);
+  border: 1px solid rgba(42, 255, 42, 0.35);
+}
+
+.step-impact-yellow .step-status-line {
+  background: rgba(160, 110, 0, 0.25);
+  border: 1px solid rgba(255, 190, 0, 0.4);
+}
+
+.step-impact-red .step-status-line {
+  background: rgba(160, 20, 20, 0.25);
+  border: 1px solid rgba(255, 40, 40, 0.35);
+}
+
+.step-status-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+/* Weather icons/text */
+.step-wx-emoji {
+  font-size: 1.05rem;
+}
+
+.step-wx-text,
+.step-wx-wind {
+  white-space: nowrap;
+  opacity: 0.9;
+  font-size: 0.8rem;
+}
+
+/* Footer */
+.step-status-footer {
+  display: flex;
+  justify-content: space-between;
+  opacity: 0.6;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem 0.45rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
