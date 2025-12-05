@@ -7,18 +7,19 @@
   const API_PROXY = '/api/n2yo';
   const SAT_CATALOG_URL = '/weather/sat/catalog';
   const MIN_ELEV_FILTER = 5;
-  const CONSTELLATION_ORDER = ['aehf', 'wgs', 'muos', 'intelsat', 'eutelsat', 'ses', 'telesat', 'mena', 'asia'];
+  const CONSTELLATION_ORDER = ['aehf', 'wgs', 'muos', 'coalition_mil', 'intelsat', 'eutelsat', 'ses', 'telesat', 'mena', 'asia'];
 
   const CONSTELLATIONS = {
-    wgs: { name: 'WGS (Wideband Global)', band: 'X/Ka', satellites: [{ id: 32258, name: 'WGS-1' }, { id: 33055, name: 'WGS-2' }, { id: 39168, name: 'WGS-5' }, { id: 42075, name: 'WGS-9' }] },
-    aehf: { name: 'AEHF (Protected)', band: 'EHF', satellites: [{ id: 39256, name: 'AEHF-3' }, { id: 43651, name: 'AEHF-4' }, { id: 46757, name: 'AEHF-6' }] },
-    muos: { name: 'MUOS (Narrowband)', band: 'UHF', satellites: [{ id: 38093, name: 'MUOS-1' }, { id: 40374, name: 'MUOS-3' }, { id: 41622, name: 'MUOS-5' }] },
-    intelsat: { name: 'Intelsat', band: 'C/Ku', satellites: [{ id: 42950, name: 'IS 37e' }, { id: 40874, name: 'IS 34' }] },
-    eutelsat: { name: 'Eutelsat', band: 'Ku/Ka', satellites: [{ id: 40875, name: 'E 8WB' }, { id: 39163, name: 'E 7B' }] },
-    ses: { name: 'SES/Astra', band: 'C/Ku/Ka', satellites: [{ id: 41382, name: 'SES-10' }, { id: 43157, name: 'SES-14' }] },
-    telesat: { name: 'Telesat', band: 'C/Ku', satellites: [{ id: 42951, name: 'Telstar 19V' }, { id: 26824, name: 'Telstar 11N' }] },
-    mena: { name: 'MENA Regional', band: 'C/Ku/Ka', satellites: [{ id: 37777, name: 'Arabsat 5C' }, { id: 37777, name: 'Arabsat 5C' }] },
-    asia: { name: 'Asia-Pacific', band: 'C/Ku', satellites: [{ id: 40425, name: 'JCSAT-14' }, { id: 43875, name: 'Apstar 5C' }] }
+    wgs: { name: 'WGS (Wideband Global)', band: 'X/Ka' },
+    aehf: { name: 'AEHF (Protected)', band: 'EHF' },
+    muos: { name: 'MUOS (Narrowband)', band: 'UHF' },
+    coalition_mil: { name: 'Coalition MILSATCOM', band: 'mixed' },
+    intelsat: { name: 'Intelsat', band: 'C/Ku' },
+    eutelsat: { name: 'Eutelsat', band: 'Ku/Ka' },
+    ses: { name: 'SES/Astra', band: 'C/Ku/Ka' },
+    telesat: { name: 'Telesat', band: 'C/Ku' },
+    mena: { name: 'MENA Regional', band: 'C/Ku/Ka' },
+    asia: { name: 'Asia-Pacific', band: 'C/Ku' }
   };
 
   const FALLBACK = {
