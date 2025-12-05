@@ -942,6 +942,7 @@ main {
 }
 
 .spacewx-kp-row .status {
+  color: #fff;
   opacity: 0.85;
   padding: 0.2rem 0.45rem;
   border-radius: 8px;
