@@ -1421,7 +1421,7 @@
     const g = data?.scales?.G || 0;
     const kp = data?.kpIndex || 0;
 
-    const kpScore = kp >= 7 ? 4 : kp >= 6 ? 3 : kp >= 5 ? 2 : kp >= 4 ? 1 : 0;
+    const kpScore = kp >= 7 ? 4 : kp >= 6 ? 3 : kp >= 5 ? 2 : kp >= 4 ? 2 : 0;
     const severityScore = Math.max(r, s, g, kpScore);
 
     if (severityScore >= 4) {
@@ -1696,11 +1696,11 @@
     const meta = $('#comm-spacewx-meta');
     if (!body) return;
 
-    const kpColor = data.kpIndex >= 5 ? '#ff8800' : (data.kpIndex >= 4 ? '#ffcc00' : '#44cc44');
+    const kpColor = data.kpIndex >= 6 ? '#ff4444' : data.kpIndex >= 5 ? '#ff8800' : data.kpIndex >= 4 ? '#ffcc00' : data.kpIndex >= 3 ? '#88cc44' : '#44cc44';
 
     const updated = window.RussellTV.SpaceWeather.getLastUpdate();
     const updatedText = updated ? 'Last Updated: ' + formatUserStamp(updated) + ' (local) • ' + formatUtcStamp(updated) + 'Z' : 'Live NOAA SWPC';
-    const kpCondition = data.kpIndex >= 5 ? 'Storm' : data.kpIndex >= 4 ? 'Unsettled' : 'Quiet';
+    const kpCondition = data.kpIndex >= 6 ? 'Storm/Severe' : data.kpIndex >= 5 ? 'Minor storm' : data.kpIndex >= 4 ? 'Active' : data.kpIndex >= 3 ? 'Unsettled' : 'Quiet';
 
     const spacewxOverall = getSpacewxOverall(data);
     const scaleLinks = {
