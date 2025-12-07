@@ -45,7 +45,11 @@
     { name: 'Partner MILSATCOM', orbit: 'GEO', band: 'X/Ka/UHF', use: 'Coalition', status: 'severity-fair', note: 'Skynet/Syracuse/Sicral' }
   ];
 
-  let selectedConstellations = new Set(CONSTELLATION_ORDER.filter(key => !!CONSTELLATIONS[key]));
+  const DEFAULT_SELECTED_CONSTELLATIONS = ['wgs', 'aehf', 'muos'];
+
+  let selectedConstellations = new Set(
+    DEFAULT_SELECTED_CONSTELLATIONS.filter(key => !!CONSTELLATIONS[key])
+  );
   let hideBelowFive = true;
   let lastLocation = null;
   let constellationData = [];

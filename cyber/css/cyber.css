@@ -1,0 +1,877 @@
+/* === Cyber Dashboard Layout & Theme === */
+
+/* Top bar (similar vibe to comm header) */
+.rtv-topbar {
+  background: rgba(0, 0, 0, 0.86);
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  box-sizing: border-box;
+}
+
+.rtv-topbar-left,
+.rtv-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Brand / logo */
+.rtv-logo-link {
+  text-decoration: none;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.rtv-logo-main {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 170, 90, 0.95);
+  text-shadow:
+    0 0 6px rgba(255, 80, 0, 0.6),
+    0 0 14px rgba(255, 60, 0, 0.55);
+}
+
+.rtv-logo-sub {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: rgba(255, 225, 200, 0.9);
+  opacity: 0.9;
+}
+
+/* Generic pill buttons used in header/menu */
+.rtv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.32rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 190, 140, 0.85);
+  background: linear-gradient(
+    145deg,
+    rgba(35, 14, 0, 0.96),
+    rgba(90, 40, 0, 0.96)
+  );
+  color: #ffe6cc;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.08s ease;
+}
+
+.rtv-btn:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(55, 22, 0, 0.98),
+    rgba(110, 48, 0, 0.98)
+  );
+  border-color: rgba(255, 210, 160, 0.95);
+  color: #ffd9b0;
+  transform: translateY(-1px);
+}
+
+.rtv-btn-pill { /* alias – already pill-shaped */ }
+.rtv-btn-ghost {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 190, 140, 0.7);
+}
+
+/* Menu button */
+.rtv-btn-menu {
+  min-width: 120px;
+}
+
+/* Menu dropdown */
+.rtv-menu {
+  position: relative;
+}
+
+.rtv-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  min-width: 210px;
+  max-width: 260px;
+  padding: 0.45rem 0.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 200, 140, 0.75);
+  background: radial-gradient(circle at 15% 0%, rgba(255, 190, 120, 0.18), transparent 55%),
+              rgba(8, 4, 0, 0.97);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.9),
+    0 0 14px rgba(255, 150, 80, 0.3);
+  display: none;
+  flex-direction: column;
+  gap: 0.25rem;
+  z-index: 1500;
+}
+
+.rtv-menu-open {
+  display: flex;
+}
+
+.rtv-menu-item {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 190, 140, 0.85);
+  background: linear-gradient(
+    145deg,
+    rgba(35, 14, 0, 0.96),
+    rgba(90, 40, 0, 0.96)
+  );
+  color: #ffe6cc;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.08s ease;
+}
+
+.rtv-menu-item:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(55, 22, 0, 0.98),
+    rgba(110, 48, 0, 0.98)
+  );
+  border-color: rgba(255, 210, 160, 0.95);
+  transform: translateY(-1px);
+}
+
+/* === Meta strip === */
+
+#cyber-main {
+  padding: 1.1rem 1.3rem 2rem;
+  box-sizing: border-box;
+  min-height: 100vh;
+}
+
+#cyber-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+}
+
+#cyber-last-update,
+#cyber-data-sources {
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 200, 150, 0.35);
+}
+
+/* Posture pill */
+.cyber-status-pill {
+  padding: 0.32rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+}
+
+.cyber-status-normal {
+  background: linear-gradient(135deg, rgba(30, 110, 40, 0.8), rgba(8, 25, 10, 0.9));
+  border-color: rgba(120, 255, 170, 0.6);
+  color: #dfffea;
+}
+
+.cyber-status-elevated {
+  background: linear-gradient(135deg, rgba(150, 110, 0, 0.8), rgba(35, 20, 0, 0.9));
+  border-color: rgba(255, 210, 120, 0.7);
+  color: #ffeec9;
+}
+
+.cyber-status-critical {
+  background: linear-gradient(135deg, rgba(160, 40, 20, 0.8), rgba(40, 8, 4, 0.9));
+  border-color: rgba(255, 120, 120, 0.8);
+  color: #ffe3dd;
+}
+
+/* === Panel layout (2 columns like comm dashboard) === */
+
+#cyber-dashboard {
+  width: min(100%, calc(100% - 0.5rem));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.9rem;
+  align-items: flex-start;
+}
+
+.cyber-column.comm-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.cyber-column-title {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 220, 180, 0.9);
+  margin: 0 0 0.15rem;
+}
+
+/* Cards – reuse comm look but global for cyber */
+.comm-card.cyber-card {
+  background: linear-gradient(135deg, rgba(10, 5, 0, 0.86), rgba(25, 12, 0, 0.9));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 140, 0, 0.5);
+  padding: 0.75rem 1rem 0.9rem;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.9),
+    0 0 18px rgba(255, 120, 0, 0.35);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Card header / body / footer */
+.comm-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(255, 140, 0, 0.45);
+}
+
+.comm-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #ffd39b;
+}
+
+.comm-card-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Threat severity badge colors */
+#cyber-threatmap-severity.severity-low {
+  background: linear-gradient(135deg, rgba(40, 110, 50, 0.8), rgba(10, 25, 12, 0.85));
+  border-color: rgba(120, 255, 170, 0.5);
+}
+
+#cyber-threatmap-severity.severity-elevated {
+  background: linear-gradient(135deg, rgba(150, 110, 0, 0.85), rgba(40, 24, 0, 0.88));
+  border-color: rgba(255, 210, 120, 0.6);
+}
+
+#cyber-threatmap-severity.severity-high {
+  background: linear-gradient(135deg, rgba(200, 120, 30, 0.9), rgba(50, 20, 0, 0.9));
+  border-color: rgba(255, 190, 120, 0.75);
+}
+
+#cyber-threatmap-severity.severity-critical {
+  background: linear-gradient(135deg, rgba(170, 40, 35, 0.9), rgba(45, 6, 4, 0.95));
+  border-color: rgba(255, 120, 120, 0.8);
+}
+
+#cyber-threatmap-severity.severity-unknown {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.comm-card-body {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.comm-card-footer {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 200, 150, 0.25);
+  font-size: 0.78rem;
+  color: rgba(255, 220, 180, 0.9);
+}
+
+/* Threat map placeholder box */
+.cyber-map-placeholder {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 190, 140, 0.45);
+  background: radial-gradient(circle at 20% 0%, rgba(255, 160, 80, 0.15), transparent 60%),
+              rgba(0, 0, 0, 0.55);
+  padding: 1.2rem 0.9rem;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: rgba(255, 230, 200, 0.9);
+}
+
+/* Key legend */
+.cyber-key-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  color: rgba(255, 220, 190, 0.9);
+}
+
+.cyber-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+}
+
+.cyber-dot-low { background: #37c76a; box-shadow: 0 0 8px rgba(55, 200, 120, 0.8); }
+.cyber-dot-med { background: #ffce5a; box-shadow: 0 0 8px rgba(255, 210, 100, 0.8); }
+.cyber-dot-high { background: #ff5a5a; box-shadow: 0 0 8px rgba(255, 110, 110, 0.9); }
+
+/* Generic item lists for incidents, KEV, etc. */
+.cyber-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.cyber-item {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  padding: 0.35rem 0.45rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 190, 140, 0.22);
+}
+
+.cyber-item-main {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.cyber-item-title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #ffe3c2;
+}
+
+.cyber-item-meta {
+  font-size: 0.78rem;
+  opacity: 0.85;
+  color: #ffdaba;
+}
+
+/* Severity tags for incidents/BGP/etc. */
+.cyber-tag {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  white-space: nowrap;
+}
+
+.cyber-tag-low {
+  background: rgba(40, 110, 50, 0.8);
+  border-color: rgba(120, 255, 170, 0.6);
+}
+
+.cyber-tag-med {
+  background: rgba(150, 110, 0, 0.85);
+  border-color: rgba(255, 210, 120, 0.7);
+}
+
+.cyber-tag-high {
+  background: rgba(160, 60, 0, 0.9);
+  border-color: rgba(255, 180, 120, 0.75);
+}
+
+/* Net health / cloud list tweaks */
+#cyber-nethealth-list .cyber-item,
+#cyber-cloud-list .cyber-item {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Footer */
+#cyber-footer {
+  margin-top: 1.5rem;
+  padding: 0.5rem 1.2rem 1rem;
+  font-size: 0.78rem;
+  color: rgba(255, 220, 190, 0.9);
+  text-align: left;
+}
+
+/* Responsive */
+@media (min-width: 900px) {
+  #cyber-dashboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .rtv-topbar {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+/* === Threat heatmap bar layout === */
+
+.cyber-heatmap-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.cyber-heat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 3.4fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.cyber-heat-country {
+  font-weight: 600;
+  color: #ffe3c4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cyber-heat-bar-outer {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 190, 140, 0.25);
+  overflow: hidden;
+}
+
+.cyber-heat-bar-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(255, 150, 80, 0.9), rgba(255, 80, 0, 0.9));
+  box-shadow: 0 0 10px rgba(255, 120, 0, 0.7);
+}
+
+.cyber-heat-percent {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: #ffdcb3;
+}
+
+
+/* === Mission-Relevant Focus (under Threat card) === */
+.cyber-focus-box {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cyber-focus-title {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.9;
+  margin: 0 0 0.35rem;
+}
+
+.cyber-focus-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cyber-focus-item {
+  border-radius: 12px;
+  padding: 0.4rem 0.6rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 200, 140, 0.25);
+  font-size: 0.82rem;
+}
+
+.cyber-focus-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
+}
+
+.cyber-focus-label {
+  font-weight: 600;
+}
+
+.cyber-focus-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  letter-spacing: 0.08em;
+}
+
+.cyber-focus-action {
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Severity colors */
+.cyber-focus-critical .cyber-focus-badge {
+  background: linear-gradient(135deg, rgba(180, 20, 20, 0.9), rgba(80, 0, 0, 0.9));
+  border-color: rgba(255, 150, 150, 0.9);
+}
+
+.cyber-focus-high .cyber-focus-badge {
+  background: linear-gradient(135deg, rgba(200, 110, 20, 0.9), rgba(70, 20, 0, 0.9));
+  border-color: rgba(255, 200, 150, 0.9);
+}
+
+.cyber-focus-medium .cyber-focus-badge {
+  background: linear-gradient(135deg, rgba(200, 160, 60, 0.85), rgba(60, 35, 0, 0.9));
+  border-color: rgba(255, 220, 160, 0.8);
+}
+
+.cyber-focus-low .cyber-focus-badge {
+  background: linear-gradient(135deg, rgba(90, 120, 70, 0.85), rgba(20, 35, 15, 0.9));
+  border-color: rgba(160, 220, 160, 0.8);
+}
+
+/* === Cyber ThreatMap layout === */
+
+.cyber-threatmap-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .cyber-threatmap-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left side – bars */
+
+.cyber-threat-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cyber-threat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) auto;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.cyber-threat-name {
+  white-space: nowrap;
+}
+
+.cyber-threat-bar-wrap {
+  position: relative;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 200, 140, 0.12);
+}
+
+.cyber-threat-bar {
+  position: absolute;
+  inset: 0;
+  width: var(--threat-pct, 0%);
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 120, 40, 0.9),
+    rgba(255, 200, 120, 0.9)
+  );
+  box-shadow: 0 0 10px rgba(255, 140, 60, 0.6);
+}
+
+.cyber-threat-pct {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  text-align: right;
+}
+
+/* Right side – compact mission focus */
+
+.cyber-threatmap-right {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 200, 140, 0.35);
+  background: linear-gradient(135deg,
+    rgba(15, 7, 0, 0.9),
+    rgba(40, 18, 0, 0.9)
+  );
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cyber-mission-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #ffbf80;
+}
+
+.cyber-mission-subtitle {
+  font-size: 0.78rem;
+  opacity: 0.78;
+}
+
+.cyber-mission-list {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.cyber-mission-item {
+  font-size: 0.82rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 200, 140, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* === Cyber Threat Heatmap panel ======================================= */
+
+.cyber-heatmap-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 0.85rem;
+  min-height: 220px;
+}
+
+@media (max-width: 960px) {
+  .cyber-heatmap-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cyber-heatmap-map {
+  position: relative;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 190, 140, 0.55);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(255, 200, 140, 0.16), transparent 60%),
+    radial-gradient(circle at 80% 80%, rgba(255, 120, 40, 0.18), transparent 60%),
+    rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.85);
+}
+
+.cyber-heatmap-world {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.35;
+  mix-blend-mode: soft-light;
+}
+
+/* Dots on the map */
+.cyber-heat-dot {
+  position: absolute;
+  width: var(--dot-size, 20px);
+  height: var(--dot-size, 20px);
+  margin-left: calc(var(--dot-size, 20px) / -2);
+  margin-top: calc(var(--dot-size, 20px) / -2);
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 25%, rgba(255, 240, 210, 0.95), rgba(255, 90, 0, 0.05));
+  box-shadow:
+    0 0 10px rgba(0, 0, 0, 0.85),
+    0 0 26px rgba(255, 120, 0, 0.75);
+  mix-blend-mode: screen;
+  cursor: default;
+  transition: transform 0.12s ease, box-shadow 0.16s ease, opacity 0.12s ease;
+  opacity: 0.9;
+}
+
+.cyber-heat-dot[data-band="low"] {
+  box-shadow:
+    0 0 8px rgba(0, 0, 0, 0.85),
+    0 0 18px rgba(80, 200, 140, 0.65);
+}
+
+.cyber-heat-dot[data-band="med"] {
+  box-shadow:
+    0 0 8px rgba(0, 0, 0, 0.85),
+    0 0 20px rgba(255, 200, 120, 0.7);
+}
+
+.cyber-heat-dot[data-band="hot"] {
+  box-shadow:
+    0 0 10px rgba(0, 0, 0, 0.9),
+    0 0 24px rgba(255, 120, 80, 0.95);
+}
+
+.cyber-heat-dot:hover {
+  transform: translateY(-1px) scale(1.03);
+  opacity: 1;
+}
+
+.cyber-heat-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 0.2rem);
+  white-space: nowrap;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  background: rgba(0, 0, 0, 0.86);
+  border: 1px solid rgba(255, 200, 150, 0.5);
+  color: #ffe4c1;
+  pointer-events: none;
+}
+
+/* Right-hand list */
+
+.cyber-heatmap-list {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+}
+
+.cyber-heat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 2fr) auto;
+  gap: 0.35rem;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.cyber-heat-row-name {
+  font-weight: 600;
+  color: #ffd8ae;
+}
+
+.cyber-heat-row-bar {
+  position: relative;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  border: 1px solid rgba(255, 200, 140, 0.3);
+}
+
+.cyber-heat-row-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(255, 140, 60, 0.3), rgba(255, 80, 0, 0.7));
+  box-shadow: 0 0 10px rgba(255, 120, 0, 0.7);
+}
+
+.cyber-heat-row-pct {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: #ffe6c7;
+  font-weight: 600;
+}
+
+/* Legend + footer */
+
+.cyber-heatmap-legend {
+  margin-top: 0.55rem;
+  font-size: 0.75rem;
+  opacity: 0.78;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.cyber-heatmap-legend .dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.cyber-heatmap-legend .dot::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.cyber-heatmap-legend .dot-low::before {
+  background: #45d48a;
+  color: #45d48a;
+}
+
+.cyber-heatmap-legend .dot-med::before {
+  background: #ffd35e;
+  color: #ffd35e;
+}
+
+.cyber-heatmap-legend .dot-hot::before {
+  background: #ff6a3a;
+  color: #ff6a3a;
+}
+
+.cyber-heatmap-footer {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+/* Loading state */
+.cyber-heatmap-loading {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}

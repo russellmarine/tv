@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RussellTV – Cyber Ops Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Same favicon as main index -->
+  <link rel="icon" href="/favicon.png">
+
+  <!-- Core RussellTV styles (fiery orange theme from main/comm) -->
+  <link rel="stylesheet" href="/css/comm.css">
+  <link rel="stylesheet" href="/cyber/css/cyber.css">
+
+  <!-- Core JS -->
+  <script src="/js/rtv-utils.js" defer></script>
+  <script src="/js/rtv-layout.js" defer></script>
+
+  <script src="/js/info-bar.js"></script>
+
+  <!-- Page-specific JS -->
+  <script src="/cyber/js/panels/threatmap-panel.js" defer></script>
+  <script src="/cyber/js/panels/incidents-panel.js" defer></script>
+  <script src="/cyber/js/panels/kev-panel.js" defer></script>
+  <script src="/cyber/js/panels/nethealth-panel.js" defer></script>
+  <script src="/cyber/js/panels/bgp-panel.js" defer></script>
+  <script src="/cyber/js/panels/cloud-panel.js" defer></script>
+  <script src="/cyber/js/cyber-dashboard.js" defer></script>
+</head>
+<body class="rtv-theme">
+  <header class="rtv-topbar">
+    <div class="rtv-topbar-left">
+      <a href="/" class="rtv-logo-link">
+        <span class="rtv-logo-main">RUSSELL TV</span>
+        <span class="rtv-logo-sub">CYBER OPS</span>
+      </a>
+      <a href="/" class="rtv-btn rtv-btn-pill rtv-btn-ghost" id="btn-back-tv">
+        ⬅ Back to TV
+      </a>
+      <a href="/comm" class="rtv-btn rtv-btn-pill rtv-btn-ghost" id="btn-comm-dash">
+        Comm Dashboard
+      </a>
+    </div>
+
+    <div class="rtv-topbar-right">
+      <div class="rtv-menu">
+        <button class="rtv-btn rtv-btn-pill rtv-btn-menu" id="cyber-menu-btn">
+          ☰ Menu
+        </button>
+        <div class="rtv-menu-dropdown" id="cyber-menu-dropdown">
+          <button class="rtv-menu-item" data-action="export-dashboard">
+            Export Dashboard
+          </button>
+          <button class="rtv-menu-item" data-action="toggle-defensive">
+            Toggle Defensive Panel
+          </button>
+          <button class="rtv-menu-item" data-action="toggle-netops">
+            Toggle NetOps Panel
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="cyber-main">
+    <section id="cyber-meta">
+      <div id="cyber-status-pill" class="cyber-status-pill cyber-status-normal">
+        CYBER POSTURE: NORMAL
+      </div>
+      <div id="cyber-last-update" class="cyber-meta-item">
+        Last Updated: <span data-value="time">–</span>
+      </div>
+      <div id="cyber-data-sources" class="cyber-meta-item">
+        Sources: CISA KEV · MITRE ATT&CK · Shadowserver · Cloudflare Radar · OONI
+      </div>
+    </section>
+
+    <section id="cyber-dashboard" data-layout="masonry">
+      <!-- LEFT COLUMN: DEFENSIVE (SOC / DCO) -->
+      <section id="cyber-defensive" class="cyber-column comm-panel" data-panel-id="defensive">
+        <h2 class="cyber-column-title">Defensive Cyber Operations</h2>
+
+        <article class="comm-card cyber-card" id="cyber-card-threatmap">
+          <header class="comm-card-header">
+            <h3 class="comm-card-title">Global Threat Activity</h3>
+            <span class="comm-card-badge" id="cyber-threatmap-severity">Low</span>
+          </header>
+          <div class="comm-card-body">
+            <div id="cyber-threatmap-placeholder" class="cyber-map-placeholder">
+              <div id="cyber-threatmap-placeholder"></div>
+            </div>
+            <ul id="cyber-threatmap-key" class="cyber-key-list">
+              <li><span class="cyber-dot cyber-dot-low"></span> Low activity</li>
+              <li><span class="cyber-dot cyber-dot-med"></span> Elevated</li>
+              <li><span class="cyber-dot cyber-dot-high"></span> High / Focused</li>
+            </ul>
+          </div>
+          <div id="cyber-threatmap-focus" class="cyber-focus-box">
+            <h4 class="cyber-focus-title">Mission-Relevant Focus</h4>
+            <ul id="cyber-threatmap-focus-list" class="cyber-focus-list"></ul>
+          </div>
+          <footer class="comm-card-footer">
+            <span id="cyber-threatmap-meta">No recent incidents loaded.</span>
+          </footer>
+        </article>
+
+        <article class="comm-card cyber-card" id="cyber-card-incidents">
+          <header class="comm-card-header">
+            <h3 class="comm-card-title">Active Incidents &amp; Alerts</h3>
+          </header>
+          <div class="comm-card-body">
+            <ul id="cyber-incidents-list" class="cyber-list cyber-list-incidents"></ul>
+          </div>
+          <footer class="comm-card-footer">
+            <span>Feed: CERT / CISA / ISACs (public only)</span>
+          </footer>
+        </article>
+
+        <article class="comm-card cyber-card" id="cyber-card-kev">
+          <header class="comm-card-header">
+            <h3 class="comm-card-title">Exploited CVEs (KEV)</h3>
+          </header>
+          <div class="comm-card-body">
+            <ul id="cyber-kev-list" class="cyber-list cyber-list-kev"></ul>
+          </div>
+          <footer class="comm-card-footer">
+            <span>Source: CISA Known Exploited Vulnerabilities</span>
+          </footer>
+        </article>
+      </section>
+
+      <!-- RIGHT COLUMN: NETOPS / CYBERSECURITY -->
+      <section id="cyber-netops" class="cyber-column comm-panel" data-panel-id="netops">
+        <h2 class="cyber-column-title">Cybersecurity &amp; NetOps</h2>
+
+        <article class="comm-card cyber-card" id="cyber-card-nethealth">
+          <header class="comm-card-header">
+            <h3 class="comm-card-title">Global Network Health</h3>
+            <span class="comm-card-badge" id="cyber-nethealth-badge">Stable</span>
+          </header>
+          <div class="comm-card-body">
+            <ul id="cyber-nethealth-list" class="cyber-list cyber-list-nethealth"></ul>
+          </div>
+          <footer class="comm-card-footer">
+            <span>Based on public internet telemetry / outage reports</span>
+          </footer>
+        </article>
+
+        <article class="comm-card cyber-card" id="cyber-card-bgp">
+          <header class="comm-card-header">
+            <h3 class="comm-card-title">BGP Hijacks &amp; Routing Anomalies</h3>
+          </header>
+          <div class="comm-card-body">
+            <ul id="cyber-bgp-list" class="cyber-list cyber-list-bgp"></ul>
+          </div>
+          <footer class="comm-card-footer">
+            <span>Source ideas: BGPStream, RIPE RIS (public)</span>
+          </footer>
+        </article>
+
+        <article class="comm-card cyber-card" id="cyber-card-cloud">
+          <header class="comm-card-header">
+            <h3 class="comm-card-title">Cloud &amp; SaaS Status</h3>
+          </header>
+          <div class="comm-card-body">
+            <ul id="cyber-cloud-list" class="cyber-list cyber-list-cloud"></ul>
+          </div>
+          <footer class="comm-card-footer">
+            <span>Aggregated vendor status (AWS, Azure, O365, Google, etc.)</span>
+          </footer>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <footer id="cyber-footer">
+    <span>RussellTV Cyber Ops – Open Source, Public-Safe Cyber SA</span>
+  </footer>
+
+  <!-- Mobile info-bar ticker -->
+  <div id="info-bar-mobile">
+    <div id="info-bar-mobile-inner"></div>
+  </div>
+
+  <!-- Core + config -->
+  <script src="/js/russelltv-core.js"></script>
+  <script src="/config/time-config.js"></script>
+  <script src="/config/weather-config.js"></script>
+  <script src="/config/space-weather-config.js"></script>
+  <script src="/config/news-config.js"></script>
+
+  <!-- Space weather + comm planner modules -->
+  <script src="/js/space-weather.js"></script>
+  <script src="/js/info-bar.js"></script>
+  <script src="/js/feature-toggles.js"></script>
+  <script src="/js/propagation-panel.js"></script>
+  <script src="/js/gunny-chat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PptxGenJS/3.10.1/pptxgen.bundle.js" referrerpolicy="no-referrer"></script>
+  <script>
+    window.RADAR_PROXY_BASE = '/wx-tiles/{z}/{x}/{y}.png';
+    window.SOLAR_CYCLE_ENDPOINT = '/api/spaceweather/json/solar-cycle/observed-solar-cycle.json';
+  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/js/comm-declination.js"></script>
+  <script src="/js/comm-planner.js"></script>
+  <script src="/js/comm-lookangles.js"></script>
+  <script src="/js/comm-cellular.js"></script>
+  <script src="/js/step-status-panel.js"></script>
+  <script src="/js/comm-map.js"></script>
+  <script src="/js/comm-sat.js"></script>
+
+  <!-- Brand click mailto handler -->
+  <script>
+    (function () {
+      const brandButton = document.getElementById('rtv-brand-button');
+      if (!brandButton) return;
+
+      brandButton.addEventListener('click', () => {
+        const email = 'mike@russellmarine.tech';
+        const subject = 'Russell TV';
+        const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+        window.location.href = mailtoUrl;
+      });
+    })();
+  </script>
+
+</body>
+</html>
