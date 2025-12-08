@@ -1,0 +1,440 @@
+/**
+ * hf.css
+ * Styles for HF Propagation Card
+ */
+
+/* ============================================================
+   Summary Row
+   ============================================================ */
+.hf-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.12), rgba(0, 0, 0, 0.35));
+  border: 1px solid rgba(255, 170, 110, 0.4);
+  border-radius: 12px;
+  margin-bottom: 0.5rem;
+}
+
+.hf-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.hf-summary-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffd7a1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hf-summary-desc {
+  font-size: 0.78rem;
+  color: rgba(255, 230, 200, 0.85);
+  opacity: 0.9;
+}
+
+/* ============================================================
+   Day/Night Indicator
+   ============================================================ */
+.hf-daynight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  min-width: 50px;
+}
+
+.hf-daynight.hf-day {
+  background: linear-gradient(135deg, rgba(255, 200, 100, 0.3), rgba(255, 150, 50, 0.15));
+  border: 1px solid rgba(255, 200, 100, 0.5);
+}
+
+.hf-daynight.hf-night {
+  background: linear-gradient(135deg, rgba(100, 150, 200, 0.3), rgba(50, 100, 150, 0.15));
+  border: 1px solid rgba(100, 150, 200, 0.5);
+}
+
+.hf-daynight-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.9;
+}
+
+.hf-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* ============================================================
+   Solar Indices Row
+   ============================================================ */
+.hf-indices-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.hf-index-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.45rem 0.35rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 170, 110, 0.35);
+  border-radius: 10px;
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.hf-index-card:hover {
+  background: rgba(255, 150, 80, 0.15);
+  border-color: rgba(255, 200, 150, 0.5);
+}
+
+.hf-index-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.75;
+  color: rgba(255, 220, 180, 0.9);
+}
+
+.hf-index-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hf-index-status {
+  font-size: 0.6rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 400px) {
+  .hf-indices-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ============================================================
+   Band Grid Section
+   ============================================================ */
+.hf-section {
+  margin-bottom: 0.65rem;
+}
+
+.hf-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.45rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(255, 200, 150, 0.2);
+}
+
+.hf-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 220, 180, 0.9);
+}
+
+.hf-section-subtitle {
+  font-size: 0.68rem;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.hf-band-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+
+.hf-band-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.45rem 0.3rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.3);
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.hf-band-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.hf-band-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.hf-band-condition {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hf-band-freq {
+  font-size: 0.6rem;
+  opacity: 0.6;
+}
+
+/* Band condition states */
+.hf-band-card.hf-good {
+  background: linear-gradient(135deg, rgba(68, 204, 68, 0.2), rgba(0, 0, 0, 0.35));
+  border-color: rgba(68, 204, 68, 0.5);
+}
+
+.hf-band-card.hf-fair {
+  background: linear-gradient(135deg, rgba(255, 204, 0, 0.2), rgba(0, 0, 0, 0.35));
+  border-color: rgba(255, 204, 0, 0.5);
+}
+
+.hf-band-card.hf-poor {
+  background: linear-gradient(135deg, rgba(255, 136, 68, 0.2), rgba(0, 0, 0, 0.35));
+  border-color: rgba(255, 136, 68, 0.5);
+}
+
+.hf-band-card.hf-closed {
+  background: linear-gradient(135deg, rgba(255, 68, 68, 0.15), rgba(0, 0, 0, 0.4));
+  border-color: rgba(255, 68, 68, 0.4);
+  opacity: 0.7;
+}
+
+.hf-band-card.hf-unknown {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(136, 136, 136, 0.3);
+  opacity: 0.6;
+}
+
+.hf-band-card.hf-muf-closed {
+  position: relative;
+  opacity: 0.5;
+}
+
+.hf-band-card.hf-muf-closed::after {
+  content: 'MUF';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.5rem;
+  padding: 1px 3px;
+  background: rgba(255, 68, 68, 0.8);
+  border-radius: 3px;
+  color: #fff;
+}
+
+@media (max-width: 500px) {
+  .hf-band-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .hf-band-card {
+    padding: 0.35rem 0.2rem;
+  }
+  
+  .hf-band-name {
+    font-size: 0.75rem;
+  }
+  
+  .hf-band-freq {
+    display: none;
+  }
+}
+
+/* ============================================================
+   MUF Section
+   ============================================================ */
+.hf-muf-section {
+  background: linear-gradient(135deg, rgba(100, 150, 200, 0.12), rgba(0, 0, 0, 0.3));
+  border: 1px solid rgba(100, 150, 200, 0.35);
+  border-radius: 12px;
+  padding: 0.65rem;
+}
+
+.hf-muf-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+
+.hf-muf-primary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.hf-muf-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #88ccff;
+  text-shadow: 0 0 10px rgba(100, 180, 255, 0.5);
+}
+
+.hf-muf-unit {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  color: #aaddff;
+}
+
+.hf-muf-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.hf-muf-detail {
+  font-size: 0.72rem;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.hf-muf-detail .label {
+  opacity: 0.7;
+}
+
+.hf-muf-detail .value {
+  color: #aaddff;
+}
+
+.hf-muf-hint {
+  font-size: 0.68rem;
+  margin: 0.4rem 0 0 0;
+  opacity: 0.65;
+  font-style: italic;
+}
+
+/* ============================================================
+   Propagation Notes
+   ============================================================ */
+.hf-notes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.hf-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.hf-note-icon {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.hf-note-text {
+  flex: 1;
+}
+
+.hf-note-warning {
+  background: linear-gradient(135deg, rgba(255, 170, 0, 0.15), rgba(0, 0, 0, 0.25));
+  border: 1px solid rgba(255, 170, 0, 0.35);
+  color: #ffdd88;
+}
+
+.hf-note-good {
+  background: linear-gradient(135deg, rgba(68, 204, 68, 0.12), rgba(0, 0, 0, 0.25));
+  border: 1px solid rgba(68, 204, 68, 0.3);
+  color: #aaffaa;
+}
+
+.hf-note-info {
+  background: linear-gradient(135deg, rgba(100, 150, 200, 0.12), rgba(0, 0, 0, 0.25));
+  border: 1px solid rgba(100, 150, 200, 0.3);
+  color: #aaddff;
+}
+
+/* ============================================================
+   Status Pills
+   ============================================================ */
+.hf-pill-excellent,
+.hf-pill-good {
+  background: linear-gradient(135deg, rgba(68, 204, 68, 0.35), rgba(34, 102, 34, 0.5));
+  border: 1px solid rgba(68, 204, 68, 0.6);
+  color: #aaffaa;
+}
+
+.hf-pill-fair {
+  background: linear-gradient(135deg, rgba(255, 204, 0, 0.3), rgba(128, 102, 0, 0.5));
+  border: 1px solid rgba(255, 204, 0, 0.5);
+  color: #ffee88;
+}
+
+.hf-pill-poor {
+  background: linear-gradient(135deg, rgba(255, 136, 68, 0.3), rgba(128, 68, 34, 0.5));
+  border: 1px solid rgba(255, 136, 68, 0.5);
+  color: #ffcc99;
+}
+
+.hf-pill-very-poor {
+  background: linear-gradient(135deg, rgba(255, 68, 68, 0.3), rgba(128, 34, 34, 0.5));
+  border: 1px solid rgba(255, 68, 68, 0.5);
+  color: #ffaaaa;
+}
+
+/* ============================================================
+   Inline Link Styles
+   ============================================================ */
+#comm-card-hf .inline-link {
+  color: #88bbff;
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(136, 187, 255, 0.4);
+  transition: all 0.15s ease;
+}
+
+#comm-card-hf .inline-link:hover {
+  color: #aaddff;
+  border-bottom-color: rgba(170, 221, 255, 0.6);
+}
+
+/* ============================================================
+   Responsive Adjustments
+   ============================================================ */
+@media (max-width: 350px) {
+  .hf-summary-row {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .hf-muf-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .hf-indices-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .hf-band-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
