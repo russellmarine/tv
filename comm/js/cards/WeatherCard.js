@@ -1,6 +1,6 @@
 /**
  * WeatherCard.js
- * Local weather card with current conditions, hourly charts, and 10-day forecast
+ * Local weather card with current conditions, hourly charts, historical averages, and 9-day forecast
  * Listens for: 'comm:location-changed'
  */
 
@@ -15,6 +15,7 @@
   const STORAGE_KEY = 'commWeatherCache';
   const WEATHER_PROXY = '/weather';
   const FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
+  const ARCHIVE_API = 'https://archive-api.open-meteo.com/v1/archive';
 
   // SVG Icons
   const ICONS = {
@@ -23,9 +24,10 @@
       <path d="M9 14a3 3 0 0 0 3 3" stroke="#a7f0ff" stroke-width="1.5" stroke-linecap="round"/>
     </svg>`,
     pressure: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 3v4M12 17v4M3 12h4M17 12h4" stroke="#ffc46b" stroke-width="1.5" stroke-linecap="round"/>
-      <circle cx="12" cy="12" r="6" stroke="#ffdba3" stroke-width="1.5" fill="rgba(255,196,107,0.15)"/>
-      <path d="M12 9v3l2 1" stroke="#ffe5a3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="12" r="8" stroke="#ffc46b" stroke-width="1.5" fill="rgba(255,196,107,0.1)"/>
+      <path d="M12 4v2M12 18v2M4 12h2M18 12h2" stroke="#ffdba3" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M12 12l4-3" stroke="#ffe5a3" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="12" cy="12" r="1.5" fill="#ffc46b"/>
     </svg>`,
     wind: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M4 10h12a3 3 0 1 0-3-3" stroke="#7fd3ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -71,6 +73,7 @@
       this.currentWeather = null;
       this.forecast = null;
       this.hourly = null;
+      this.historical = null;
       this.location = null;
       this.clockInterval = null;
     }
@@ -107,15 +110,17 @@
       this.showLoading();
 
       try {
-        const [weather, forecastData] = await Promise.all([
+        const [weather, forecastData, historical] = await Promise.all([
           this.fetchCurrentWeather(lat, lon),
-          this.fetchForecastAndHourly(lat, lon)
+          this.fetchForecastAndHourly(lat, lon),
+          this.fetchHistoricalAverages(lat, lon)
         ]);
 
         if (weather) {
           this.currentWeather = weather;
           this.forecast = forecastData?.daily || null;
           this.hourly = forecastData?.hourly || null;
+          this.historical = historical;
           this.cacheData();
           this.render();
           Events.emit('weather:data-updated', { weather, forecast: this.forecast, hourly: this.hourly });
@@ -135,7 +140,7 @@
     async fetchForecastAndHourly(lat, lon) {
       try {
         const unitParam = this.tempUnit === 'C' ? 'celsius' : 'fahrenheit';
-        const url = `${FORECAST_API}?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&hourly=temperature_2m,precipitation_probability,precipitation&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=11&timezone=auto`;
+        const url = `${FORECAST_API}?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&hourly=temperature_2m,precipitation_probability,precipitation&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=10&timezone=auto`;
         const res = await fetch(url);
         if (!res.ok) return null;
         const data = await res.json();
@@ -150,6 +155,65 @@
       }
     }
 
+    async fetchHistoricalAverages(lat, lon) {
+      try {
+        const today = new Date();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const currentYear = today.getFullYear();
+        
+        // Get data for same date over last 10 years
+        const years = [];
+        for (let i = 1; i <= 10; i++) {
+          years.push(currentYear - i);
+        }
+
+        const unitParam = this.tempUnit === 'C' ? 'celsius' : 'fahrenheit';
+        
+        // Fetch all years in parallel
+        const promises = years.map(async (year) => {
+          const dateStr = `${year}-${month}-${day}`;
+          const url = `${ARCHIVE_API}?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,temperature_2m_min&temperature_unit=${unitParam}&timezone=auto`;
+          try {
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return {
+              year,
+              high: data.daily?.temperature_2m_max?.[0],
+              low: data.daily?.temperature_2m_min?.[0]
+            };
+          } catch {
+            return null;
+          }
+        });
+
+        const results = await Promise.all(promises);
+        const validResults = results.filter(r => r && r.high != null && r.low != null);
+
+        if (validResults.length === 0) return null;
+
+        // Calculate averages
+        const avgHigh = validResults.reduce((sum, r) => sum + r.high, 0) / validResults.length;
+        const avgLow = validResults.reduce((sum, r) => sum + r.low, 0) / validResults.length;
+        
+        // Find record high and low
+        const recordHigh = Math.max(...validResults.map(r => r.high));
+        const recordLow = Math.min(...validResults.map(r => r.low));
+
+        return {
+          avgHigh: Math.round(avgHigh),
+          avgLow: Math.round(avgLow),
+          recordHigh: Math.round(recordHigh),
+          recordLow: Math.round(recordLow),
+          yearsOfData: validResults.length
+        };
+      } catch (err) {
+        console.warn('[WeatherCard] Historical fetch failed:', err);
+        return null;
+      }
+    }
+
     // ============================================================
     // Caching
     // ============================================================
@@ -160,6 +224,7 @@
         this.currentWeather = cached.weather;
         this.forecast = cached.forecast;
         this.hourly = cached.hourly;
+        this.historical = cached.historical;
         this.tempUnit = cached.tempUnit || 'F';
       }
     }
@@ -169,6 +234,7 @@
         weather: this.currentWeather,
         forecast: this.forecast,
         hourly: this.hourly,
+        historical: this.historical,
         tempUnit: this.tempUnit,
         timestamp: Date.now()
       });
@@ -269,13 +335,8 @@
       const sunriseLabel = wx.sys?.sunrise ? this.formatLocalTime(wx.sys.sunrise, timezone) : null;
       const sunsetLabel = wx.sys?.sunset ? this.formatLocalTime(wx.sys.sunset, timezone) : null;
 
-      // Get historical averages from forecast (today's data)
       const historicalHtml = this.renderHistoricalAverages();
-
-      // Hourly charts
       const hourlyChartsHtml = this.renderHourlyCharts();
-
-      // Forecast (starting from tomorrow)
       const forecastHtml = this.renderForecast();
 
       return `
@@ -321,28 +382,51 @@
     }
 
     renderHistoricalAverages() {
-      // Use today's forecast high/low as comparison reference
-      if (!this.forecast?.temperature_2m_max || !this.forecast?.temperature_2m_min) {
-        return '';
+      if (!this.historical) {
+        // Fallback to today's forecast if no historical data
+        if (!this.forecast?.temperature_2m_max || !this.forecast?.temperature_2m_min) {
+          return '';
+        }
+        const todayHigh = this.forecast.temperature_2m_max[0];
+        const todayLow = this.forecast.temperature_2m_min[0];
+        if (todayHigh == null && todayLow == null) return '';
+
+        return `
+          <div class="comm-weather-right">
+            <div class="weather-historical">
+              <div class="historical-label">${ICONS.history} Today's Forecast</div>
+              <div class="historical-values">
+                <div class="historical-item">
+                  <span class="hist-label">High</span>
+                  <span class="hist-value">${this.formatTempValue(todayHigh)}</span>
+                </div>
+                <div class="historical-item">
+                  <span class="hist-label">Low</span>
+                  <span class="hist-value">${this.formatTempValue(todayLow)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
       }
 
-      const todayHigh = this.forecast.temperature_2m_max[0];
-      const todayLow = this.forecast.temperature_2m_min[0];
-
-      if (todayHigh == null && todayLow == null) return '';
-
+      const h = this.historical;
       return `
         <div class="comm-weather-right">
           <div class="weather-historical">
-            <div class="historical-label">${ICONS.history} Today's Forecast</div>
+            <div class="historical-label">${ICONS.history} Historical Avg (${h.yearsOfData}yr)</div>
             <div class="historical-values">
               <div class="historical-item">
-                <span class="hist-label">High</span>
-                <span class="hist-value">${this.formatTempValue(todayHigh)}</span>
+                <span class="hist-label">Avg High</span>
+                <span class="hist-value">${this.formatTempValue(h.avgHigh)}</span>
               </div>
               <div class="historical-item">
-                <span class="hist-label">Low</span>
-                <span class="hist-value">${this.formatTempValue(todayLow)}</span>
+                <span class="hist-label">Avg Low</span>
+                <span class="hist-value">${this.formatTempValue(h.avgLow)}</span>
+              </div>
+              <div class="historical-item record">
+                <span class="hist-label">Record</span>
+                <span class="hist-value">${this.formatTempValue(h.recordHigh)} / ${this.formatTempValue(h.recordLow)}</span>
               </div>
             </div>
           </div>
@@ -353,10 +437,6 @@
     renderHourlyCharts() {
       if (!this.hourly?.time || !this.hourly?.temperature_2m) return '';
 
-      // Get next 24 hours of data
-      const now = new Date();
-      const currentHour = now.getHours();
-      
       const temps = this.hourly.temperature_2m.slice(0, 24);
       const precip = this.hourly.precipitation_probability?.slice(0, 24) || [];
       const times = this.hourly.time.slice(0, 24);
@@ -382,8 +462,13 @@
 
     renderTempChart(temps, times) {
       const width = 100;
-      const height = 40;
-      const padding = 2;
+      const height = 50;
+      const padLeft = 0;
+      const padRight = 0;
+      const padTop = 5;
+      const padBottom = 12;
+      const chartHeight = height - padTop - padBottom;
+      const chartWidth = width - padLeft - padRight;
       
       const validTemps = temps.filter(t => t != null);
       if (validTemps.length === 0) return '';
@@ -393,14 +478,16 @@
       const range = maxTemp - minTemp || 1;
 
       const points = temps.map((temp, i) => {
-        const x = padding + (i / (temps.length - 1)) * (width - padding * 2);
-        const y = height - padding - ((temp - minTemp) / range) * (height - padding * 2);
+        const x = padLeft + (i / (temps.length - 1)) * chartWidth;
+        const y = padTop + chartHeight - ((temp - minTemp) / range) * chartHeight;
         return `${x},${y}`;
       }).join(' ');
 
-      // Color gradient based on average temp
       const avgTemp = validTemps.reduce((a, b) => a + b, 0) / validTemps.length;
       const { hue } = this.tempToColor(avgTemp, this.tempUnit);
+
+      // Time labels (every 6 hours)
+      const timeLabels = this.renderTimeAxis(times, width, padLeft, chartWidth, height - 3);
 
       return `
         <svg class="hourly-chart temp-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
@@ -410,8 +497,9 @@
               <stop offset="100%" stop-color="hsla(${hue}, 80%, 40%, 0.1)"/>
             </linearGradient>
           </defs>
-          <polygon points="${padding},${height - padding} ${points} ${width - padding},${height - padding}" fill="url(#tempGrad)"/>
+          <polygon points="${padLeft},${padTop + chartHeight} ${points} ${padLeft + chartWidth},${padTop + chartHeight}" fill="url(#tempGrad)"/>
           <polyline points="${points}" fill="none" stroke="hsla(${hue}, 90%, 70%, 0.9)" stroke-width="1.5"/>
+          ${timeLabels}
         </svg>
         <div class="chart-range"><span>${this.formatTempValue(minTemp)}</span><span>${this.formatTempValue(maxTemp)}</span></div>
       `;
@@ -419,24 +507,51 @@
 
     renderPrecipChart(precip, times) {
       const width = 100;
-      const height = 40;
-      const padding = 2;
-      const barWidth = (width - padding * 2) / precip.length;
+      const height = 50;
+      const padLeft = 0;
+      const padRight = 0;
+      const padTop = 5;
+      const padBottom = 12;
+      const chartHeight = height - padTop - padBottom;
+      const chartWidth = width - padLeft - padRight;
+      const barWidth = chartWidth / precip.length;
 
       const bars = precip.map((p, i) => {
-        const x = padding + i * barWidth;
-        const barHeight = (p / 100) * (height - padding * 2);
-        const y = height - padding - barHeight;
+        const x = padLeft + i * barWidth;
+        const barHeight = (p / 100) * chartHeight;
+        const y = padTop + chartHeight - barHeight;
         const opacity = 0.3 + (p / 100) * 0.7;
-        return `<rect x="${x}" y="${y}" width="${barWidth - 1}" height="${barHeight}" fill="rgba(100, 180, 255, ${opacity})" rx="1"/>`;
+        return `<rect x="${x}" y="${y}" width="${barWidth - 0.5}" height="${barHeight}" fill="rgba(100, 180, 255, ${opacity})" rx="0.5"/>`;
       }).join('');
+
+      // Time labels
+      const timeLabels = this.renderTimeAxis(times, width, padLeft, chartWidth, height - 3);
 
       return `
         <svg class="hourly-chart precip-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
           ${bars}
+          ${timeLabels}
         </svg>
         <div class="chart-range"><span>0%</span><span>100%</span></div>
       `;
+    }
+
+    renderTimeAxis(times, width, padLeft, chartWidth, yPos) {
+      // Show labels at 00:00, 06:00, 12:00, 18:00, 24:00
+      const labels = [];
+      const hourIndices = [0, 6, 12, 18, 23]; // indices in the 24-hour array
+      
+      hourIndices.forEach((idx) => {
+        if (idx >= times.length) return;
+        const x = padLeft + (idx / (times.length - 1)) * chartWidth;
+        const timeStr = times[idx];
+        // Extract hour from ISO string
+        const hour = timeStr ? new Date(timeStr).getHours() : idx;
+        const label = idx === 23 ? '24' : String(hour).padStart(2, '0');
+        labels.push(`<text x="${x}" y="${yPos}" text-anchor="middle" class="chart-time-label">${label}</text>`);
+      });
+
+      return labels.join('');
     }
 
     metricHtml(label, value, icon, valueId) {
@@ -462,9 +577,9 @@
       const pop = this.forecast.precipitation_probability_max || [];
       const winds = this.forecast.windspeed_10m_max || [];
 
-      // Start from index 1 (tomorrow) and get 10 days
-      const items = days.slice(1, 11).map((dateStr, idx) => {
-        const actualIdx = idx + 1; // Offset for sliced arrays
+      // Start from index 1 (tomorrow) and get 9 days
+      const items = days.slice(1, 10).map((dateStr, idx) => {
+        const actualIdx = idx + 1;
         const parts = String(dateStr).split('-');
         let dt;
         if (parts.length === 3) {
@@ -506,7 +621,7 @@
 
       return `
         <div class="weather-forecast">
-          <div class="forecast-head">10-Day Outlook</div>
+          <div class="forecast-head">9-Day Outlook</div>
           <div class="forecast-row">${items}</div>
         </div>
       `;
