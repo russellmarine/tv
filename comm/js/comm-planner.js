@@ -31,6 +31,7 @@
     
     CardRegistry.register('comm-card-location', new LocationCard());
     CardRegistry.register('comm-card-spacewx', new SpaceWeatherCard());
+    CardRegistry.register('comm-card-weather', new WeatherCard());
     
     // Initialize all registered cards
     CardRegistry.init();
