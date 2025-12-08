@@ -325,6 +325,29 @@
   font-style: italic;
 }
 
+/* MUF Unavailable State */
+.hf-muf-section.hf-muf-unavailable {
+  background: linear-gradient(135deg, rgba(100, 100, 120, 0.12), rgba(0, 0, 0, 0.3));
+  border-color: rgba(150, 150, 170, 0.3);
+}
+
+.hf-muf-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.hf-muf-notice-icon {
+  font-size: 1.2rem;
+  opacity: 0.7;
+}
+
+.hf-muf-notice-text {
+  font-size: 0.8rem;
+  color: rgba(200, 200, 220, 0.9);
+}
+
 /* ============================================================
    Propagation Notes
    ============================================================ */
