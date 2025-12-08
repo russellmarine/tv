@@ -633,6 +633,41 @@ body.comm-page {
   .spacewx-metrics-row { grid-template-columns: 1fr 1fr; }
   .spacewx-metric-card:last-child { grid-column: span 2; }
 }
+/* Connector lines between scales and metrics */
+.spacewx-scales-row {
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.spacewx-scales-row::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16.67%;
+  width: 66.67%;
+  display: flex;
+  justify-content: space-between;
+}
+
+.spacewx-connector-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  height: 12px;
+  margin-bottom: 0.25rem;
+}
+
+.spacewx-connector {
+  display: flex;
+  justify-content: center;
+}
+
+.spacewx-connector::before {
+  content: '';
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(255, 200, 150, 0.5), rgba(255, 200, 150, 0.2));
+}
 
 /* ============================================================
    Severity Classes
