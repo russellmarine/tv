@@ -478,23 +478,23 @@ body.comm-page {
 /* ============================================================
    Space Weather Card
    ============================================================ */
-.spacewx-summary-row { margin-bottom: 0.75rem; }
-.spacewx-summary-desc { font-size: 0.9rem; line-height: 1.4; color: #ffe6c6; }
+.spacewx-summary-row { margin-bottom: 0.5rem; }
+.spacewx-summary-desc { font-size: 0.85rem; line-height: 1.4; color: #ffe6c6; }
 
 /* R/S/G Scale Cards */
 .spacewx-scales-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
 }
 
 .spacewx-scale-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.6rem 0.4rem;
-  background: linear-gradient(135deg, rgba(255, 150, 80, 0.15), rgba(0, 0, 0, 0.4));
+  padding: 0.5rem 0.3rem 0.4rem;
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.12), rgba(0, 0, 0, 0.4));
   border: 1px solid rgba(255, 200, 150, 0.3);
   border-radius: 10px;
   text-decoration: none;
@@ -504,108 +504,118 @@ body.comm-page {
 
 .spacewx-scale-card:hover {
   border-color: rgba(255, 180, 120, 0.6);
-  background: linear-gradient(135deg, rgba(255, 150, 80, 0.25), rgba(0, 0, 0, 0.4));
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.22), rgba(0, 0, 0, 0.4));
 }
 
 .spacewx-scale-card .label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  opacity: 0.8;
-  margin-bottom: 0.2rem;
+  opacity: 0.75;
 }
 
-.spacewx-scale-card .value { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
-.spacewx-scale-card .desc { font-size: 0.75rem; opacity: 0.7; margin-top: 0.15rem; }
+.spacewx-scale-card .value { font-size: 1.3rem; font-weight: 700; line-height: 1.1; }
+.spacewx-scale-card .desc { font-size: 0.7rem; opacity: 0.7; }
 
-/* Metrics Row */
+.spacewx-scale-card .scale-driver {
+  font-size: 0.6rem;
+  opacity: 0.5;
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Metrics Row (3 columns) */
 .spacewx-metrics-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .spacewx-metric-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.5rem;
-  background: rgba(0, 0, 0, 0.3);
+  padding: 0.4rem 0.25rem;
+  background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 200, 150, 0.25);
-  border-radius: 10px;
+  border-radius: 8px;
   text-decoration: none;
   color: inherit;
   transition: border-color 0.2s;
 }
 
 .spacewx-metric-card:hover { border-color: rgba(255, 180, 120, 0.5); }
-.spacewx-metric-card .metric-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; }
-.spacewx-metric-card .metric-value { font-size: 1.3rem; font-weight: 700; line-height: 1.3; }
-.spacewx-metric-card .metric-status { font-size: 0.75rem; opacity: 0.8; }
+.spacewx-metric-card .metric-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.65; }
+.spacewx-metric-card .metric-value { font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
+.spacewx-metric-card .metric-status { font-size: 0.65rem; opacity: 0.7; }
 
-/* Sunspot Chart */
-.spacewx-sunspot-block {
-  border: 1px solid rgba(255, 200, 140, 0.4);
-  border-radius: 12px;
-  padding: 0.6rem 0.75rem;
-  background: linear-gradient(135deg, rgba(255, 150, 80, 0.08), rgba(0, 0, 0, 0.4));
+/* Chart Block */
+.spacewx-chart-block {
+  border: 1px solid rgba(255, 200, 140, 0.3);
+  border-radius: 10px;
+  padding: 0.4rem 0.5rem;
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.06), rgba(0, 0, 0, 0.35));
 }
 
-.sunspot-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.5rem;
-}
-
-.sunspot-title {
-  font-size: 0.75rem;
+.spacewx-chart-block .chart-title {
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: rgba(255, 220, 180, 0.85);
+  letter-spacing: 0.04em;
+  color: rgba(255, 220, 180, 0.75);
+  margin-bottom: 0.25rem;
 }
 
-.sunspot-current { display: flex; flex-direction: column; align-items: flex-end; }
-.sunspot-value { font-size: 1.3rem; font-weight: 700; color: #ffd700; line-height: 1; }
-.sunspot-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-top: 0.1rem; }
-.sunspot-chart-container { width: 100%; aspect-ratio: 320 / 120; min-height: 100px; }
-.sunspot-chart-svg { width: 100%; height: 100%; display: block; }
+.spacewx-chart-svg { width: 100%; height: auto; display: block; }
 
-/* Kp Definition */
+/* Definitions */
+.spacewx-definitions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
 .comm-definition {
-  margin: 0.5rem 0 0.2rem;
-  border: 1px solid rgba(255, 200, 150, 0.35);
-  border-radius: 10px;
-  padding: 0.45rem 0.6rem;
-  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 200, 150, 0.25);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  background: rgba(0, 0, 0, 0.3);
   color: #ffe5c7;
 }
 
-.comm-definition summary { cursor: pointer; font-weight: 600; font-size: 0.8rem; letter-spacing: 0.04em; }
-.comm-definition p { margin: 0.35rem 0 0; font-size: 0.8rem; line-height: 1.4; }
-.definition-body { padding-top: 0.5rem; }
-
-.kp-scale {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 0.35rem;
-  margin-bottom: 0.5rem;
-}
-
-.kp-segment {
-  background: linear-gradient(120deg, var(--kp-color, #44cc44), rgba(0, 0, 0, 0.45));
-  border: 1px solid rgba(255, 210, 150, 0.35);
-  border-radius: 8px;
-  padding: 0.3rem 0.4rem;
+.comm-definition summary {
+  cursor: pointer;
+  font-weight: 600;
   font-size: 0.72rem;
-  color: #fff;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.03em;
 }
 
-.kp-segment small { opacity: 0.85; font-size: 0.65rem; display: block; }
-.spacewx-footnote { font-size: 0.68rem; opacity: 0.6; margin-top: 0.5rem; text-align: center; }
+.comm-definition[open] summary { margin-bottom: 0.3rem; }
+
+.definition-body p {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.def-scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.def-item {
+  background: linear-gradient(120deg, var(--def-color, #44cc44), rgba(0, 0, 0, 0.5));
+  border: 1px solid rgba(255, 210, 150, 0.25);
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.65rem;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
 
 /* Header Pill */
 .spacewx-pill {
@@ -616,6 +626,12 @@ body.comm-page {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* Responsive */
+@media (max-width: 380px) {
+  .spacewx-metrics-row { grid-template-columns: 1fr 1fr; }
+  .spacewx-metric-card:last-child { grid-column: span 2; }
 }
 
 /* ============================================================
