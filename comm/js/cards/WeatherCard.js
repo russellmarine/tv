@@ -157,41 +157,34 @@
 
     async fetchHistoricalAverages(lat, lon) {
       try {
-        const month = new Date().getMonth() + 1;
-        const unitParam = this.tempUnit === 'C' ? 'celsius' : 'fahrenheit';
+          // Get last year's data for this date (single request - avoids rate limits)
+        const today = new Date();
+        const lastYear = today.getFullYear() - 1;
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const dateStr = `${lastYear}-${month}-${day}`;
     
-        // Single request to Climate API for 30-year normals (1991-2020)
-        const url = `${CLIMATE_API}?latitude=${lat}&longitude=${lon}&start_year=1991&end_year=2020&month=${month}&daily=temperature_2m_max_mean,temperature_2m_min_mean,temperature_2m_max_max,temperature_2m_min_min&temperature_unit=${unitParam}`;
+        const unitParam = this.tempUnit === 'C' ? 'celsius' : 'fahrenheit';
+        const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,temperature_2m_min&temperature_unit=${unitParam}&timezone=auto`;
     
         const res = await fetch(url);
         if (!res.ok) return null;
     
         const data = await res.json();
-        const daily = data.daily;
+        const high = data.daily?.temperature_2m_max?.[0];
+        const low = data.daily?.temperature_2m_min?.[0];
     
-        if (!daily) return null;
-  
-        // Climate API returns arrays of daily values for the month
-        // We need to find today's date within the month
-        const today = new Date().getDate();
-        const idx = Math.min(today - 1, (daily.temperature_2m_max_mean?.length || 1) - 1);
-    
-        const avgHigh = daily.temperature_2m_max_mean?.[idx];
-        const avgLow = daily.temperature_2m_min_mean?.[idx];
-        const recordHigh = daily.temperature_2m_max_max?.[idx];
-        const recordLow = daily.temperature_2m_min_min?.[idx];
-    
-        if (avgHigh == null && avgLow == null) return null;
+        if (high == null && low == null) return null;
     
         return {
-          avgHigh: avgHigh != null ? Math.round(avgHigh) : null,
-          avgLow: avgLow != null ? Math.round(avgLow) : null,
-          recordHigh: recordHigh != null ? Math.round(recordHigh) : null,
-          recordLow: recordLow != null ? Math.round(recordLow) : null,
-          yearsOfData: '30yr normals'  // Changed from number to string
+          avgHigh: high != null ? Math.round(high) : null,
+          avgLow: low != null ? Math.round(low) : null,
+          recordHigh: null,
+          recordLow: null,
+          yearsOfData: 'Last year'
         };
       } catch (err) {
-        console.warn('[WeatherCard] Climate normals fetch failed:', err);
+        console.warn('[WeatherCard] Historical fetch failed:', err);
         return null;
       }
     }
