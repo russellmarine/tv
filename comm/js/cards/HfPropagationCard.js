@@ -65,17 +65,35 @@
       this.isDay = true;
       this.muf = null;
       this.updateTimer = null;
+      this.hasLoadedData = false;
     }
 
     init() {
       super.init();
-      this.loadCached();
+      
+      // DON'T load cached or fetch data until location is selected
+      // this.loadCached();  // Disabled - wait for location
 
       // Subscribe to location changes
       this.subscribe('comm:location-changed', (loc) => {
         this.location = loc;
         this.updateDayNight();
-        this.fetchData();
+        
+        // First fetch when location is selected
+        if (!this.hasLoadedData) {
+          this.loadCached();
+          this.fetchData();
+          this.hasLoadedData = true;
+          
+          // Set up periodic updates only after location is set
+          this.updateTimer = this.setInterval(() => this.fetchData(), UPDATE_INTERVAL);
+          
+          // Update day/night every minute
+          this.setInterval(() => this.updateDayNight(), 60000);
+        } else {
+          // Just update for new location
+          this.render();
+        }
       });
 
       // Subscribe to space weather updates - re-merge NOAA SSN when it updates
@@ -84,18 +102,11 @@
         // Re-merge NOAA data if we have solar data loaded
         if (this.solarData) {
           this.mergeNoaaData();
+          this.render();
         }
-        this.render();
       });
 
-      // Initial fetch
-      this.fetchData();
-
-      // Set up periodic updates
-      this.updateTimer = this.setInterval(() => this.fetchData(), UPDATE_INTERVAL);
-
-      // Update day/night every minute
-      this.setInterval(() => this.updateDayNight(), 60000);
+      // Don't start updates until location is selected
     }
 
     destroy() {
@@ -164,10 +175,8 @@
           this.solarData = hamqsl.solar;
           this.bandConditions = hamqsl.bands;
           
-          // Override SSN with NOAA data if available from SpaceWeatherCard
-          if (this.spaceWeather) {
-            this.mergeNoaaData();
-          }
+          // Always try to override SSN with NOAA data from SpaceWeatherCard
+          this.mergeNoaaData();
           
           // Calculate MUF from HamQSL data (foF2 * factor)
           this.calculateMuf();
@@ -192,53 +201,133 @@
     mergeNoaaData() {
       // Get SSN from SpaceWeatherCard via CardRegistry if available
       const spacewxCard = window.CommDashboard?.CardRegistry?.get('comm-card-spacewx');
+      console.log('[HfPropagationCard] Trying to merge NOAA data, spacewxCard:', !!spacewxCard);
+      
       if (spacewxCard) {
         // Access sunspotData directly from card instance (not via getData())
         // SpaceWeatherCard stores sunspots in this.sunspotData, not in this.data
         const sunspots = spacewxCard.sunspotData;
+        console.log('[HfPropagationCard] SpaceWeatherCard.sunspotData:', sunspots?.length, 'entries');
+        
         if (Array.isArray(sunspots) && sunspots.length > 0) {
           const latestSsn = sunspots[sunspots.length - 1]?.value;
+          console.log('[HfPropagationCard] Latest NOAA SSN value:', latestSsn);
+          
           if (latestSsn !== undefined && !isNaN(latestSsn)) {
+            const oldSsn = this.solarData.sunspots;
             this.solarData.sunspots = Math.round(latestSsn);
             this.solarData.ssnSource = 'NOAA';
-            console.log('[HfPropagationCard] Using NOAA SSN:', this.solarData.sunspots);
+            console.log('[HfPropagationCard] SSN updated:', oldSsn, '->', this.solarData.sunspots);
           }
+        } else {
+          console.log('[HfPropagationCard] No sunspot data available from SpaceWeatherCard');
         }
+        
         // Also grab Kp from the card's data
         const swData = spacewxCard.getData?.();
         if (swData?.kpIndex !== undefined) {
           this.solarData.kIndex = swData.kpIndex;
         }
+      } else {
+        console.log('[HfPropagationCard] SpaceWeatherCard not found in registry');
       }
     }
     
     calculateMuf() {
-      // MUF = foF2 × M(3000)F2 factor
-      // HamQSL provides these values
-      const foF2 = parseFloat(this.solarData?.fof2);
-      const factor = parseFloat(this.solarData?.muffactor) || 3.0;
-      
-      if (!isNaN(foF2) && foF2 > 0) {
-        this.muf = {
-          value: foF2 * factor,
-          foF2: foF2,
-          factor: factor,
-          source: 'HamQSL'
-        };
-      } else {
-        // Try to use the pre-calculated MUF from HamQSL
-        const hamqslMuf = parseFloat(this.solarData?.muf);
-        if (!isNaN(hamqslMuf) && hamqslMuf > 0) {
-          this.muf = {
-            value: hamqslMuf,
-            foF2: null,
-            factor: factor,
-            source: 'HamQSL'
-          };
-        } else {
-          this.muf = null;
-        }
+      // Use location-based MUF estimation (like old dashboard)
+      // This is based on empirical formulas, not real-time ionosonde data
+      if (!this.location?.coords) {
+        this.muf = null;
+        return;
       }
+
+      const lat = this.location.coords.lat;
+      const lon = this.location.coords.lon;
+      const absLat = Math.abs(lat);
+      const now = new Date();
+      const month = now.getMonth();
+
+      // Get day/night status with greyline detection
+      const dayNight = this.getDayNightStatus(lat, lon);
+
+      // Base MUF varies by time of day
+      // Night: lower (F-layer thins), Day: higher, Greyline: transitional
+      let baseMUF = dayNight.status === 'day' ? 21 : 
+                    dayNight.status === 'greyline' ? 18 : 10;
+
+      // Seasonal adjustment - summer has higher MUF
+      const isNorthernHemisphere = lat >= 0;
+      const isSummer = (isNorthernHemisphere && month >= 4 && month <= 8) ||
+                       (!isNorthernHemisphere && (month >= 10 || month <= 2));
+      if (isSummer && dayNight.status === 'day') baseMUF += 4;
+
+      // Latitude adjustment - higher latitudes have lower MUF
+      if (absLat > 60) baseMUF -= 5;
+      else if (absLat > 45) baseMUF -= 2;
+
+      // Geomagnetic conditions penalty (Kp index)
+      const kp = this.solarData?.kIndex || this.spaceWeather?.kpIndex || 0;
+      if (kp >= 6) baseMUF -= 4;
+      else if (kp >= 4) baseMUF -= 2;
+
+      // Solar flare penalty (R-scale)
+      const rScale = this.spaceWeather?.scales?.R || 0;
+      if (rScale >= 3) baseMUF -= 6;
+      else if (rScale >= 2) baseMUF -= 3;
+
+      // SFI bonus - higher solar flux supports higher MUF
+      const sfi = this.solarData?.sfi || 0;
+      if (sfi >= 150) baseMUF += 3;
+      else if (sfi >= 120) baseMUF += 2;
+      else if (sfi >= 100) baseMUF += 1;
+
+      // Clamp to reasonable range
+      const finalMuf = Math.max(5, Math.min(35, Math.round(baseMUF)));
+
+      this.muf = {
+        value: finalMuf,
+        dayNight: dayNight,
+        source: 'Estimated',
+        note: `${dayNight.label} • ${absLat > 45 ? 'High' : absLat > 25 ? 'Mid' : 'Low'} latitude`
+      };
+    }
+
+    getDayNightStatus(lat, lon) {
+      const now = new Date();
+      const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+      
+      // Solar declination
+      const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * (Math.PI / 180));
+      const latRad = lat * (Math.PI / 180);
+      const decRad = declination * (Math.PI / 180);
+      
+      const cosHourAngle = -Math.tan(latRad) * Math.tan(decRad);
+      
+      // Handle polar day/night
+      if (cosHourAngle < -1) return { status: 'day', label: 'Polar Day' };
+      if (cosHourAngle > 1) return { status: 'night', label: 'Polar Night' };
+      
+      const hourAngle = Math.acos(cosHourAngle) * (180 / Math.PI);
+      const sunriseHour = 12 - (hourAngle / 15);
+      const sunsetHour = 12 + (hourAngle / 15);
+      
+      // Get local solar time
+      const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
+      const localSolarHours = (utcHours + lon / 15 + 24) % 24;
+      
+      // Check for greyline (within 30 min of sunrise/sunset)
+      const greylineWindow = 0.5; // hours
+      if (Math.abs(localSolarHours - sunriseHour) < greylineWindow) {
+        return { status: 'greyline', label: 'Sunrise Greyline' };
+      }
+      if (Math.abs(localSolarHours - sunsetHour) < greylineWindow) {
+        return { status: 'greyline', label: 'Sunset Greyline' };
+      }
+      
+      if (localSolarHours >= sunriseHour && localSolarHours < sunsetHour) {
+        return { status: 'day', label: 'Daytime' };
+      }
+      return { status: 'night', label: 'Nighttime' };
     }
 
     async fetchHamQSL() {
@@ -321,20 +410,6 @@
       }
     }
 
-    async fetchMUF() {
-      if (!this.location?.coords) return null;
-      
-      try {
-        const { lat, lon } = this.location.coords;
-        const resp = await fetch(`${ENDPOINTS.MUF_MAP}?lat=${lat}&lon=${lon}`);
-        if (!resp.ok) return null;
-        return await resp.json();
-      } catch (err) {
-        console.warn('[HfPropagationCard] MUF fetch error:', err);
-        return null;
-      }
-    }
-
     // ============================================================
     // Caching
     // ============================================================
@@ -366,8 +441,15 @@
     }
 
     cacheData() {
+      // Cache solar data but exclude sunspots - we always want fresh NOAA SSN
+      const solarForCache = this.solarData ? {
+        ...this.solarData,
+        sunspots: null,  // Don't cache SSN - always get from SpaceWeatherCard
+        ssnSource: null
+      } : null;
+      
       Storage.set(STORAGE_KEY, {
-        solar: this.solarData,
+        solar: solarForCache,
         bands: this.bandConditions,
         timestamp: this.lastUpdate?.toISOString()
       });
@@ -377,6 +459,17 @@
     // Rendering
     // ============================================================
     renderBody() {
+      // Wait for location to be selected
+      if (!this.location) {
+        return `
+          <div class="hf-waiting-location">
+            <div class="hf-waiting-icon">📻</div>
+            <p class="comm-placeholder">Select a location to view HF propagation conditions.</p>
+            <p class="hf-waiting-hint">Band conditions, solar indices, and MUF will be calculated for your location.</p>
+          </div>
+        `;
+      }
+      
       if (!this.solarData || !this.bandConditions) {
         return '<p class="comm-placeholder">Loading HF propagation data...</p>';
       }
@@ -399,7 +492,7 @@
         
         <div class="comm-card-micro comm-card-footer">
           Source: <a class="inline-link" href="https://www.hamqsl.com/solar.html" target="_blank">HamQSL</a> • 
-          <a class="inline-link" href="https://prop.kc2g.com/" target="_blank">KC2G MUF</a> • 
+          <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank">NOAA SWPC</a> • 
           ${this.getUpdateText()}
         </div>
       `;
@@ -423,6 +516,18 @@
       const sfiColor = this.getSfiColor(s.sfi);
       const kColor = this.getKpColor(s.kIndex);
       const aColor = this.getAIndexColor(s.aIndex);
+      
+      // Always get fresh SSN from SpaceWeatherCard
+      let ssn = s.sunspots;
+      let ssnSource = s.ssnSource || 'HamQSL';
+      const spacewxCard = window.CommDashboard?.CardRegistry?.get('comm-card-spacewx');
+      if (spacewxCard?.sunspotData?.length > 0) {
+        const latestSsn = spacewxCard.sunspotData[spacewxCard.sunspotData.length - 1]?.value;
+        if (latestSsn !== undefined && !isNaN(latestSsn)) {
+          ssn = Math.round(latestSsn);
+          ssnSource = 'NOAA';
+        }
+      }
 
       return `
         <div class="hf-indices-row">
@@ -431,10 +536,10 @@
             <span class="hf-index-value" style="color: ${sfiColor}">${s.sfi}</span>
             <span class="hf-index-status">${this.getSfiCondition(s.sfi)}</span>
           </div>
-          <div class="hf-index-card" title="Sunspot Number">
+          <div class="hf-index-card" title="Sunspot Number (${ssnSource})">
             <span class="hf-index-label">SSN</span>
-            <span class="hf-index-value">${s.sunspots}</span>
-            <span class="hf-index-status">${this.getSsnCondition(s.sunspots)}</span>
+            <span class="hf-index-value">${ssn}</span>
+            <span class="hf-index-status">${this.getSsnCondition(ssn)}</span>
           </div>
           <div class="hf-index-card" title="A Index - Lower is better">
             <span class="hf-index-label">A</span>
@@ -483,52 +588,62 @@
     }
 
     renderMufSection() {
-      // If we have no MUF data at all, show informational message
+      // If we have no MUF data at all (no location selected)
       if (!this.muf) {
-        return `
-          <div class="hf-section hf-muf-section hf-muf-unavailable">
-            <div class="hf-section-header">
-              <span class="hf-section-title">Maximum Usable Frequency</span>
-            </div>
-            <div class="hf-muf-notice">
-              <span class="hf-muf-notice-icon">📡</span>
-              <span class="hf-muf-notice-text">foF2 data not currently reported. MUF estimates unavailable.</span>
-            </div>
-            <p class="hf-muf-hint">MUF depends on real-time ionosonde measurements</p>
-          </div>
-        `;
+        return '';
       }
 
       const mufValue = this.muf.value;
-      const mufFactor = this.muf.factor || 3.0;
-      const fof2 = this.muf.foF2;
+      const dayNight = this.muf.dayNight;
+      const note = this.muf.note || '';
+      
+      // Get day/night class for styling
+      const dayPhaseClass = dayNight?.status === 'night' ? 'hf-phase-night' : 
+                            dayNight?.status === 'greyline' ? 'hf-phase-grey' : 'hf-phase-day';
 
       return `
         <div class="hf-section hf-muf-section">
-          <div class="hf-section-header">
-            <span class="hf-section-title">Maximum Usable Frequency</span>
-          </div>
           <div class="hf-muf-row">
             <div class="hf-muf-primary">
-              <span class="hf-muf-value">${mufValue.toFixed(1)}</span>
-              <span class="hf-muf-unit">MHz</span>
+              <div class="hf-muf-label">Est. MUF</div>
+              <div class="hf-muf-value">${mufValue} MHz</div>
             </div>
-            <div class="hf-muf-details">
-              ${fof2 ? `
-              <div class="hf-muf-detail">
-                <span class="label">foF2:</span>
-                <span class="value">${fof2.toFixed(1)} MHz</span>
-              </div>
-              ` : ''}
-              <div class="hf-muf-detail">
-                <span class="label">Factor:</span>
-                <span class="value">${mufFactor}×</span>
-              </div>
+            <div class="hf-muf-tag ${dayPhaseClass}">
+              ${this.getDayPhaseIcon(dayNight?.status)}
+              <span>${dayNight?.label || ''}</span>
             </div>
           </div>
-          <p class="hf-muf-hint">Frequencies above MUF will pass through the ionosphere</p>
+          <p class="hf-muf-definition">MUF is the highest HF frequency likely to refract via the F-layer right now.</p>
+          ${note ? `<p class="hf-muf-note">${note}</p>` : ''}
         </div>
       `;
+    }
+
+    getDayPhaseIcon(status) {
+      switch (status) {
+        case 'day':
+          return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="5" fill="#ffcc00" stroke="#ff9900" stroke-width="1"/>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" 
+                  stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>`;
+        case 'night':
+          return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="#6699cc" stroke="#4477aa" stroke-width="1"/>
+          </svg>`;
+        case 'greyline':
+          return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="8" fill="url(#greyGrad)" stroke="#cc8844" stroke-width="1"/>
+            <defs>
+              <linearGradient id="greyGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffcc66"/>
+                <stop offset="100%" stop-color="#4466aa"/>
+              </linearGradient>
+            </defs>
+          </svg>`;
+        default:
+          return '';
+      }
     }
 
     renderPropagationNotes() {
@@ -765,6 +880,7 @@
     // Meta/Status
     // ============================================================
     getMetaText() {
+      if (!this.location) return '<span class="status-pill hf-pill-waiting">Awaiting Location</span>';
       if (!this.solarData) return '';
       const overall = this.getOverallCondition();
       const className = overall.label.toLowerCase().replace(' ', '-');
