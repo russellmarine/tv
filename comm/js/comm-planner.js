@@ -40,7 +40,11 @@
     // For now, they'll be handled by legacy code or show placeholders
 
     // Future registrations:
-    // CardRegistry.register('comm-card-spacewx', new SpaceWeatherCard());
+function registerCards() {
+  const { CardRegistry, LocationCard, SpaceWeatherCard } = window.CommDashboard;
+  CardRegistry.register(new LocationCard());
+  CardRegistry.register(new SpaceWeatherCard());
+}
     // CardRegistry.register('comm-card-weather', new WeatherCard());
     // CardRegistry.register('comm-card-gps', new GpsCard());
     // CardRegistry.register('comm-card-hf', new HfPropagationCard());
