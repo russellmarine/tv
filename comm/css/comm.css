@@ -1023,7 +1023,7 @@ body.comm-page {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 200, 150, 0.2);
   border-radius: 10px;
-  padding: 0.5rem 0.5rem 0.4rem;
+  padding: 0.6rem 0.6rem 0.5rem;
 }
 
 .chart-label {
@@ -1036,21 +1036,23 @@ body.comm-page {
 
 .hourly-chart {
   width: 100%;
-  height: 80px;
+  height: auto;
   display: block;
 }
 
 /* SVG chart axis labels */
 .hourly-chart .chart-axis-label {
-  font-size: 6px;
-  fill: rgba(255, 210, 170, 0.6);
+  font-size: 8px;
+  fill: rgba(255, 210, 170, 0.8);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 500;
 }
 
 .hourly-chart .chart-no-data {
-  font-size: 7px;
-  fill: rgba(255, 210, 170, 0.4);
+  font-size: 9px;
+  fill: rgba(255, 210, 170, 0.6);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-style: italic;
 }
 
 /* Forecast Section - 9 columns grid */
