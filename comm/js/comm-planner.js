@@ -16,7 +16,7 @@
     'comm-card-spacewx',
     'comm-card-overlay',
     'comm-card-weather',
-    'comm-card-gps',
+    'comm-card-gnss',
     'comm-card-hf',
     'comm-card-satcom',
     'comm-card-satangles',
