@@ -1,4 +1,4 @@
-**
+/**
  * comm-core.js
  * Core utilities, event system, and shared functionality for the Comm Dashboard
  * Self-contained — no external dependencies
