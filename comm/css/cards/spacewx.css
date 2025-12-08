@@ -191,21 +191,3 @@
   height: 100%;
   background: linear-gradient(180deg, rgba(255, 200, 150, 0.5), rgba(255, 200, 150, 0.2));
 }
-
-/* ============================================================
-   Severity Classes
-   ============================================================ */
-.severity-good, .spacewx-pill.severity-good { background: rgba(68, 204, 68, 0.2); color: var(--color-good); border: 1px solid rgba(68, 204, 68, 0.4); }
-.severity-fair, .spacewx-pill.severity-fair { background: rgba(255, 204, 0, 0.2); color: var(--color-fair); border: 1px solid rgba(255, 204, 0, 0.4); }
-.severity-watch, .spacewx-pill.severity-watch { background: rgba(255, 136, 0, 0.2); color: var(--color-watch); border: 1px solid rgba(255, 136, 0, 0.4); }
-.severity-poor, .spacewx-pill.severity-poor { background: rgba(255, 68, 68, 0.2); color: var(--color-poor); border: 1px solid rgba(255, 68, 68, 0.4); }
-
-.status-pill {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
