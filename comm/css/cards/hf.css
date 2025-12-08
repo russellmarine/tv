@@ -4,75 +4,6 @@
  */
 
 /* ============================================================
-   Summary Row
-   ============================================================ */
-.hf-summary-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.65rem;
-  background: linear-gradient(135deg, rgba(255, 150, 80, 0.12), rgba(0, 0, 0, 0.35));
-  border: 1px solid rgba(255, 170, 110, 0.4);
-  border-radius: 12px;
-  margin-bottom: 0.5rem;
-}
-
-.hf-summary-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.hf-summary-label {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #ffd7a1;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.hf-summary-desc {
-  font-size: 0.78rem;
-  color: rgba(255, 230, 200, 0.85);
-  opacity: 0.9;
-}
-
-/* ============================================================
-   Day/Night Indicator
-   ============================================================ */
-.hf-daynight {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: 10px;
-  min-width: 50px;
-}
-
-.hf-daynight.hf-day {
-  background: linear-gradient(135deg, rgba(255, 200, 100, 0.3), rgba(255, 150, 50, 0.15));
-  border: 1px solid rgba(255, 200, 100, 0.5);
-}
-
-.hf-daynight.hf-night {
-  background: linear-gradient(135deg, rgba(100, 150, 200, 0.3), rgba(50, 100, 150, 0.15));
-  border: 1px solid rgba(100, 150, 200, 0.5);
-}
-
-.hf-daynight-label {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  opacity: 0.9;
-}
-
-.hf-icon {
-  width: 24px;
-  height: 24px;
-}
-
-/* ============================================================
    Solar Indices Row
    ============================================================ */
 .hf-indices-row {
@@ -263,13 +194,14 @@
 }
 
 /* ============================================================
-   MUF Section (matches old dashboard style)
+   MUF Section (top of card)
    ============================================================ */
 .hf-muf-section {
   background: linear-gradient(135deg, rgba(255, 160, 90, 0.2), rgba(20, 10, 0, 0.7));
   border: 1px solid rgba(255, 180, 120, 0.4);
   border-radius: 12px;
   padding: 0.5rem 0.65rem;
+  margin-bottom: 0.65rem;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
@@ -332,18 +264,11 @@
   border-color: rgba(255, 200, 100, 0.5);
 }
 
-.hf-muf-definition {
-  font-size: 0.75rem;
-  margin: 0.35rem 0 0 0;
-  opacity: 0.8;
-  line-height: 1.3;
-}
-
-.hf-muf-note {
-  font-size: 0.7rem;
-  margin: 0.25rem 0 0 0;
-  opacity: 0.65;
-  font-style: italic;
+.hf-muf-desc {
+  font-size: 0.8rem;
+  margin: 0.4rem 0 0 0;
+  opacity: 0.9;
+  line-height: 1.35;
 }
 
 /* Waiting for location state */
