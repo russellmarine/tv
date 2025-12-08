@@ -78,9 +78,13 @@
         this.fetchData();
       });
 
-      // Subscribe to space weather updates
+      // Subscribe to space weather updates - re-merge NOAA SSN when it updates
       this.subscribe('spaceweather:data-updated', (data) => {
         this.spaceWeather = data;
+        // Re-merge NOAA data if we have solar data loaded
+        if (this.solarData) {
+          this.mergeNoaaData();
+        }
         this.render();
       });
 
@@ -189,16 +193,19 @@
       // Get SSN from SpaceWeatherCard via CardRegistry if available
       const spacewxCard = window.CommDashboard?.CardRegistry?.get('comm-card-spacewx');
       if (spacewxCard) {
-        const swData = spacewxCard.getData?.();
-        // Use NOAA sunspot data if available
-        if (swData?.sunspots?.length > 0) {
-          const latestSsn = swData.sunspots[swData.sunspots.length - 1]?.value;
+        // Access sunspotData directly from card instance (not via getData())
+        // SpaceWeatherCard stores sunspots in this.sunspotData, not in this.data
+        const sunspots = spacewxCard.sunspotData;
+        if (Array.isArray(sunspots) && sunspots.length > 0) {
+          const latestSsn = sunspots[sunspots.length - 1]?.value;
           if (latestSsn !== undefined && !isNaN(latestSsn)) {
             this.solarData.sunspots = Math.round(latestSsn);
             this.solarData.ssnSource = 'NOAA';
+            console.log('[HfPropagationCard] Using NOAA SSN:', this.solarData.sunspots);
           }
         }
-        // Also grab Kp if we have it
+        // Also grab Kp from the card's data
+        const swData = spacewxCard.getData?.();
         if (swData?.kpIndex !== undefined) {
           this.solarData.kIndex = swData.kpIndex;
         }
@@ -339,7 +346,21 @@
           this.solarData = cached.solar || null;
           this.bandConditions = cached.bands || null;
           this.lastUpdate = new Date(cached.timestamp);
+          
+          // Try to merge NOAA SSN immediately (SpaceWeatherCard might already have data)
+          if (this.solarData) {
+            this.mergeNoaaData();
+          }
+          
           this.render();
+          
+          // Also retry after a short delay in case SpaceWeatherCard loads after us
+          this.setTimeout(() => {
+            if (this.solarData) {
+              this.mergeNoaaData();
+              this.render();
+            }
+          }, 500);
         }
       }
     }
