@@ -263,89 +263,109 @@
 }
 
 /* ============================================================
-   MUF Section
+   MUF Section (matches old dashboard style)
    ============================================================ */
 .hf-muf-section {
-  background: linear-gradient(135deg, rgba(100, 150, 200, 0.12), rgba(0, 0, 0, 0.3));
-  border: 1px solid rgba(100, 150, 200, 0.35);
+  background: linear-gradient(135deg, rgba(255, 160, 90, 0.2), rgba(20, 10, 0, 0.7));
+  border: 1px solid rgba(255, 180, 120, 0.4);
   border-radius: 12px;
-  padding: 0.65rem;
+  padding: 0.5rem 0.65rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .hf-muf-row {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-top: 0.35rem;
+  justify-content: space-between;
+  gap: 0.7rem;
 }
 
 .hf-muf-primary {
   display: flex;
-  align-items: baseline;
-  gap: 0.3rem;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.hf-muf-label {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .hf-muf-value {
-  font-size: 1.6rem;
+  font-size: 1.45rem;
   font-weight: 800;
-  color: #88ccff;
-  text-shadow: 0 0 10px rgba(100, 180, 255, 0.5);
+  color: #ffe3c4;
 }
 
-.hf-muf-unit {
-  font-size: 0.8rem;
-  opacity: 0.8;
-  color: #aaddff;
-}
-
-.hf-muf-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.hf-muf-detail {
+.hf-muf-tag {
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
   font-size: 0.72rem;
-  display: flex;
-  gap: 0.35rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 210, 160, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
-.hf-muf-detail .label {
-  opacity: 0.7;
+.hf-phase-icon {
+  width: 16px;
+  height: 16px;
 }
 
-.hf-muf-detail .value {
-  color: #aaddff;
+.hf-phase-day {
+  background: linear-gradient(135deg, rgba(255, 210, 140, 0.4), rgba(120, 60, 0, 0.5));
+  color: #ffefcc;
 }
 
-.hf-muf-hint {
-  font-size: 0.68rem;
-  margin: 0.4rem 0 0 0;
+.hf-phase-night {
+  background: linear-gradient(135deg, rgba(90, 140, 255, 0.22), rgba(10, 20, 45, 0.6));
+  color: #d7e5ff;
+}
+
+.hf-phase-grey {
+  background: linear-gradient(135deg, rgba(255, 180, 120, 0.28), rgba(30, 18, 0, 0.6));
+  color: #ffe9cf;
+  border-color: rgba(255, 200, 100, 0.5);
+}
+
+.hf-muf-definition {
+  font-size: 0.75rem;
+  margin: 0.35rem 0 0 0;
+  opacity: 0.8;
+  line-height: 1.3;
+}
+
+.hf-muf-note {
+  font-size: 0.7rem;
+  margin: 0.25rem 0 0 0;
   opacity: 0.65;
   font-style: italic;
 }
 
-/* MUF Unavailable State */
-.hf-muf-section.hf-muf-unavailable {
-  background: linear-gradient(135deg, rgba(100, 100, 120, 0.12), rgba(0, 0, 0, 0.3));
-  border-color: rgba(150, 150, 170, 0.3);
-}
-
-.hf-muf-notice {
+/* Waiting for location state */
+.hf-waiting-location {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 0.5rem 0;
+  padding: 1.5rem 1rem;
+  text-align: center;
 }
 
-.hf-muf-notice-icon {
-  font-size: 1.2rem;
-  opacity: 0.7;
+.hf-waiting-icon {
+  font-size: 2rem;
+  opacity: 0.6;
 }
 
-.hf-muf-notice-text {
-  font-size: 0.8rem;
-  color: rgba(200, 200, 220, 0.9);
+.hf-waiting-hint {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  margin: 0;
 }
 
 /* ============================================================
@@ -421,6 +441,43 @@
   background: linear-gradient(135deg, rgba(255, 68, 68, 0.3), rgba(128, 34, 34, 0.5));
   border: 1px solid rgba(255, 68, 68, 0.5);
   color: #ffaaaa;
+}
+
+.hf-pill-waiting {
+  background: linear-gradient(135deg, rgba(100, 100, 120, 0.3), rgba(60, 60, 80, 0.5));
+  border: 1px solid rgba(150, 150, 170, 0.4);
+  color: #ccccdd;
+}
+
+/* ============================================================
+   Waiting for Location State
+   ============================================================ */
+.hf-waiting-location {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  gap: 0.5rem;
+}
+
+.hf-waiting-icon {
+  font-size: 2.5rem;
+  opacity: 0.6;
+  margin-bottom: 0.25rem;
+}
+
+.hf-waiting-location .comm-placeholder {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.hf-waiting-hint {
+  font-size: 0.72rem;
+  opacity: 0.6;
+  margin: 0;
+  max-width: 280px;
 }
 
 /* ============================================================
