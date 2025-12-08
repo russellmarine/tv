@@ -772,10 +772,7 @@
     // ============================================================
 
     getMetaText() {
-      if (!this.selectedLocation) {
-        return '';
-      }
-      return escapeHtml(this.selectedLocation.label || 'Location set');
+      return '';  // No header status - location shown in card body
     }
 
     // ============================================================
