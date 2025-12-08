@@ -1,6 +1,6 @@
 /**
  * WeatherCard.js
- * Local weather card with current conditions from OpenWeather
+ * Local weather card with current conditions and 10-day forecast
  * Listens for: 'comm:location-changed'
  */
 
@@ -14,6 +14,7 @@
   // ============================================================
   const STORAGE_KEY = 'commWeatherCache';
   const WEATHER_PROXY = '/weather';
+  const FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
 
   // ============================================================
   // WeatherCard Class
@@ -28,6 +29,7 @@
 
       this.tempUnit = Storage.get('commTempUnit', 'F');
       this.currentWeather = null;
+      this.forecast = null;
       this.location = null;
       this.clockInterval = null;
     }
@@ -66,19 +68,40 @@
       this.showLoading();
 
       try {
-        const res = await fetch(`${WEATHER_PROXY}?lat=${lat}&lon=${lon}`);
-        if (!res.ok) throw new Error(`Weather HTTP ${res.status}`);
-        const weather = await res.json();
+        const [weather, forecast] = await Promise.all([
+          this.fetchCurrentWeather(lat, lon),
+          this.fetchForecast(lat, lon)
+        ]);
 
         if (weather) {
           this.currentWeather = weather;
+          this.forecast = forecast;
           this.cacheData();
           this.render();
-          Events.emit('weather:data-updated', { weather });
+          Events.emit('weather:data-updated', { weather, forecast });
         }
       } catch (err) {
         console.warn('[WeatherCard] Fetch error:', err);
         this.showError('Unable to load weather. Ensure the weather proxy is running.');
+      }
+    }
+
+    async fetchCurrentWeather(lat, lon) {
+      const res = await fetch(`${WEATHER_PROXY}?lat=${lat}&lon=${lon}`);
+      if (!res.ok) throw new Error(`Weather HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async fetchForecast(lat, lon) {
+      try {
+        const unitParam = this.tempUnit === 'C' ? 'celsius' : 'fahrenheit';
+        const url = `${FORECAST_API}?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=10&timezone=auto`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        return res.json();
+      } catch (err) {
+        console.warn('[WeatherCard] Forecast fetch failed:', err);
+        return null;
       }
     }
 
@@ -90,6 +113,7 @@
       const cached = Storage.get(STORAGE_KEY, null);
       if (cached && cached.weather) {
         this.currentWeather = cached.weather;
+        this.forecast = cached.forecast;
         this.tempUnit = cached.tempUnit || 'F';
       }
     }
@@ -97,6 +121,7 @@
     cacheData() {
       Storage.set(STORAGE_KEY, {
         weather: this.currentWeather,
+        forecast: this.forecast,
         tempUnit: this.tempUnit,
         timestamp: Date.now()
       });
@@ -182,6 +207,9 @@
       const sunriseLabel = wx.sys?.sunrise ? this.formatLocalTime(wx.sys.sunrise, timezone) : null;
       const sunsetLabel = wx.sys?.sunset ? this.formatLocalTime(wx.sys.sunset, timezone) : null;
 
+      // Build forecast
+      const forecastHtml = this.renderForecast();
+
       return `
         <div class="comm-weather-body">
           <div class="comm-weather-hero${accent ? ' accented' : ''}" style="--weather-accent:${accent || 'transparent'};">
@@ -210,8 +238,10 @@
             ${sunsetLabel ? this.metricHtml('Sunset', sunsetLabel) : ''}
           </div>
 
+          ${forecastHtml}
+
           <div class="comm-card-micro comm-card-footer">
-            Source: <a class="inline-link" href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeather</a> • ${escapeHtml(updatedLocal)}
+            Source: <a class="inline-link" href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeather</a> / <a class="inline-link" href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> • ${escapeHtml(updatedLocal)}
           </div>
         </div>
       `;
@@ -229,6 +259,58 @@
       `;
     }
 
+    renderForecast() {
+      if (!this.forecast?.daily?.time) return '';
+
+      const days = this.forecast.daily.time;
+      const highs = this.forecast.daily.temperature_2m_max || [];
+      const lows = this.forecast.daily.temperature_2m_min || [];
+      const codes = this.forecast.daily.weathercode || [];
+      const pop = this.forecast.daily.precipitation_probability_max || [];
+      const winds = this.forecast.daily.windspeed_10m_max || [];
+
+      const items = days.slice(0, 10).map((dateStr, idx) => {
+        const parts = String(dateStr).split('-');
+        let dt;
+        if (parts.length === 3) {
+          dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        } else {
+          dt = new Date(dateStr);
+        }
+
+        const dayLabel = dt.toLocaleDateString(undefined, { weekday: 'short' });
+        const dateLabel = dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+        const main = this.weatherCodeToMain(codes[idx]);
+        const icon = this.getWeatherIcon(main);
+        const high = highs[idx] != null ? this.formatTempValue(highs[idx]) : '—';
+        const low = lows[idx] != null ? this.formatTempValue(lows[idx]) : '—';
+
+        const details = [];
+        if (pop[idx] != null && pop[idx] > 0) details.push(`${pop[idx]}%`);
+        if (winds[idx] != null) details.push(`${Math.round(winds[idx])} mph`);
+        const detail = details.join(' · ');
+
+        return `
+          <div class="forecast-card">
+            <div class="forecast-day">${escapeHtml(dayLabel)}</div>
+            <div class="forecast-date">${escapeHtml(dateLabel)}</div>
+            <div class="forecast-icon">${icon}</div>
+            <div class="forecast-temps"><span>${escapeHtml(high)}</span><span>${escapeHtml(low)}</span></div>
+            ${detail ? `<div class="forecast-detail">${escapeHtml(detail)}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      if (!items) return '';
+
+      return `
+        <div class="weather-forecast">
+          <div class="forecast-head">10-Day Outlook</div>
+          <div class="forecast-row">${items}</div>
+        </div>
+      `;
+    }
+
     afterRender() {
       this.bindTempToggle();
       this.startClock();
@@ -240,7 +322,10 @@
         toggle.addEventListener('click', () => {
           this.tempUnit = this.tempUnit === 'F' ? 'C' : 'F';
           Storage.set('commTempUnit', this.tempUnit);
-          this.render(); // Re-render with new unit
+          // Refetch to get forecast in new unit
+          if (this.location?.coords) {
+            this.fetchWeather(this.location.coords.lat, this.location.coords.lon);
+          }
         });
       }
     }
@@ -274,6 +359,12 @@
         value = ((temp - 32) * 5) / 9;
       }
       return `${Math.round(value)}°${this.tempUnit}`;
+    }
+
+    formatTempValue(temp) {
+      // For forecast data that's already in the correct unit
+      if (temp == null || isNaN(temp)) return '--';
+      return `${Math.round(temp)}°`;
     }
 
     tempToAccent(tempF) {
@@ -318,6 +409,18 @@
 
       const alt = (main || 'Weather') + ' icon';
       return `<img class="weather-icon-img weather-${icon}" src="/icons/weather/${icon}.svg" alt="${escapeHtml(alt)}" loading="lazy" />`;
+    }
+
+    weatherCodeToMain(code) {
+      const c = Number(code);
+      if ([71, 73, 75, 77, 85, 86].includes(c)) return 'snow';
+      if ([51, 53, 55, 56, 57].includes(c)) return 'drizzle';
+      if ([61, 63, 65, 80, 81, 82].includes(c)) return 'rain';
+      if ([45, 48].includes(c)) return 'fog';
+      if ([95, 96, 99].includes(c)) return 'thunderstorm';
+      if (c === 0) return 'clear';
+      if ([1, 2, 3].includes(c)) return 'clouds';
+      return 'clouds';
     }
 
     degreesToCardinal(deg) {
@@ -369,12 +472,8 @@
       return str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
     }
 
-    // ============================================================
-    // Status Display
-    // ============================================================
-
     getMetaText() {
-      return 'Select a location';
+      return '';
     }
   }
 
