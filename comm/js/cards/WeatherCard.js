@@ -15,7 +15,7 @@
   const STORAGE_KEY = 'commWeatherCache';
   const WEATHER_PROXY = '/weather';
   const FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
-  const ARCHIVE_API = 'https://archive-api.open-meteo.com/v1/archive';
+  const CLIMATE_API = 'https://climate-api.open-meteo.com/v1/climate';
 
   // SVG Icons
   const ICONS = {
