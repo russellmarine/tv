@@ -29,22 +29,21 @@
   function registerCards() {
     const { LocationCard, SpaceWeatherCard } = window.CommDashboard;
     
-    CardRegistry.register(new LocationCard());
-    CardRegistry.register(new SpaceWeatherCard());
+    CardRegistry.register('comm-card-location', new LocationCard());
+    CardRegistry.register('comm-card-spacewx', new SpaceWeatherCard());
     
-    // Future cards will be added here as they're refactored
+    // Initialize all registered cards
+    CardRegistry.init();
   }
 
   // ============================================================
   // Cross-Card Event Handlers
   // ============================================================
   function setupEventHandlers() {
-    // When location changes, other cards can react
     Events.on('comm:location-changed', (location) => {
       console.log('[CommPlanner] Location changed:', location.label);
     });
 
-    // When space weather updates, downstream cards react
     Events.on('spaceweather:data-updated', (data) => {
       console.log('[CommPlanner] Space weather updated:', data);
     });
@@ -54,16 +53,11 @@
   // Initialization
   // ============================================================
   function init() {
-    // Initialize core systems
-    initCore(PANEL_IDS);
+    initCore({ panelIds: PANEL_IDS });
 
-    // Register all cards
     registerCards();
-
-    // Set up cross-card communication
     setupEventHandlers();
 
-    // Queue initial layout
     Layout.queue();
 
     console.log('[CommPlanner] Dashboard initialized');
