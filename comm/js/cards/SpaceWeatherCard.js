@@ -34,13 +34,12 @@
     G: 'G-scale: Geomagnetic storms from CMEs/solar wind. Can trigger aurora, absorption, and scintillation.'
   };
 
-  // X-ray flux thresholds (W/m²) for R-scale
   const XRAY_THRESHOLDS = {
-    R5: 2e-3,   // X20
-    R4: 1e-3,   // X10
-    R3: 1e-4,   // X1
-    R2: 5e-5,   // M5
-    R1: 1e-5    // M1
+    R5: 2e-3,
+    R4: 1e-3,
+    R3: 1e-4,
+    R2: 5e-5,
+    R1: 1e-5
   };
 
   // ============================================================
@@ -116,7 +115,7 @@
 
         const data = await resp.json();
         const current = data['0'] || data[0] || data;
-        
+
         return {
           R: this.parseScaleValue(current.R?.Scale || current.R || 0),
           S: this.parseScaleValue(current.S?.Scale || current.S || 0),
@@ -184,7 +183,6 @@
 
         const data = await resp.json();
         if (Array.isArray(data) && data.length > 0) {
-          // Get most recent valid reading
           for (let i = data.length - 1; i >= 0; i--) {
             const entry = data[i];
             const flux = parseFloat(entry.flux || entry.current_flux || 0);
@@ -207,7 +205,6 @@
     }
 
     classifyXrayFlux(flux) {
-      // Convert flux to class (A, B, C, M, X)
       if (flux >= 1e-4) {
         const level = flux / 1e-4;
         return `X${level.toFixed(1)}`;
@@ -369,49 +366,140 @@
 
       const latest = this.sunspotData[this.sunspotData.length - 1];
       const latestValue = latest ? Math.round(latest.value) : '—';
-      const sparkline = this.renderSparkline();
+      const chart = this.renderSunspotChart();
 
       return `
         <div class="spacewx-sunspot-block">
-          <div class="sunspot-meta">
-            <div class="sunspot-label">Sunspot Number</div>
-            <div class="sunspot-value">${escapeHtml(String(latestValue))}</div>
+          <div class="sunspot-header">
+            <div class="sunspot-title">Solar Cycle — Sunspot Number</div>
+            <div class="sunspot-current">
+              <span class="sunspot-value">${escapeHtml(String(latestValue))}</span>
+              <span class="sunspot-label">Current SSN</span>
+            </div>
           </div>
-          <div class="sunspot-chart">${sparkline}</div>
+          <div class="sunspot-chart-container">
+            ${chart}
+          </div>
         </div>
       `;
     }
 
-    renderSparkline() {
+    renderSunspotChart() {
       const data = this.sunspotData;
-      if (data.length < 2) return '';
+      if (data.length < 2) return '<div class="comm-placeholder">Insufficient data</div>';
 
-      const recent = data.slice(-24).map(d => d.value);
-      const width = 200;
-      const height = 48;
-      const min = Math.min(...recent);
-      const max = Math.max(...recent);
-      const span = max - min || 1;
-      const step = recent.length > 1 ? width / (recent.length - 1) : width;
+      const width = 320;
+      const height = 120;
+      const padding = { top: 10, right: 15, bottom: 25, left: 40 };
+      const chartWidth = width - padding.left - padding.right;
+      const chartHeight = height - padding.top - padding.bottom;
 
-      const points = recent.map((v, idx) => {
-        const x = idx * step;
-        const y = height - ((v - min) / span) * height;
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      }).join(' ');
+      const values = data.map(d => d.value);
+      const minVal = 0;
+      const maxVal = Math.ceil(Math.max(...values) / 50) * 50;
+      const valueRange = maxVal - minVal || 1;
+
+      const points = data.map((d, i) => {
+        const x = padding.left + (i / (data.length - 1)) * chartWidth;
+        const y = padding.top + chartHeight - ((d.value - minVal) / valueRange) * chartHeight;
+        return { x, y, value: d.value, date: d.date };
+      });
+
+      const linePoints = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+      const areaPoints = [
+        `${padding.left},${padding.top + chartHeight}`,
+        ...points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`),
+        `${padding.left + chartWidth},${padding.top + chartHeight}`
+      ].join(' ');
+
+      const yTicks = [];
+      const tickCount = 5;
+      for (let i = 0; i <= tickCount; i++) {
+        const val = minVal + (valueRange * i / tickCount);
+        const y = padding.top + chartHeight - (i / tickCount) * chartHeight;
+        yTicks.push({ y, label: Math.round(val) });
+      }
+
+      const xLabels = [];
+      const labelInterval = Math.floor(data.length / 4);
+      for (let i = 0; i < data.length; i += labelInterval) {
+        const d = data[i];
+        const x = padding.left + (i / (data.length - 1)) * chartWidth;
+        const dateLabel = this.formatChartDate(d.date);
+        xLabels.push({ x, label: dateLabel });
+      }
+      if (data.length > 1) {
+        const lastDate = data[data.length - 1];
+        xLabels.push({
+          x: padding.left + chartWidth,
+          label: this.formatChartDate(lastDate.date)
+        });
+      }
+
+      const gridLines = yTicks.slice(1, -1).map(tick =>
+        `<line x1="${padding.left}" y1="${tick.y}" x2="${padding.left + chartWidth}" y2="${tick.y}" 
+               stroke="rgba(255,200,150,0.15)" stroke-dasharray="3,3"/>`
+      ).join('');
 
       return `
-        <svg class="sunspot-spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        <svg class="sunspot-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
           <defs>
-            <linearGradient id="sunspotGrad" x1="0" x2="0" y1="0" y2="1">
-              <stop stop-color="#ffa94d" stop-opacity="0.9"/>
-              <stop offset="1" stop-color="#ff7f32" stop-opacity="0.25"/>
+            <linearGradient id="sunspotAreaGrad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#ffa94d" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#ff7f32" stop-opacity="0.05"/>
+            </linearGradient>
+            <linearGradient id="sunspotLineGrad" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stop-color="#ff8c42"/>
+              <stop offset="100%" stop-color="#ffd700"/>
             </linearGradient>
           </defs>
-          <polyline points="${points}" fill="none" stroke="url(#sunspotGrad)" 
+          
+          ${gridLines}
+          
+          <line x1="${padding.left}" y1="${padding.top}" 
+                x2="${padding.left}" y2="${padding.top + chartHeight}" 
+                stroke="rgba(255,200,150,0.5)" stroke-width="1"/>
+          
+          <line x1="${padding.left}" y1="${padding.top + chartHeight}" 
+                x2="${padding.left + chartWidth}" y2="${padding.top + chartHeight}" 
+                stroke="rgba(255,200,150,0.5)" stroke-width="1"/>
+          
+          ${yTicks.map(tick => `
+            <line x1="${padding.left - 4}" y1="${tick.y}" x2="${padding.left}" y2="${tick.y}" 
+                  stroke="rgba(255,200,150,0.5)" stroke-width="1"/>
+            <text x="${padding.left - 8}" y="${tick.y + 3}" 
+                  fill="rgba(255,220,180,0.7)" font-size="9" text-anchor="end">${tick.label}</text>
+          `).join('')}
+          
+          ${xLabels.map(label => `
+            <text x="${label.x}" y="${padding.top + chartHeight + 15}" 
+                  fill="rgba(255,220,180,0.7)" font-size="8" text-anchor="middle">${label.label}</text>
+          `).join('')}
+          
+          <polygon points="${areaPoints}" fill="url(#sunspotAreaGrad)"/>
+          
+          <polyline points="${linePoints}" fill="none" stroke="url(#sunspotLineGrad)" 
                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          
+          <circle cx="${points[points.length - 1].x}" cy="${points[points.length - 1].y}" 
+                  r="4" fill="#ffd700" stroke="#fff" stroke-width="1.5"/>
         </svg>
       `;
+    }
+
+    formatChartDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const date = new Date(dateStr);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        const year = String(date.getFullYear()).slice(-2);
+        return `${month} '${year}`;
+      } catch (e) {
+        return '';
+      }
     }
 
     renderKpDefinition() {
@@ -520,20 +608,20 @@
 
     getUpdateText() {
       if (!this.lastUpdate) return 'Loading...';
-      
+
       const now = new Date();
       const diff = now - this.lastUpdate;
       const mins = Math.floor(diff / 60000);
-      
+
       if (mins < 1) return 'Just updated';
       if (mins < 60) return `Updated ${mins}m ago`;
-      
+
       return `Updated ${this.lastUpdate.toLocaleTimeString()}`;
     }
 
     getMetaText() {
       if (!this.data) return '';
-      
+
       const overall = this.getOverallStatus();
       return `<span class="spacewx-pill ${overall.className}">${escapeHtml(overall.label)}</span>`;
     }
