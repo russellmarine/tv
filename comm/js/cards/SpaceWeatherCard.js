@@ -1,6 +1,6 @@
 /**
  * SpaceWeatherCard.js
- * Displays NOAA SWPC space weather data (R/S/G scales, Kp index, sunspots)
+ * Displays NOAA SWPC space weather data (R/S/G scales, Kp index, X-ray flux, sunspots)
  * Emits: 'spaceweather:data-updated' when new data is fetched
  */
 
@@ -14,14 +14,9 @@
   // ============================================================
   const ENDPOINTS = {
     SCALES: '/api/spaceweather/noaa-scales.json',
-    KP_INDEX: '/api/spaceweather/noaa-planetary-k-index.json',
-    SOLAR_CYCLE: '/api/spaceweather/json/solar-cycle/observed-solar-cycle.json'
-  };
-
-  const FALLBACK_ENDPOINTS = {
-    SCALES: 'https://services.swpc.noaa.gov/products/noaa-scales.json',
-    KP_INDEX: 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index-1-minute.json',
-    SOLAR_CYCLE: 'https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle.json'
+    KP_INDEX: '/api/spaceweather/noaa-planetary-k-index-1-minute.json',
+    SOLAR_CYCLE: '/api/spaceweather/json/solar-cycle/observed-solar-cycle-indices.json',
+    XRAY: '/api/spaceweather/json/goes/primary/xrays-1-day.json'
   };
 
   const UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -39,6 +34,15 @@
     G: 'G-scale: Geomagnetic storms from CMEs/solar wind. Can trigger aurora, absorption, and scintillation.'
   };
 
+  // X-ray flux thresholds (W/m²) for R-scale
+  const XRAY_THRESHOLDS = {
+    R5: 2e-3,   // X20
+    R4: 1e-3,   // X10
+    R3: 1e-4,   // X1
+    R2: 5e-5,   // M5
+    R1: 1e-5    // M1
+  };
+
   // ============================================================
   // SpaceWeatherCard Class
   // ============================================================
@@ -52,20 +56,15 @@
 
       this.data = null;
       this.sunspotData = [];
+      this.xrayData = null;
       this.lastUpdate = null;
       this.updateTimer = null;
     }
 
     init() {
       super.init();
-      
-      // Try to load cached data first
       this.loadCached();
-      
-      // Fetch fresh data
       this.fetchData();
-      
-      // Set up periodic updates
       this.updateTimer = this.setInterval(() => this.fetchData(), UPDATE_INTERVAL);
     }
 
@@ -82,44 +81,40 @@
 
     async fetchData() {
       try {
-        const [scales, kpIndex, sunspots] = await Promise.all([
+        const [scales, kpIndex, sunspots, xray] = await Promise.all([
           this.fetchScales(),
           this.fetchKpIndex(),
-          this.fetchSunspots()
+          this.fetchSunspots(),
+          this.fetchXray()
         ]);
 
         if (scales && kpIndex !== null) {
           this.data = {
             scales,
             kpIndex,
+            xray: xray || this.xrayData,
             timestamp: new Date()
           };
           this.sunspotData = sunspots || this.sunspotData;
+          this.xrayData = xray || this.xrayData;
           this.lastUpdate = new Date();
 
           this.cacheData();
           this.render();
 
-          // Emit event for downstream cards
           Events.emit('spaceweather:data-updated', this.data);
         }
       } catch (err) {
         console.warn('[SpaceWeatherCard] Fetch error:', err);
-        // Keep showing cached/existing data
       }
     }
 
     async fetchScales() {
       try {
-        let resp = await fetch(ENDPOINTS.SCALES);
-        if (!resp.ok) {
-          resp = await fetch(FALLBACK_ENDPOINTS.SCALES);
-        }
+        const resp = await fetch(ENDPOINTS.SCALES);
         if (!resp.ok) return null;
 
         const data = await resp.json();
-        // NOAA scales format: { "0": {..., "R": {...}, "S": {...}, "G": {...}} }
-        // We want the current values (index 0)
         const current = data['0'] || data[0] || data;
         
         return {
@@ -144,16 +139,11 @@
 
     async fetchKpIndex() {
       try {
-        let resp = await fetch(ENDPOINTS.KP_INDEX);
-        if (!resp.ok) {
-          resp = await fetch(FALLBACK_ENDPOINTS.KP_INDEX);
-        }
+        const resp = await fetch(ENDPOINTS.KP_INDEX);
         if (!resp.ok) return null;
 
         const data = await resp.json();
-        // Get most recent Kp value
         if (Array.isArray(data) && data.length > 1) {
-          // Skip header row, get last entry
           const latest = data[data.length - 1];
           const kp = parseFloat(latest[1] || latest.kp_index || latest.Kp || 0);
           return isNaN(kp) ? 0 : kp;
@@ -167,20 +157,16 @@
 
     async fetchSunspots() {
       try {
-        let resp = await fetch(ENDPOINTS.SOLAR_CYCLE);
-        if (!resp.ok) {
-          resp = await fetch(FALLBACK_ENDPOINTS.SOLAR_CYCLE);
-        }
+        const resp = await fetch(ENDPOINTS.SOLAR_CYCLE);
         if (!resp.ok) return [];
 
         const data = await resp.json();
-        // Extract recent sunspot numbers
         if (Array.isArray(data)) {
           return data
-            .slice(-60) // Last 60 entries (5 years monthly)
+            .slice(-60)
             .map(d => ({
               date: d['time-tag'] || d.time_tag || d.date,
-              value: parseFloat(d.ssn || d.sunspot_number || d.SUNSPOTS || 0)
+              value: parseFloat(d.ssn || d.sunspot_number || d['ssn-total'] || 0)
             }))
             .filter(d => !isNaN(d.value));
         }
@@ -191,6 +177,64 @@
       }
     }
 
+    async fetchXray() {
+      try {
+        const resp = await fetch(ENDPOINTS.XRAY);
+        if (!resp.ok) return null;
+
+        const data = await resp.json();
+        if (Array.isArray(data) && data.length > 0) {
+          // Get most recent valid reading
+          for (let i = data.length - 1; i >= 0; i--) {
+            const entry = data[i];
+            const flux = parseFloat(entry.flux || entry.current_flux || 0);
+            if (flux > 0) {
+              return {
+                flux,
+                fluxClass: this.classifyXrayFlux(flux),
+                satellite: entry.satellite || 'GOES',
+                energy: entry.energy || '0.1-0.8nm',
+                timestamp: entry.time_tag || entry.timestamp
+              };
+            }
+          }
+        }
+        return null;
+      } catch (err) {
+        console.warn('[SpaceWeatherCard] X-ray fetch error:', err);
+        return null;
+      }
+    }
+
+    classifyXrayFlux(flux) {
+      // Convert flux to class (A, B, C, M, X)
+      if (flux >= 1e-4) {
+        const level = flux / 1e-4;
+        return `X${level.toFixed(1)}`;
+      } else if (flux >= 1e-5) {
+        const level = flux / 1e-5;
+        return `M${level.toFixed(1)}`;
+      } else if (flux >= 1e-6) {
+        const level = flux / 1e-6;
+        return `C${level.toFixed(1)}`;
+      } else if (flux >= 1e-7) {
+        const level = flux / 1e-7;
+        return `B${level.toFixed(1)}`;
+      } else {
+        const level = flux / 1e-8;
+        return `A${level.toFixed(1)}`;
+      }
+    }
+
+    getXrayRScale(flux) {
+      if (flux >= XRAY_THRESHOLDS.R5) return 5;
+      if (flux >= XRAY_THRESHOLDS.R4) return 4;
+      if (flux >= XRAY_THRESHOLDS.R3) return 3;
+      if (flux >= XRAY_THRESHOLDS.R2) return 2;
+      if (flux >= XRAY_THRESHOLDS.R1) return 1;
+      return 0;
+    }
+
     // ============================================================
     // Caching
     // ============================================================
@@ -199,10 +243,10 @@
       const cached = Storage.get(STORAGE_KEY);
       if (cached && cached.data && cached.timestamp) {
         const age = Date.now() - new Date(cached.timestamp).getTime();
-        // Use cache if less than 30 minutes old
         if (age < 30 * 60 * 1000) {
           this.data = cached.data;
           this.sunspotData = cached.sunspots || [];
+          this.xrayData = cached.xray || null;
           this.lastUpdate = new Date(cached.timestamp);
           this.render();
         }
@@ -213,6 +257,7 @@
       Storage.set(STORAGE_KEY, {
         data: this.data,
         sunspots: this.sunspotData,
+        xray: this.xrayData,
         timestamp: this.lastUpdate?.toISOString()
       });
     }
@@ -237,22 +282,17 @@
         
         ${this.renderScaleCards()}
         
-        <a class="spacewx-kp-row tooltip-target" 
-           href="https://www.swpc.noaa.gov/products/planetary-k-index" 
-           target="_blank" 
-           rel="noopener noreferrer"
-           data-tooltip="Planetary K index (0–9) measures geomagnetic disturbance. Kp≥5 is storm level.">
-          <span class="label">Kp Index</span>
-          <span class="value" style="color: ${kpColor};">${this.data.kpIndex.toFixed(2)}</span>
-          <span class="status">${kpCondition}</span>
-        </a>
+        <div class="spacewx-metrics-row">
+          ${this.renderKpRow(kpColor, kpCondition)}
+          ${this.renderXrayRow()}
+        </div>
         
         ${this.renderSunspotBlock()}
         ${this.renderKpDefinition()}
         
         <div class="comm-card-micro comm-card-footer">
           Source: <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank" rel="noopener noreferrer">NOAA SWPC</a> · 
-          <a class="inline-link" href="https://www.swpc.noaa.gov/products/space-weather-scales" target="_blank" rel="noopener noreferrer">NOAA Scales</a> • 
+          <a class="inline-link" href="https://www.swpc.noaa.gov/products/goes-x-ray-flux" target="_blank" rel="noopener noreferrer">GOES X-ray</a> • 
           ${this.getUpdateText()}
         </div>
       `;
@@ -279,6 +319,49 @@
       }).join('');
 
       return `<div class="spacewx-scales-row">${cards}</div>`;
+    }
+
+    renderKpRow(kpColor, kpCondition) {
+      return `
+        <a class="spacewx-metric-card tooltip-target" 
+           href="https://www.swpc.noaa.gov/products/planetary-k-index" 
+           target="_blank" 
+           rel="noopener noreferrer"
+           data-tooltip="Planetary K index (0–9) measures geomagnetic disturbance. Kp≥5 is storm level.">
+          <span class="metric-label">Kp Index</span>
+          <span class="metric-value" style="color: ${kpColor};">${this.data.kpIndex.toFixed(2)}</span>
+          <span class="metric-status">${kpCondition}</span>
+        </a>
+      `;
+    }
+
+    renderXrayRow() {
+      const xray = this.xrayData;
+      if (!xray) {
+        return `
+          <div class="spacewx-metric-card">
+            <span class="metric-label">X-ray Flux</span>
+            <span class="metric-value" style="color: #888;">--</span>
+            <span class="metric-status">Loading</span>
+          </div>
+        `;
+      }
+
+      const rScale = this.getXrayRScale(xray.flux);
+      const color = this.getScaleColor(rScale);
+      const fluxExp = xray.flux.toExponential(2);
+
+      return `
+        <a class="spacewx-metric-card tooltip-target" 
+           href="https://www.swpc.noaa.gov/products/goes-x-ray-flux" 
+           target="_blank" 
+           rel="noopener noreferrer"
+           data-tooltip="GOES X-ray flux (0.1-0.8nm) drives the R-scale. Current: ${fluxExp} W/m²">
+          <span class="metric-label">X-ray Flux</span>
+          <span class="metric-value" style="color: ${color};">${xray.fluxClass}</span>
+          <span class="metric-status">${rScale > 0 ? 'R' + rScale + ' level' : 'Background'}</span>
+        </a>
+      `;
     }
 
     renderSunspotBlock() {
@@ -448,20 +531,12 @@
       return `Updated ${this.lastUpdate.toLocaleTimeString()}`;
     }
 
-    // ============================================================
-    // Header Status
-    // ============================================================
-
     getMetaText() {
       if (!this.data) return '';
       
       const overall = this.getOverallStatus();
       return `<span class="spacewx-pill ${overall.className}">${escapeHtml(overall.label)}</span>`;
     }
-
-    // ============================================================
-    // Public API
-    // ============================================================
 
     getData() {
       return this.data;
@@ -476,9 +551,6 @@
     }
   }
 
-  // ============================================================
-  // Register Card
-  // ============================================================
   window.CommDashboard.SpaceWeatherCard = SpaceWeatherCard;
 
 })();
