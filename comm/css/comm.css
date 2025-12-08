@@ -1,7 +1,6 @@
 /**
  * comm.css
  * Styles for the Comm Dashboard
- * Self-contained — no external dependencies
  */
 
 /* ============================================================
@@ -17,8 +16,6 @@
   --border-color: rgba(255, 140, 0, 0.5);
   --accent-orange: #ff9f54;
   --accent-warm: #ffb366;
-  
-  /* Severity colors */
   --color-good: #44cc44;
   --color-fair: #ffcc00;
   --color-watch: #ff8800;
@@ -28,9 +25,7 @@
 /* ============================================================
    Base Styles
    ============================================================ */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; }
 
 body.comm-page {
   margin: 0;
@@ -83,7 +78,6 @@ body.comm-page {
   align-items: center;
 }
 
-/* Shared button style */
 .mode-link-btn,
 .panel-toggle-summary {
   padding: 0.4rem 0.9rem;
@@ -109,17 +103,9 @@ body.comm-page {
 /* ============================================================
    Panel Toggle Dropdown
    ============================================================ */
-.panel-toggle-dropdown {
-  position: relative;
-}
-
-.panel-toggle-summary {
-  list-style: none;
-}
-
-.panel-toggle-summary::-webkit-details-marker {
-  display: none;
-}
+.panel-toggle-dropdown { position: relative; }
+.panel-toggle-summary { list-style: none; }
+.panel-toggle-summary::-webkit-details-marker { display: none; }
 
 .panel-toggle-menu {
   position: absolute;
@@ -173,9 +159,7 @@ body.comm-page {
 /* ============================================================
    Layout Grid
    ============================================================ */
-#comm-planner-view {
-  padding: 1rem;
-}
+#comm-planner-view { padding: 1rem; }
 
 #comm-planner-view .comm-layout-grid {
   width: min(100%, calc(100% - 1rem));
@@ -196,18 +180,10 @@ body.comm-page {
   #comm-planner-view .comm-layout-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .comm-span-2 { grid-column: span 2; }
 }
-@media (min-width: 960px) {
-  #comm-planner-view .comm-layout-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (min-width: 1280px) {
-  #comm-planner-view .comm-layout-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-@media (min-width: 1600px) {
-  #comm-planner-view .comm-layout-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-}
-@media (min-width: 1900px) {
-  #comm-planner-view .comm-layout-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-}
+@media (min-width: 960px) { #comm-planner-view .comm-layout-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { #comm-planner-view .comm-layout-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1600px) { #comm-planner-view .comm-layout-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1900px) { #comm-planner-view .comm-layout-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 
 /* ============================================================
    Card Base Styles
@@ -286,7 +262,7 @@ body.comm-page {
 }
 
 /* ============================================================
-   Shared Form Elements
+   Form Elements
    ============================================================ */
 .location-search-input,
 .location-coord-field {
@@ -420,13 +396,7 @@ body.comm-page {
 
 /* Location Display */
 .comm-location-display { padding: 0.5rem 0; }
-
-.comm-location-lines {
-  display: grid;
-  gap: 0.3rem;
-  line-height: 1.25;
-}
-
+.comm-location-lines { display: grid; gap: 0.3rem; line-height: 1.25; }
 .loc-group { display: grid; gap: 0.1rem; }
 
 .loc-label {
@@ -479,17 +449,12 @@ body.comm-page {
   box-shadow: 0 0 10px rgba(255, 150, 80, 0.35);
 }
 
-.comm-recent-list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.3rem;
-}
+.comm-recent-list { display: grid; grid-template-columns: 1fr; gap: 0.3rem; }
 
 .recent-location-pill {
   border-radius: 10px;
   border: 1px solid rgba(255, 200, 140, 0.6);
-  background: radial-gradient(circle at 10% 10%, rgba(255, 200, 140, 0.15), transparent 55%),
-    rgba(15, 6, 0, 0.6);
+  background: radial-gradient(circle at 10% 10%, rgba(255, 200, 140, 0.15), transparent 55%), rgba(15, 6, 0, 0.6);
   color: rgba(215, 185, 155, 0.95);
   padding: 0.4rem 0.6rem;
   font-size: 0.8rem;
@@ -507,29 +472,14 @@ body.comm-page {
   box-shadow: 0 0 10px rgba(255, 180, 120, 0.5);
 }
 
-.recent-location-pill .recent-label {
-  font-weight: 600;
-  color: #ffdcb5;
-  display: block;
-}
-
-.recent-location-pill .recent-sub {
-  display: block;
-  margin-top: 0.05rem;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
-}
+.recent-location-pill .recent-label { font-weight: 600; color: #ffdcb5; display: block; }
+.recent-location-pill .recent-sub { display: block; margin-top: 0.05rem; font-size: 0.75rem; color: rgba(255, 255, 255, 0.7); }
 
 /* ============================================================
    Space Weather Card
    ============================================================ */
 .spacewx-summary-row { margin-bottom: 0.75rem; }
-
-.spacewx-summary-desc {
-  font-size: 0.9rem;
-  line-height: 1.4;
-  color: #ffe6c6;
-}
+.spacewx-summary-desc { font-size: 0.9rem; line-height: 1.4; color: #ffe6c6; }
 
 /* R/S/G Scale Cards */
 .spacewx-scales-row {
@@ -565,19 +515,10 @@ body.comm-page {
   margin-bottom: 0.2rem;
 }
 
-.spacewx-scale-card .value {
-  font-size: 1.4rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
+.spacewx-scale-card .value { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+.spacewx-scale-card .desc { font-size: 0.75rem; opacity: 0.7; margin-top: 0.15rem; }
 
-.spacewx-scale-card .desc {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  margin-top: 0.15rem;
-}
-
-/* Metrics Row (Kp + X-ray) */
+/* Metrics Row */
 .spacewx-metrics-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -598,59 +539,41 @@ body.comm-page {
   transition: border-color 0.2s;
 }
 
-.spacewx-metric-card:hover {
-  border-color: rgba(255, 180, 120, 0.5);
-}
+.spacewx-metric-card:hover { border-color: rgba(255, 180, 120, 0.5); }
+.spacewx-metric-card .metric-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; }
+.spacewx-metric-card .metric-value { font-size: 1.3rem; font-weight: 700; line-height: 1.3; }
+.spacewx-metric-card .metric-status { font-size: 0.75rem; opacity: 0.8; }
 
-.spacewx-metric-card .metric-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.7;
-}
-
-.spacewx-metric-card .metric-value {
-  font-size: 1.3rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
-
-.spacewx-metric-card .metric-status {
-  font-size: 0.75rem;
-  opacity: 0.8;
-}
-
-/* Sunspot Block */
+/* Sunspot Chart */
 .spacewx-sunspot-block {
-  display: grid;
-  grid-template-columns: 100px 1fr;
-  gap: 0.5rem;
-  align-items: center;
   border: 1px solid rgba(255, 200, 140, 0.4);
   border-radius: 12px;
-  padding: 0.55rem 0.65rem;
-  background: linear-gradient(120deg, rgba(255, 150, 80, 0.14), rgba(0, 0, 0, 0.4));
+  padding: 0.6rem 0.75rem;
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.08), rgba(0, 0, 0, 0.4));
 }
 
-.sunspot-meta { display: grid; gap: 0.15rem; }
+.sunspot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
 
-.sunspot-label {
-  font-size: 0.7rem;
-  opacity: 0.8;
+.sunspot-title {
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
+  color: rgba(255, 220, 180, 0.85);
 }
 
-.sunspot-value {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #ffd8a4;
-}
+.sunspot-current { display: flex; flex-direction: column; align-items: flex-end; }
+.sunspot-value { font-size: 1.3rem; font-weight: 700; color: #ffd700; line-height: 1; }
+.sunspot-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-top: 0.1rem; }
+.sunspot-chart-container { width: 100%; aspect-ratio: 320 / 120; min-height: 100px; }
+.sunspot-chart-svg { width: 100%; height: 100%; display: block; }
 
-.sunspot-chart { width: 100%; }
-.sunspot-spark { width: 100%; height: 48px; }
-
-/* Kp Definition Expandable */
+/* Kp Definition */
 .comm-definition {
   margin: 0.5rem 0 0.2rem;
   border: 1px solid rgba(255, 200, 150, 0.35);
@@ -660,19 +583,8 @@ body.comm-page {
   color: #ffe5c7;
 }
 
-.comm-definition summary {
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.8rem;
-  letter-spacing: 0.04em;
-}
-
-.comm-definition p {
-  margin: 0.35rem 0 0;
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
+.comm-definition summary { cursor: pointer; font-weight: 600; font-size: 0.8rem; letter-spacing: 0.04em; }
+.comm-definition p { margin: 0.35rem 0 0; font-size: 0.8rem; line-height: 1.4; }
 .definition-body { padding-top: 0.5rem; }
 
 .kp-scale {
@@ -692,18 +604,8 @@ body.comm-page {
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
 }
 
-.kp-segment small {
-  opacity: 0.85;
-  font-size: 0.65rem;
-  display: block;
-}
-
-.spacewx-footnote {
-  font-size: 0.68rem;
-  opacity: 0.6;
-  margin-top: 0.5rem;
-  text-align: center;
-}
+.kp-segment small { opacity: 0.85; font-size: 0.65rem; display: block; }
+.spacewx-footnote { font-size: 0.68rem; opacity: 0.6; margin-top: 0.5rem; text-align: center; }
 
 /* Header Pill */
 .spacewx-pill {
@@ -717,35 +619,12 @@ body.comm-page {
 }
 
 /* ============================================================
-   Severity Classes (shared)
+   Severity Classes
    ============================================================ */
-.severity-good,
-.spacewx-pill.severity-good {
-  background: rgba(68, 204, 68, 0.2);
-  color: var(--color-good);
-  border: 1px solid rgba(68, 204, 68, 0.4);
-}
-
-.severity-fair,
-.spacewx-pill.severity-fair {
-  background: rgba(255, 204, 0, 0.2);
-  color: var(--color-fair);
-  border: 1px solid rgba(255, 204, 0, 0.4);
-}
-
-.severity-watch,
-.spacewx-pill.severity-watch {
-  background: rgba(255, 136, 0, 0.2);
-  color: var(--color-watch);
-  border: 1px solid rgba(255, 136, 0, 0.4);
-}
-
-.severity-poor,
-.spacewx-pill.severity-poor {
-  background: rgba(255, 68, 68, 0.2);
-  color: var(--color-poor);
-  border: 1px solid rgba(255, 68, 68, 0.4);
-}
+.severity-good, .spacewx-pill.severity-good { background: rgba(68, 204, 68, 0.2); color: var(--color-good); border: 1px solid rgba(68, 204, 68, 0.4); }
+.severity-fair, .spacewx-pill.severity-fair { background: rgba(255, 204, 0, 0.2); color: var(--color-fair); border: 1px solid rgba(255, 204, 0, 0.4); }
+.severity-watch, .spacewx-pill.severity-watch { background: rgba(255, 136, 0, 0.2); color: var(--color-watch); border: 1px solid rgba(255, 136, 0, 0.4); }
+.severity-poor, .spacewx-pill.severity-poor { background: rgba(255, 68, 68, 0.2); color: var(--color-poor); border: 1px solid rgba(255, 68, 68, 0.4); }
 
 .status-pill {
   display: inline-block;
@@ -760,10 +639,7 @@ body.comm-page {
 /* ============================================================
    Overlay Map
    ============================================================ */
-.overlay-map-body {
-  display: grid;
-  gap: 0.5rem;
-}
+.overlay-map-body { display: grid; gap: 0.5rem; }
 
 .overlay-map-controls {
   display: flex;
@@ -783,9 +659,7 @@ body.comm-page {
   cursor: pointer;
 }
 
-.overlay-map-controls input[type="checkbox"] {
-  accent-color: var(--accent-orange);
-}
+.overlay-map-controls input[type="checkbox"] { accent-color: var(--accent-orange); }
 
 .overlay-map-frame {
   position: relative;
@@ -794,22 +668,15 @@ body.comm-page {
   overflow: hidden;
   min-height: 300px;
   height: clamp(320px, 34vw, 560px);
-  background: radial-gradient(circle at 30% 30%, rgba(255, 160, 80, 0.08), rgba(0, 0, 0, 0.55)),
-    rgba(0, 0, 0, 0.4);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 160, 80, 0.08), rgba(0, 0, 0, 0.55)), rgba(0, 0, 0, 0.4);
 }
 
-.overlay-map-canvas {
-  position: absolute;
-  inset: 0;
-}
+.overlay-map-canvas { position: absolute; inset: 0; }
 
 /* ============================================================
    Tooltip
    ============================================================ */
-.tooltip-target {
-  position: relative;
-  cursor: help;
-}
+.tooltip-target { position: relative; cursor: help; }
 
 .tooltip-target[data-tooltip]:hover::after {
   content: attr(data-tooltip);
@@ -832,14 +699,8 @@ body.comm-page {
 /* ============================================================
    Utilities
    ============================================================ */
-.inline-link {
-  color: var(--accent-orange);
-  text-decoration: none;
-}
-
-.inline-link:hover {
-  text-decoration: underline;
-}
+.inline-link { color: var(--accent-orange); text-decoration: none; }
+.inline-link:hover { text-decoration: underline; }
 
 /* ============================================================
    Scrollbar
@@ -850,11 +711,12 @@ body.comm-page {
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 140, 0, 0.6); }
 
 /* ============================================================
-   Responsive Adjustments
+   Responsive
    ============================================================ */
 @media (max-width: 400px) {
   .spacewx-metrics-row { grid-template-columns: 1fr; }
-  .spacewx-sunspot-block { grid-template-columns: 1fr; }
+  .sunspot-header { flex-direction: column; gap: 0.3rem; }
+  .sunspot-current { align-items: flex-start; }
 }
 
 @media (max-width: 600px) {
