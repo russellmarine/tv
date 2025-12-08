@@ -16,6 +16,40 @@
   const WEATHER_PROXY = '/weather';
   const FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
 
+  // SVG Icons
+  const ICONS = {
+    humidity: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2.5c0 0-6 7-6 11.5a6 6 0 1 0 12 0c0-4.5-6-11.5-6-11.5z" stroke="#6bd9ff" stroke-width="1.5" fill="rgba(107,217,255,0.2)"/>
+      <path d="M9 14a3 3 0 0 0 3 3" stroke="#a7f0ff" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>`,
+    pressure: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="9" stroke="#ffc46b" stroke-width="1.5" fill="rgba(255,196,107,0.1)"/>
+      <path d="M12 7v5l3.5 2" stroke="#ffdba3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`,
+    wind: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 10h12a3 3 0 1 0-3-3" stroke="#7fd3ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 14h14a3 3 0 1 1-3 3" stroke="#ffe27a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`,
+    visibility: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" stroke="#b8f0ff" stroke-width="1.5" fill="rgba(184,240,255,0.1)"/>
+      <circle cx="12" cy="12" r="3" stroke="#7fd3ff" stroke-width="1.5" fill="rgba(127,211,255,0.2)"/>
+    </svg>`,
+    time: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="9" stroke="#ffd580" stroke-width="1.5" fill="rgba(255,213,128,0.1)"/>
+      <path d="M12 6v6l4 2" stroke="#ffe5a3" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>`,
+    sunrise: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 18h16" stroke="#ffb347" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M6 18a6 6 0 1 1 12 0" stroke="#ffe5a3" stroke-width="1.5" fill="rgba(255,229,163,0.15)"/>
+      <path d="M12 2v3M5 5l2 2M19 5l-2 2" stroke="#ffd580" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>`,
+    sunset: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 18h16" stroke="#ff7b54" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M6 18a6 6 0 1 1 12 0" stroke="#ffb088" stroke-width="1.5" fill="rgba(255,120,80,0.15)"/>
+      <path d="M12 8v3M5 11l2-2M19 11l-2-2" stroke="#ff9966" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>`
+  };
+
   // ============================================================
   // WeatherCard Class
   // ============================================================
@@ -128,6 +162,40 @@
     }
 
     // ============================================================
+    // Temperature to Color
+    // ============================================================
+
+    tempToColor(temp, unit = 'F') {
+      if (temp == null || isNaN(temp)) return { hue: 30, sat: 60, light: 50 };
+      
+      // Convert to F for consistent calculation
+      let tempF = temp;
+      if (unit === 'C') {
+        tempF = (temp * 9/5) + 32;
+      }
+      
+      // Clamp between 0°F and 100°F for color mapping
+      const clamped = Math.max(0, Math.min(100, tempF));
+      
+      // Map temperature to hue: 240 (blue/cold) -> 0 (red/hot)
+      const hue = 240 - (clamped / 100) * 240;
+      const sat = 70 + (Math.abs(50 - clamped) / 50) * 20; // More saturated at extremes
+      const light = 45 + (Math.abs(50 - clamped) / 50) * 10;
+      
+      return { hue, sat, light };
+    }
+
+    tempToGradient(temp, unit = 'F') {
+      const { hue, sat, light } = this.tempToColor(temp, unit);
+      return `linear-gradient(135deg, hsla(${hue}, ${sat}%, ${light}%, 0.25), hsla(${hue}, ${sat - 20}%, ${light - 15}%, 0.4))`;
+    }
+
+    tempToBorder(temp, unit = 'F') {
+      const { hue, sat, light } = this.tempToColor(temp, unit);
+      return `hsla(${hue}, ${sat}%, ${light + 20}%, 0.5)`;
+    }
+
+    // ============================================================
     // Rendering
     // ============================================================
 
@@ -136,7 +204,6 @@
         this.bodyElement.innerHTML = '<p class="comm-placeholder">Loading weather…</p>';
       }
       this.updateStatus('<span class="status-pill severity-fair">Loading…</span>');
-      this.clearCardAccent();
     }
 
     showError(message) {
@@ -144,14 +211,6 @@
         this.bodyElement.innerHTML = `<p class="comm-placeholder">${escapeHtml(message)}</p>`;
       }
       this.updateStatus('Weather unavailable');
-      this.clearCardAccent();
-    }
-
-    clearCardAccent() {
-      if (this.element) {
-        this.element.style.removeProperty('--card-accent');
-        this.element.style.removeProperty('--card-glow');
-      }
     }
 
     renderBody() {
@@ -171,15 +230,13 @@
       const clouds = wx.clouds?.all;
       const timezone = wx.timezone || 0;
 
-      const accent = this.tempToAccent(tempF);
-      if (this.element && accent) {
-        this.element.style.setProperty('--card-accent', accent);
-        this.element.style.setProperty('--card-glow', this.colorWithAlpha(accent, 0.45));
-      }
-
       const severity = this.getSeverityClass(main.main, humidity);
       const locationLabel = this.location?.label || 'Selected location';
       const desc = main.description || main.main || 'Weather';
+
+      // Temperature-based styling for hero
+      const heroGradient = this.tempToGradient(tempF, 'F');
+      const heroBorder = this.tempToBorder(tempF, 'F');
 
       // Update meta bar
       this.updateStatus(`
@@ -212,7 +269,7 @@
 
       return `
         <div class="comm-weather-body">
-          <div class="comm-weather-hero${accent ? ' accented' : ''}" style="--weather-accent:${accent || 'transparent'};">
+          <div class="comm-weather-hero" style="background: ${heroGradient}; border-color: ${heroBorder};">
             <div class="comm-weather-left">
               <div class="comm-weather-location">${escapeHtml(locationLabel)}</div>
               <div class="comm-weather-temp-row">
@@ -228,14 +285,14 @@
           </div>
 
           <div class="comm-weather-grid">
-            ${humidity != null ? this.metricHtml('Humidity', `${humidity}%`) : ''}
-            ${pressure != null ? this.metricHtml('Pressure', `${pressure} hPa`) : ''}
-            ${wind.speed != null ? this.metricHtml('Wind', `${Math.round(wind.speed)} mph${windDir ? ' ' + windDir : ''}`) : ''}
-            ${visibility != null ? this.metricHtml('Visibility', `${(visibility / 1609).toFixed(1)} mi`) : ''}
-            ${this.metricHtml('Local Time', this.formatLocalClock(timezone), 'weather-local-time')}
-            ${this.metricHtml('UTC Time', this.formatUtcClock(), 'weather-utc-time')}
-            ${sunriseLabel ? this.metricHtml('Sunrise', sunriseLabel) : ''}
-            ${sunsetLabel ? this.metricHtml('Sunset', sunsetLabel) : ''}
+            ${humidity != null ? this.metricHtml('Humidity', `${humidity}%`, ICONS.humidity) : ''}
+            ${pressure != null ? this.metricHtml('Pressure', `${pressure} hPa`, ICONS.pressure) : ''}
+            ${wind.speed != null ? this.metricHtml('Wind', `${Math.round(wind.speed)} mph${windDir ? ' ' + windDir : ''}`, ICONS.wind) : ''}
+            ${visibility != null ? this.metricHtml('Visibility', `${(visibility / 1609).toFixed(1)} mi`, ICONS.visibility) : ''}
+            ${this.metricHtml('Local Time', this.formatLocalClock(timezone), ICONS.time, 'weather-local-time')}
+            ${this.metricHtml('UTC Time', this.formatUtcClock(), ICONS.time, 'weather-utc-time')}
+            ${sunriseLabel ? this.metricHtml('Sunrise', sunriseLabel, ICONS.sunrise) : ''}
+            ${sunsetLabel ? this.metricHtml('Sunset', sunsetLabel, ICONS.sunset) : ''}
           </div>
 
           ${forecastHtml}
@@ -247,10 +304,11 @@
       `;
     }
 
-    metricHtml(label, value, valueId) {
+    metricHtml(label, value, icon, valueId) {
       const idAttr = valueId ? ` id="${valueId}"` : '';
       return `
         <div class="comm-weather-metric">
+          <div class="metric-icon">${icon}</div>
           <div class="metric-text">
             <span class="label">${escapeHtml(label)}</span>
             <span class="value"${idAttr}>${escapeHtml(value)}</span>
@@ -280,10 +338,17 @@
 
         const dayLabel = dt.toLocaleDateString(undefined, { weekday: 'short' });
         const dateLabel = dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
-        const main = this.weatherCodeToMain(codes[idx]);
-        const icon = this.getWeatherIcon(main);
-        const high = highs[idx] != null ? this.formatTempValue(highs[idx]) : '—';
-        const low = lows[idx] != null ? this.formatTempValue(lows[idx]) : '—';
+        const mainWeather = this.weatherCodeToMain(codes[idx]);
+        const icon = this.getWeatherIcon(mainWeather);
+        const high = highs[idx];
+        const low = lows[idx];
+        const highDisplay = high != null ? this.formatTempValue(high) : '—';
+        const lowDisplay = low != null ? this.formatTempValue(low) : '—';
+
+        // Calculate average temp for card color (use high temp as primary)
+        const avgTemp = high != null ? high : null;
+        const cardGradient = this.tempToGradient(avgTemp, this.tempUnit);
+        const cardBorder = this.tempToBorder(avgTemp, this.tempUnit);
 
         const details = [];
         if (pop[idx] != null && pop[idx] > 0) details.push(`${pop[idx]}%`);
@@ -291,11 +356,11 @@
         const detail = details.join(' · ');
 
         return `
-          <div class="forecast-card">
+          <div class="forecast-card" style="background: ${cardGradient}; border-color: ${cardBorder};">
             <div class="forecast-day">${escapeHtml(dayLabel)}</div>
             <div class="forecast-date">${escapeHtml(dateLabel)}</div>
             <div class="forecast-icon">${icon}</div>
-            <div class="forecast-temps"><span>${escapeHtml(high)}</span><span>${escapeHtml(low)}</span></div>
+            <div class="forecast-temps"><span>${escapeHtml(highDisplay)}</span><span>${escapeHtml(lowDisplay)}</span></div>
             ${detail ? `<div class="forecast-detail">${escapeHtml(detail)}</div>` : ''}
           </div>
         `;
@@ -365,18 +430,6 @@
       // For forecast data that's already in the correct unit
       if (temp == null || isNaN(temp)) return '--';
       return `${Math.round(temp)}°`;
-    }
-
-    tempToAccent(tempF) {
-      if (tempF == null || isNaN(tempF)) return '';
-      const clamped = Math.max(-10, Math.min(110, tempF));
-      const norm = (clamped + 10) / 120;
-      const hue = 210 - (norm * 190);
-      return `hsl(${hue}deg 90% 60%)`;
-    }
-
-    colorWithAlpha(color, alpha) {
-      return color.replace('hsl', 'hsla').replace(')', ` / ${alpha})`);
     }
 
     getSeverityClass(main, humidity) {
