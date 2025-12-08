@@ -195,7 +195,6 @@
         return null;
       }
     }
-        });
 
         const results = await Promise.all(promises);
         const validResults = results.filter(r => r && r.high != null && r.low != null);
