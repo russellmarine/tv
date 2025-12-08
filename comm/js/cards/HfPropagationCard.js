@@ -19,8 +19,7 @@
   // Constants
   // ============================================================
   const ENDPOINTS = {
-    HAMQSL: '/api/hf/hamqsl',
-    MUF_MAP: '/api/hf/muf'
+    HAMQSL: '/api/hf/hamqsl'
   };
 
   const UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutes
@@ -155,14 +154,20 @@
     // ============================================================
     async fetchData() {
       try {
-        const [hamqsl, muf] = await Promise.all([
-          this.fetchHamQSL(),
-          this.location?.coords ? this.fetchMUF() : Promise.resolve(null)
-        ]);
+        const hamqsl = await this.fetchHamQSL();
 
         if (hamqsl) {
           this.solarData = hamqsl.solar;
           this.bandConditions = hamqsl.bands;
+          
+          // Override SSN with NOAA data if available from SpaceWeatherCard
+          if (this.spaceWeather) {
+            this.mergeNoaaData();
+          }
+          
+          // Calculate MUF from HamQSL data (foF2 * factor)
+          this.calculateMuf();
+          
           this.lastUpdate = new Date();
           this.cacheData();
           this.render();
@@ -175,13 +180,57 @@
             isDay: this.isDay
           });
         }
-
-        if (muf) {
-          this.muf = muf;
-          this.render();
-        }
       } catch (err) {
         console.warn('[HfPropagationCard] Fetch error:', err);
+      }
+    }
+    
+    mergeNoaaData() {
+      // Get SSN from SpaceWeatherCard via CardRegistry if available
+      const spacewxCard = window.CommDashboard?.CardRegistry?.get('comm-card-spacewx');
+      if (spacewxCard) {
+        const swData = spacewxCard.getData?.();
+        // Use NOAA sunspot data if available
+        if (swData?.sunspots?.length > 0) {
+          const latestSsn = swData.sunspots[swData.sunspots.length - 1]?.value;
+          if (latestSsn !== undefined && !isNaN(latestSsn)) {
+            this.solarData.sunspots = Math.round(latestSsn);
+            this.solarData.ssnSource = 'NOAA';
+          }
+        }
+        // Also grab Kp if we have it
+        if (swData?.kpIndex !== undefined) {
+          this.solarData.kIndex = swData.kpIndex;
+        }
+      }
+    }
+    
+    calculateMuf() {
+      // MUF = foF2 × M(3000)F2 factor
+      // HamQSL provides these values
+      const foF2 = parseFloat(this.solarData?.fof2);
+      const factor = parseFloat(this.solarData?.muffactor) || 3.0;
+      
+      if (!isNaN(foF2) && foF2 > 0) {
+        this.muf = {
+          value: foF2 * factor,
+          foF2: foF2,
+          factor: factor,
+          source: 'HamQSL'
+        };
+      } else {
+        // Try to use the pre-calculated MUF from HamQSL
+        const hamqslMuf = parseFloat(this.solarData?.muf);
+        if (!isNaN(hamqslMuf) && hamqslMuf > 0) {
+          this.muf = {
+            value: hamqslMuf,
+            foF2: null,
+            factor: factor,
+            source: 'HamQSL'
+          };
+        } else {
+          this.muf = null;
+        }
       }
     }
 
@@ -413,11 +462,25 @@
     }
 
     renderMufSection() {
-      if (!this.muf && !this.solarData?.muf) return '';
+      // If we have no MUF data at all, show informational message
+      if (!this.muf) {
+        return `
+          <div class="hf-section hf-muf-section hf-muf-unavailable">
+            <div class="hf-section-header">
+              <span class="hf-section-title">Maximum Usable Frequency</span>
+            </div>
+            <div class="hf-muf-notice">
+              <span class="hf-muf-notice-icon">📡</span>
+              <span class="hf-muf-notice-text">foF2 data not currently reported. MUF estimates unavailable.</span>
+            </div>
+            <p class="hf-muf-hint">MUF depends on real-time ionosonde measurements</p>
+          </div>
+        `;
+      }
 
-      const mufValue = this.muf?.value || this.solarData?.muf || '--';
-      const mufFactor = this.solarData?.muffactor || 3.0;
-      const fof2 = this.solarData?.fof2 || '--';
+      const mufValue = this.muf.value;
+      const mufFactor = this.muf.factor || 3.0;
+      const fof2 = this.muf.foF2;
 
       return `
         <div class="hf-section hf-muf-section">
@@ -426,14 +489,16 @@
           </div>
           <div class="hf-muf-row">
             <div class="hf-muf-primary">
-              <span class="hf-muf-value">${typeof mufValue === 'number' ? mufValue.toFixed(1) : mufValue}</span>
+              <span class="hf-muf-value">${mufValue.toFixed(1)}</span>
               <span class="hf-muf-unit">MHz</span>
             </div>
             <div class="hf-muf-details">
+              ${fof2 ? `
               <div class="hf-muf-detail">
                 <span class="label">foF2:</span>
-                <span class="value">${fof2} MHz</span>
+                <span class="value">${fof2.toFixed(1)} MHz</span>
               </div>
+              ` : ''}
               <div class="hf-muf-detail">
                 <span class="label">Factor:</span>
                 <span class="value">${mufFactor}×</span>
