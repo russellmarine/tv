@@ -14,7 +14,7 @@
   // ============================================================
   const STORAGE_KEY = 'commGnssCache';
   const CELESTRAK_BASE = '/api/gnss/celestrak';
-  const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  const REFRESH_INTERVAL = 60 * 60 * 1000; // 60 minutes (data only updates every 2 hours anyway)
 
   // Constellation configurations
   const CONSTELLATIONS = {
