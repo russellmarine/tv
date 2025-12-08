@@ -1,1 +1,211 @@
+/* ============================================================
+   Space Weather Card
+   ============================================================ */
+.spacewx-summary-row { margin-bottom: 0.5rem; }
+.spacewx-summary-desc { font-size: 0.85rem; line-height: 1.4; color: #ffe6c6; }
 
+/* R/S/G Scale Cards */
+.spacewx-scales-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.spacewx-scale-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.3rem 0.4rem;
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.12), rgba(0, 0, 0, 0.4));
+  border: 1px solid rgba(255, 200, 150, 0.3);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.spacewx-scale-card:hover {
+  border-color: rgba(255, 180, 120, 0.6);
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.22), rgba(0, 0, 0, 0.4));
+}
+
+.spacewx-scale-card .label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.spacewx-scale-card .value { font-size: 1.3rem; font-weight: 700; line-height: 1.1; }
+.spacewx-scale-card .desc { font-size: 0.7rem; opacity: 0.7; }
+
+.spacewx-scale-card .scale-driver {
+  font-size: 0.6rem;
+  opacity: 0.5;
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Metrics Row (3 columns) */
+.spacewx-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.spacewx-metric-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.4rem 0.25rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 200, 150, 0.25);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s;
+}
+
+.spacewx-metric-card:hover { border-color: rgba(255, 180, 120, 0.5); }
+.spacewx-metric-card .metric-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.65; }
+.spacewx-metric-card .metric-value { font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
+.spacewx-metric-card .metric-status { font-size: 0.65rem; opacity: 0.7; }
+
+/* Chart Block */
+.spacewx-chart-block {
+  border: 1px solid rgba(255, 200, 140, 0.3);
+  border-radius: 10px;
+  padding: 0.4rem 0.5rem;
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.06), rgba(0, 0, 0, 0.35));
+}
+
+.spacewx-chart-block .chart-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 220, 180, 0.75);
+  margin-bottom: 0.25rem;
+}
+
+.spacewx-chart-svg { width: 100%; height: auto; display: block; }
+
+/* Definitions */
+.spacewx-definitions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.comm-definition {
+  border: 1px solid rgba(255, 200, 150, 0.25);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  color: #ffe5c7;
+}
+
+.comm-definition summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+
+.comm-definition[open] summary { margin-bottom: 0.3rem; }
+
+.definition-body p {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.def-scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.def-item {
+  background: linear-gradient(120deg, var(--def-color, #44cc44), rgba(0, 0, 0, 0.5));
+  border: 1px solid rgba(255, 210, 150, 0.25);
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.65rem;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
+
+/* Header Pill */
+.spacewx-pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Responsive */
+@media (max-width: 380px) {
+  .spacewx-metrics-row { grid-template-columns: 1fr 1fr; }
+  .spacewx-metric-card:last-child { grid-column: span 2; }
+}
+/* Connector lines between scales and metrics */
+.spacewx-scales-row {
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.spacewx-scales-row::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16.67%;
+  width: 66.67%;
+  display: flex;
+  justify-content: space-between;
+}
+
+.spacewx-connector-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  height: 12px;
+  margin-bottom: 0.25rem;
+}
+
+.spacewx-connector {
+  display: flex;
+  justify-content: center;
+}
+
+.spacewx-connector::before {
+  content: '';
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(255, 200, 150, 0.5), rgba(255, 200, 150, 0.2));
+}
+
+/* ============================================================
+   Severity Classes
+   ============================================================ */
+.severity-good, .spacewx-pill.severity-good { background: rgba(68, 204, 68, 0.2); color: var(--color-good); border: 1px solid rgba(68, 204, 68, 0.4); }
+.severity-fair, .spacewx-pill.severity-fair { background: rgba(255, 204, 0, 0.2); color: var(--color-fair); border: 1px solid rgba(255, 204, 0, 0.4); }
+.severity-watch, .spacewx-pill.severity-watch { background: rgba(255, 136, 0, 0.2); color: var(--color-watch); border: 1px solid rgba(255, 136, 0, 0.4); }
+.severity-poor, .spacewx-pill.severity-poor { background: rgba(255, 68, 68, 0.2); color: var(--color-poor); border: 1px solid rgba(255, 68, 68, 0.4); }
+
+.status-pill {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
