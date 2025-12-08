@@ -1076,7 +1076,7 @@ body.comm-page {
 }
 /* ============================================================
    Weather Card Styles
-   ADD THIS TO THE END OF comm/css/comm.css
+   REPLACE the previous weather styles in comm/css/comm.css
    ============================================================ */
 
 /* Weather Body */
@@ -1111,7 +1111,7 @@ body.comm-page {
   box-shadow: 0 0 8px rgba(255, 140, 0, 0.4);
 }
 
-/* Hero Section - border set via inline style for temp color */
+/* Hero Section */
 .comm-weather-hero {
   border: 1px solid;
   border-radius: 12px;
@@ -1119,10 +1119,22 @@ body.comm-page {
   transition: all 0.3s ease;
 }
 
+.comm-weather-hero-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
 .comm-weather-left {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  flex: 1;
+}
+
+.comm-weather-right {
+  flex-shrink: 0;
 }
 
 .comm-weather-location {
@@ -1188,6 +1200,55 @@ body.comm-page {
   opacity: 0.5;
 }
 
+/* Historical Averages (right side of hero) */
+.weather-historical {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  min-width: 100px;
+}
+
+.historical-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.4rem;
+}
+
+.historical-label svg {
+  width: 14px;
+  height: 14px;
+}
+
+.historical-values {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.historical-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hist-label {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.hist-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+}
+
 /* Metrics Grid */
 .comm-weather-grid {
   display: grid;
@@ -1240,7 +1301,43 @@ body.comm-page {
   color: #ffdcb5;
 }
 
-/* Forecast Section */
+/* Hourly Charts */
+.weather-hourly-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.hourly-chart-container {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 200, 150, 0.2);
+  border-radius: 10px;
+  padding: 0.5rem;
+}
+
+.chart-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 210, 170, 0.7);
+  margin-bottom: 0.35rem;
+}
+
+.hourly-chart {
+  width: 100%;
+  height: 40px;
+  display: block;
+}
+
+.chart-range {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  color: rgba(255, 210, 170, 0.5);
+  margin-top: 0.2rem;
+}
+
+/* Forecast Section - Single Row with Scroll */
 .weather-forecast {
   border: 1px solid rgba(255, 200, 140, 0.3);
   border-radius: 10px;
@@ -1258,22 +1355,39 @@ body.comm-page {
 }
 
 .forecast-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(62px, 1fr));
+  display: flex;
   gap: 0.35rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 140, 0, 0.4) transparent;
 }
 
-/* Forecast cards - background/border set inline for temp color */
+.forecast-row::-webkit-scrollbar {
+  height: 4px;
+}
+
+.forecast-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.forecast-row::-webkit-scrollbar-thumb {
+  background: rgba(255, 140, 0, 0.4);
+  border-radius: 2px;
+}
+
 .forecast-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.4rem 0.3rem;
+  gap: 0.1rem;
+  padding: 0.35rem 0.4rem;
   border: 1px solid;
   border-radius: 8px;
   text-align: center;
   transition: all 0.3s ease;
+  flex-shrink: 0;
+  min-width: 62px;
 }
 
 .forecast-card:hover {
@@ -1289,14 +1403,14 @@ body.comm-page {
 }
 
 .forecast-date {
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .forecast-icon {
-  width: 28px;
-  height: 28px;
-  margin: 0.15rem 0;
+  width: 26px;
+  height: 26px;
+  margin: 0.1rem 0;
 }
 
 .forecast-icon img {
@@ -1308,8 +1422,8 @@ body.comm-page {
 
 .forecast-temps {
   display: flex;
-  gap: 0.3rem;
-  font-size: 0.78rem;
+  gap: 0.25rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -1322,7 +1436,7 @@ body.comm-page {
 }
 
 .forecast-detail {
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -1373,7 +1487,30 @@ body.comm-page {
 }
 
 /* Responsive */
-@media (max-width: 500px) {
+@media (max-width: 600px) {
+  .comm-weather-hero-inner {
+    flex-direction: column;
+  }
+  
+  .comm-weather-right {
+    width: 100%;
+  }
+  
+  .weather-historical {
+    width: 100%;
+  }
+  
+  .historical-values {
+    flex-direction: row;
+    gap: 1rem;
+  }
+  
+  .weather-hourly-charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 400px) {
   .comm-weather-temp {
     font-size: 2rem;
   }
@@ -1381,10 +1518,6 @@ body.comm-page {
   .comm-weather-icon {
     width: 48px;
     height: 48px;
-  }
-  
-  .forecast-row {
-    grid-template-columns: repeat(5, 1fr);
   }
   
   .comm-weather-grid {
