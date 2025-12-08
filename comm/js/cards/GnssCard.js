@@ -66,30 +66,7 @@
       endpoint: '/beidou',
       color: '#d9a84a'
     },
-    qzss: {
-      id: 'qzss',
-      name: 'QZSS',
-      fullName: 'Quasi-Zenith Satellite System',
-      country: 'Japan',
-      flag: '🇯🇵',
-      nominalCount: 4,
-      minOperational: 3,
-      bands: ['L1 (1575.42 MHz)', 'L2 (1227.60 MHz)', 'L5 (1176.45 MHz)', 'L6 (1278.75 MHz)'],
-      endpoint: '/qzss',
-      color: '#d94a9e'
-    },
-    navic: {
-      id: 'navic',
-      name: 'NavIC',
-      fullName: 'Navigation with Indian Constellation',
-      country: 'India',
-      flag: '🇮🇳',
-      nominalCount: 7,
-      minOperational: 4,
-      bands: ['L5 (1176.45 MHz)', 'S (2492.028 MHz)'],
-      endpoint: '/navic',
-      color: '#ff9933'
-    }
+
   };
 
   // SBAS Systems
