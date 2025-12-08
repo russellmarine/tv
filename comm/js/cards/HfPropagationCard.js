@@ -474,39 +474,16 @@
         return '<p class="comm-placeholder">Loading HF propagation data...</p>';
       }
 
-      const overall = this.getOverallCondition();
-
       return `
-        <div class="hf-summary-row">
-          ${this.renderDayNightIndicator()}
-          <div class="hf-summary-text">
-            <span class="hf-summary-label">${overall.label}</span>
-            <span class="hf-summary-desc">${overall.desc}</span>
-          </div>
-        </div>
-        
+        ${this.renderMufSection()}
         ${this.renderSolarIndices()}
         ${this.renderBandGrid()}
-        ${this.renderMufSection()}
         ${this.renderPropagationNotes()}
         
         <div class="comm-card-micro comm-card-footer">
           Source: <a class="inline-link" href="https://www.hamqsl.com/solar.html" target="_blank">HamQSL</a> • 
           <a class="inline-link" href="https://www.swpc.noaa.gov" target="_blank">NOAA SWPC</a> • 
           ${this.getUpdateText()}
-        </div>
-      `;
-    }
-
-    renderDayNightIndicator() {
-      const icon = this.isDay ? this.getSunIcon() : this.getMoonIcon();
-      const label = this.isDay ? 'Day' : 'Night';
-      const className = this.isDay ? 'hf-day' : 'hf-night';
-      
-      return `
-        <div class="hf-daynight ${className}" title="${label} propagation mode">
-          ${icon}
-          <span class="hf-daynight-label">${label}</span>
         </div>
       `;
     }
@@ -595,14 +572,16 @@
 
       const mufValue = this.muf.value;
       const dayNight = this.muf.dayNight;
-      const note = this.muf.note || '';
       
       // Get day/night class for styling
       const dayPhaseClass = dayNight?.status === 'night' ? 'hf-phase-night' : 
                             dayNight?.status === 'greyline' ? 'hf-phase-grey' : 'hf-phase-day';
 
+      // Get propagation description based on day/night status
+      const propDesc = this.getDayNightDescription(dayNight?.status);
+
       return `
-        <div class="hf-section hf-muf-section">
+        <div class="hf-muf-section">
           <div class="hf-muf-row">
             <div class="hf-muf-primary">
               <div class="hf-muf-label">Est. MUF</div>
@@ -613,10 +592,21 @@
               <span>${dayNight?.label || ''}</span>
             </div>
           </div>
-          <p class="hf-muf-definition">MUF is the highest HF frequency likely to refract via the F-layer right now.</p>
-          ${note ? `<p class="hf-muf-note">${note}</p>` : ''}
+          <p class="hf-muf-desc">${propDesc}</p>
         </div>
       `;
+    }
+
+    getDayNightDescription(status) {
+      switch (status) {
+        case 'greyline':
+          return 'Excellent DX window! Greyline propagation enhances long-distance paths on 20m–40m.';
+        case 'night':
+          return 'Nighttime favors lower bands (40m–160m). F2 layer may support 20m long-path DX.';
+        case 'day':
+        default:
+          return 'Daytime favors higher bands (10m–20m). F2 layer supporting normal skip distances.';
+      }
     }
 
     getDayPhaseIcon(status) {
@@ -850,20 +840,6 @@
     // ============================================================
     // Icons
     // ============================================================
-    getSunIcon() {
-      return `<svg class="hf-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="5" fill="#ffcc00" stroke="#ff9900" stroke-width="1.5"/>
-        <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" 
-              stroke="#ffaa00" stroke-width="2" stroke-linecap="round"/>
-      </svg>`;
-    }
-
-    getMoonIcon() {
-      return `<svg class="hf-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="#6699cc" stroke="#4477aa" stroke-width="1.5"/>
-      </svg>`;
-    }
-
     getNoteIcon(type) {
       switch (type) {
         case 'warning':
