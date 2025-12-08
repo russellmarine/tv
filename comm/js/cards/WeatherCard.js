@@ -140,7 +140,7 @@
     async fetchForecastAndHourly(lat, lon) {
       try {
         const unitParam = this.tempUnit === 'C' ? 'celsius' : 'fahrenheit';
-        const url = `${FORECAST_API}?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&hourly=temperature_2m,precipitation_probability,precipitation&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=10&timezone=auto`;
+        const url = `${FORECAST_API}?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&hourly=temperature_2m,precipitation_probability,precipitation&temperature_unit=${unitParam}&windspeed_unit=mph&precipitation_unit=inch&forecast_days=10&timezone=auto`;
         const res = await fetch(url);
         if (!res.ok) return null;
         const data = await res.json();
@@ -162,7 +162,6 @@
         const day = String(today.getDate()).padStart(2, '0');
         const currentYear = today.getFullYear();
         
-        // Get data for same date over last 10 years
         const years = [];
         for (let i = 1; i <= 10; i++) {
           years.push(currentYear - i);
@@ -170,7 +169,6 @@
 
         const unitParam = this.tempUnit === 'C' ? 'celsius' : 'fahrenheit';
         
-        // Fetch all years in parallel
         const promises = years.map(async (year) => {
           const dateStr = `${year}-${month}-${day}`;
           const url = `${ARCHIVE_API}?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,temperature_2m_min&temperature_unit=${unitParam}&timezone=auto`;
@@ -193,11 +191,8 @@
 
         if (validResults.length === 0) return null;
 
-        // Calculate averages
         const avgHigh = validResults.reduce((sum, r) => sum + r.high, 0) / validResults.length;
         const avgLow = validResults.reduce((sum, r) => sum + r.low, 0) / validResults.length;
-        
-        // Find record high and low
         const recordHigh = Math.max(...validResults.map(r => r.high));
         const recordLow = Math.min(...validResults.map(r => r.low));
 
@@ -383,7 +378,6 @@
 
     renderHistoricalAverages() {
       if (!this.historical) {
-        // Fallback to today's forecast if no historical data
         if (!this.forecast?.temperature_2m_max || !this.forecast?.temperature_2m_min) {
           return '';
         }
@@ -438,7 +432,7 @@
       if (!this.hourly?.time || !this.hourly?.temperature_2m) return '';
 
       const temps = this.hourly.temperature_2m.slice(0, 24);
-      const precip = this.hourly.precipitation_probability?.slice(0, 24) || [];
+      const precip = this.hourly.precipitation?.slice(0, 24) || [];
       const times = this.hourly.time.slice(0, 24);
 
       if (temps.length < 12) return '';
@@ -453,7 +447,7 @@
             ${tempChart}
           </div>
           <div class="hourly-chart-container">
-            <div class="chart-label">Precipitation % (24hr)</div>
+            <div class="chart-label">Precipitation (24hr)</div>
             ${precipChart}
           </div>
         </div>
@@ -461,97 +455,135 @@
     }
 
     renderTempChart(temps, times) {
-      const width = 100;
-      const height = 50;
-      const padLeft = 0;
-      const padRight = 0;
-      const padTop = 5;
-      const padBottom = 12;
-      const chartHeight = height - padTop - padBottom;
+      const width = 200;
+      const height = 80;
+      const padLeft = 28;
+      const padRight = 8;
+      const padTop = 8;
+      const padBottom = 18;
       const chartWidth = width - padLeft - padRight;
+      const chartHeight = height - padTop - padBottom;
       
       const validTemps = temps.filter(t => t != null);
       if (validTemps.length === 0) return '';
       
-      const minTemp = Math.min(...validTemps);
-      const maxTemp = Math.max(...validTemps);
-      const range = maxTemp - minTemp || 1;
+      // Round to nice numbers for axis
+      const dataMin = Math.min(...validTemps);
+      const dataMax = Math.max(...validTemps);
+      const minTemp = Math.floor(dataMin / 5) * 5;
+      const maxTemp = Math.ceil(dataMax / 5) * 5;
+      const range = maxTemp - minTemp || 10;
 
+      // Generate data line
       const points = temps.map((temp, i) => {
         const x = padLeft + (i / (temps.length - 1)) * chartWidth;
         const y = padTop + chartHeight - ((temp - minTemp) / range) * chartHeight;
         return `${x},${y}`;
       }).join(' ');
 
+      // Fill polygon
+      const fillPoints = `${padLeft},${padTop + chartHeight} ${points} ${padLeft + chartWidth},${padTop + chartHeight}`;
+
+      // Color based on average temp
       const avgTemp = validTemps.reduce((a, b) => a + b, 0) / validTemps.length;
       const { hue } = this.tempToColor(avgTemp, this.tempUnit);
 
-      // Time labels (every 6 hours)
-      const timeLabels = this.renderTimeAxis(times, width, padLeft, chartWidth, height - 3);
+      // Y-axis gridlines and labels (3 lines: min, mid, max)
+      const yValues = [minTemp, minTemp + range/2, maxTemp];
+      const gridLines = yValues.map(val => {
+        const y = padTop + chartHeight - ((val - minTemp) / range) * chartHeight;
+        return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.15)" stroke-width="0.5"/>`;
+      }).join('');
+      
+      const yLabels = yValues.map(val => {
+        const y = padTop + chartHeight - ((val - minTemp) / range) * chartHeight;
+        return `<text x="${padLeft - 4}" y="${y + 1.5}" text-anchor="end" class="chart-axis-label">${Math.round(val)}°</text>`;
+      }).join('');
+
+      // X-axis labels (0, 6, 12, 18, 24)
+      const xLabels = [0, 6, 12, 18, 23].map(idx => {
+        const x = padLeft + (idx / (temps.length - 1)) * chartWidth;
+        const hour = idx === 23 ? '24' : String(idx).padStart(2, '0');
+        return `<text x="${x}" y="${height - 4}" text-anchor="middle" class="chart-axis-label">${hour}</text>`;
+      }).join('');
 
       return `
-        <svg class="hourly-chart temp-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        <svg class="hourly-chart temp-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
           <defs>
             <linearGradient id="tempGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="hsla(${hue}, 80%, 60%, 0.6)"/>
-              <stop offset="100%" stop-color="hsla(${hue}, 80%, 40%, 0.1)"/>
+              <stop offset="0%" stop-color="hsla(${hue}, 80%, 60%, 0.5)"/>
+              <stop offset="100%" stop-color="hsla(${hue}, 80%, 40%, 0.05)"/>
             </linearGradient>
           </defs>
-          <polygon points="${padLeft},${padTop + chartHeight} ${points} ${padLeft + chartWidth},${padTop + chartHeight}" fill="url(#tempGrad)"/>
+          ${gridLines}
+          <polygon points="${fillPoints}" fill="url(#tempGrad)"/>
           <polyline points="${points}" fill="none" stroke="hsla(${hue}, 90%, 70%, 0.9)" stroke-width="1.5"/>
-          ${timeLabels}
+          ${yLabels}
+          ${xLabels}
         </svg>
-        <div class="chart-range"><span>${this.formatTempValue(minTemp)}</span><span>${this.formatTempValue(maxTemp)}</span></div>
       `;
     }
 
     renderPrecipChart(precip, times) {
-      const width = 100;
-      const height = 50;
-      const padLeft = 0;
-      const padRight = 0;
-      const padTop = 5;
-      const padBottom = 12;
-      const chartHeight = height - padTop - padBottom;
+      const width = 200;
+      const height = 80;
+      const padLeft = 28;
+      const padRight = 8;
+      const padTop = 8;
+      const padBottom = 18;
       const chartWidth = width - padLeft - padRight;
+      const chartHeight = height - padTop - padBottom;
+
+      // Find max precipitation, minimum 0.1 inch for scale
+      const maxPrecip = Math.max(0.1, ...precip.filter(p => p != null));
+      // Round up to nice number
+      const yMax = maxPrecip <= 0.1 ? 0.1 : Math.ceil(maxPrecip * 10) / 10;
+
       const barWidth = chartWidth / precip.length;
 
       const bars = precip.map((p, i) => {
+        if (p == null || p === 0) return '';
         const x = padLeft + i * barWidth;
-        const barHeight = (p / 100) * chartHeight;
+        const barHeight = (p / yMax) * chartHeight;
         const y = padTop + chartHeight - barHeight;
-        const opacity = 0.3 + (p / 100) * 0.7;
-        return `<rect x="${x}" y="${y}" width="${barWidth - 0.5}" height="${barHeight}" fill="rgba(100, 180, 255, ${opacity})" rx="0.5"/>`;
+        const opacity = 0.4 + (p / yMax) * 0.6;
+        return `<rect x="${x}" y="${y}" width="${barWidth - 1}" height="${barHeight}" fill="rgba(100, 180, 255, ${opacity})" rx="1"/>`;
       }).join('');
 
-      // Time labels
-      const timeLabels = this.renderTimeAxis(times, width, padLeft, chartWidth, height - 3);
+      // Y-axis gridlines and labels
+      const yValues = [0, yMax / 2, yMax];
+      const gridLines = yValues.map(val => {
+        const y = padTop + chartHeight - (val / yMax) * chartHeight;
+        return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.15)" stroke-width="0.5"/>`;
+      }).join('');
+      
+      const yLabels = yValues.map(val => {
+        const y = padTop + chartHeight - (val / yMax) * chartHeight;
+        const label = val === 0 ? '0' : val.toFixed(1) + '"';
+        return `<text x="${padLeft - 4}" y="${y + 1.5}" text-anchor="end" class="chart-axis-label">${label}</text>`;
+      }).join('');
+
+      // X-axis labels
+      const xLabels = [0, 6, 12, 18, 23].map(idx => {
+        const x = padLeft + (idx / (precip.length - 1)) * chartWidth;
+        const hour = idx === 23 ? '24' : String(idx).padStart(2, '0');
+        return `<text x="${x}" y="${height - 4}" text-anchor="middle" class="chart-axis-label">${hour}</text>`;
+      }).join('');
+
+      // Check if there's any precipitation
+      const hasPrecip = precip.some(p => p > 0);
+      const noPrecipText = !hasPrecip ? 
+        `<text x="${padLeft + chartWidth/2}" y="${padTop + chartHeight/2}" text-anchor="middle" class="chart-no-data">No precipitation expected</text>` : '';
 
       return `
-        <svg class="hourly-chart precip-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        <svg class="hourly-chart precip-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
+          ${gridLines}
           ${bars}
-          ${timeLabels}
+          ${noPrecipText}
+          ${yLabels}
+          ${xLabels}
         </svg>
-        <div class="chart-range"><span>0%</span><span>100%</span></div>
       `;
-    }
-
-    renderTimeAxis(times, width, padLeft, chartWidth, yPos) {
-      // Show labels at 00:00, 06:00, 12:00, 18:00, 24:00
-      const labels = [];
-      const hourIndices = [0, 6, 12, 18, 23]; // indices in the 24-hour array
-      
-      hourIndices.forEach((idx) => {
-        if (idx >= times.length) return;
-        const x = padLeft + (idx / (times.length - 1)) * chartWidth;
-        const timeStr = times[idx];
-        // Extract hour from ISO string
-        const hour = timeStr ? new Date(timeStr).getHours() : idx;
-        const label = idx === 23 ? '24' : String(hour).padStart(2, '0');
-        labels.push(`<text x="${x}" y="${yPos}" text-anchor="middle" class="chart-time-label">${label}</text>`);
-      });
-
-      return labels.join('');
     }
 
     metricHtml(label, value, icon, valueId) {
