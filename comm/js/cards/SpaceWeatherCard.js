@@ -210,6 +210,11 @@
           <div class="spacewx-summary-desc">${escapeHtml(overall.desc)}</div>
         </div>
         ${this.renderScaleCards()}
+        <div class="spacewx-connector-row">
+          <div class="spacewx-connector"></div>
+          <div class="spacewx-connector"></div>
+          <div class="spacewx-connector"></div>
+        </div>
         ${this.renderMetricsRow()}
         ${this.renderSunspotChart()}
         ${this.renderDefinitions()}
