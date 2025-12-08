@@ -680,3 +680,135 @@ body.comm-page {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 140, 0, 0.6);
 }
+/* ============================================================
+   Space Weather Card Styles
+   ============================================================ */
+
+.spacewx-summary-row {
+  margin-bottom: 0.75rem;
+}
+
+.spacewx-summary-desc {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #ffe6c6;
+}
+
+.spacewx-scales-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.spacewx-scale-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.6rem 0.4rem;
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.15), rgba(0, 0, 0, 0.4));
+  border: 1px solid rgba(255, 200, 150, 0.3);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.spacewx-scale-card:hover {
+  border-color: rgba(255, 180, 120, 0.6);
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.25), rgba(0, 0, 0, 0.4));
+}
+
+.spacewx-scale-card .label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+  margin-bottom: 0.2rem;
+}
+
+.spacewx-scale-card .value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.spacewx-scale-card .desc {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 0.15rem;
+}
+
+.spacewx-kp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 200, 150, 0.25);
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.spacewx-kp-row:hover {
+  border-color: rgba(255, 180, 120, 0.5);
+}
+
+.spacewx-kp-row .label {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.spacewx-kp-row .value {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.spacewx-kp-row .status {
+  margin-left: auto;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.spacewx-pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.spacewx-pill.severity-good {
+  background: rgba(68, 204, 68, 0.25);
+  color: #44cc44;
+  border: 1px solid rgba(68, 204, 68, 0.4);
+}
+
+.spacewx-pill.severity-fair {
+  background: rgba(255, 204, 0, 0.25);
+  color: #ffcc00;
+  border: 1px solid rgba(255, 204, 0, 0.4);
+}
+
+.spacewx-pill.severity-watch {
+  background: rgba(255, 136, 0, 0.25);
+  color: #ff8800;
+  border: 1px solid rgba(255, 136, 0, 0.4);
+}
+
+.spacewx-pill.severity-poor {
+  background: rgba(255, 68, 68, 0.25);
+  color: #ff4444;
+  border: 1px solid rgba(255, 68, 68, 0.4);
+}
+
+.spacewx-footnote {
+  font-size: 0.7rem;
+  opacity: 0.6;
+  margin-top: 0.5rem;
+  text-align: center;
+}
