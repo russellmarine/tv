@@ -455,12 +455,12 @@
     }
 
     renderTempChart(temps, times) {
-      const width = 200;
-      const height = 80;
-      const padLeft = 28;
-      const padRight = 8;
-      const padTop = 8;
-      const padBottom = 18;
+      const width = 280;
+      const height = 100;
+      const padLeft = 36;
+      const padRight = 12;
+      const padTop = 10;
+      const padBottom = 22;
       const chartWidth = width - padLeft - padRight;
       const chartHeight = height - padTop - padBottom;
       
@@ -492,19 +492,19 @@
       const yValues = [minTemp, minTemp + range/2, maxTemp];
       const gridLines = yValues.map(val => {
         const y = padTop + chartHeight - ((val - minTemp) / range) * chartHeight;
-        return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.15)" stroke-width="0.5"/>`;
+        return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
       }).join('');
       
       const yLabels = yValues.map(val => {
         const y = padTop + chartHeight - ((val - minTemp) / range) * chartHeight;
-        return `<text x="${padLeft - 4}" y="${y + 1.5}" text-anchor="end" class="chart-axis-label">${Math.round(val)}°</text>`;
+        return `<text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" class="chart-axis-label">${Math.round(val)}°</text>`;
       }).join('');
 
       // X-axis labels (0, 6, 12, 18, 24)
       const xLabels = [0, 6, 12, 18, 23].map(idx => {
         const x = padLeft + (idx / (temps.length - 1)) * chartWidth;
         const hour = idx === 23 ? '24' : String(idx).padStart(2, '0');
-        return `<text x="${x}" y="${height - 4}" text-anchor="middle" class="chart-axis-label">${hour}</text>`;
+        return `<text x="${x}" y="${height - 6}" text-anchor="middle" class="chart-axis-label">${hour}:00</text>`;
       }).join('');
 
       return `
@@ -517,7 +517,7 @@
           </defs>
           ${gridLines}
           <polygon points="${fillPoints}" fill="url(#tempGrad)"/>
-          <polyline points="${points}" fill="none" stroke="hsla(${hue}, 90%, 70%, 0.9)" stroke-width="1.5"/>
+          <polyline points="${points}" fill="none" stroke="hsla(${hue}, 90%, 70%, 0.9)" stroke-width="2"/>
           ${yLabels}
           ${xLabels}
         </svg>
@@ -525,12 +525,12 @@
     }
 
     renderPrecipChart(precip, times) {
-      const width = 200;
-      const height = 80;
-      const padLeft = 28;
-      const padRight = 8;
-      const padTop = 8;
-      const padBottom = 18;
+      const width = 280;
+      const height = 100;
+      const padLeft = 36;
+      const padRight = 12;
+      const padTop = 10;
+      const padBottom = 22;
       const chartWidth = width - padLeft - padRight;
       const chartHeight = height - padTop - padBottom;
 
@@ -547,33 +547,33 @@
         const barHeight = (p / yMax) * chartHeight;
         const y = padTop + chartHeight - barHeight;
         const opacity = 0.4 + (p / yMax) * 0.6;
-        return `<rect x="${x}" y="${y}" width="${barWidth - 1}" height="${barHeight}" fill="rgba(100, 180, 255, ${opacity})" rx="1"/>`;
+        return `<rect x="${x + 1}" y="${y}" width="${barWidth - 2}" height="${barHeight}" fill="rgba(100, 180, 255, ${opacity})" rx="1"/>`;
       }).join('');
 
       // Y-axis gridlines and labels
       const yValues = [0, yMax / 2, yMax];
       const gridLines = yValues.map(val => {
         const y = padTop + chartHeight - (val / yMax) * chartHeight;
-        return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.15)" stroke-width="0.5"/>`;
+        return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
       }).join('');
       
       const yLabels = yValues.map(val => {
         const y = padTop + chartHeight - (val / yMax) * chartHeight;
-        const label = val === 0 ? '0' : val.toFixed(1) + '"';
-        return `<text x="${padLeft - 4}" y="${y + 1.5}" text-anchor="end" class="chart-axis-label">${label}</text>`;
+        const label = val === 0 ? '0"' : val.toFixed(2) + '"';
+        return `<text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" class="chart-axis-label">${label}</text>`;
       }).join('');
 
       // X-axis labels
       const xLabels = [0, 6, 12, 18, 23].map(idx => {
         const x = padLeft + (idx / (precip.length - 1)) * chartWidth;
         const hour = idx === 23 ? '24' : String(idx).padStart(2, '0');
-        return `<text x="${x}" y="${height - 4}" text-anchor="middle" class="chart-axis-label">${hour}</text>`;
+        return `<text x="${x}" y="${height - 6}" text-anchor="middle" class="chart-axis-label">${hour}:00</text>`;
       }).join('');
 
       // Check if there's any precipitation
       const hasPrecip = precip.some(p => p > 0);
       const noPrecipText = !hasPrecip ? 
-        `<text x="${padLeft + chartWidth/2}" y="${padTop + chartHeight/2}" text-anchor="middle" class="chart-no-data">No precipitation expected</text>` : '';
+        `<text x="${padLeft + chartWidth/2}" y="${padTop + chartHeight/2 + 4}" text-anchor="middle" class="chart-no-data">No precipitation expected</text>` : '';
 
       return `
         <svg class="hourly-chart precip-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
