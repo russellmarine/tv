@@ -196,29 +196,6 @@
       }
     }
 
-        const results = await Promise.all(promises);
-        const validResults = results.filter(r => r && r.high != null && r.low != null);
-
-        if (validResults.length === 0) return null;
-
-        const avgHigh = validResults.reduce((sum, r) => sum + r.high, 0) / validResults.length;
-        const avgLow = validResults.reduce((sum, r) => sum + r.low, 0) / validResults.length;
-        const recordHigh = Math.max(...validResults.map(r => r.high));
-        const recordLow = Math.min(...validResults.map(r => r.low));
-
-        return {
-          avgHigh: Math.round(avgHigh),
-          avgLow: Math.round(avgLow),
-          recordHigh: Math.round(recordHigh),
-          recordLow: Math.round(recordLow),
-          yearsOfData: validResults.length
-        };
-      } catch (err) {
-        console.warn('[WeatherCard] Historical fetch failed:', err);
-        return null;
-      }
-    }
-
     // ============================================================
     // Caching
     // ============================================================
