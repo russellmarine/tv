@@ -59,8 +59,8 @@
 
 .gnss-constellations {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.4rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
 }
 
 .gnss-constellation {
@@ -541,7 +541,7 @@
 
 @media (max-width: 800px) {
   .gnss-constellations {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
   
   .dop-grid {
