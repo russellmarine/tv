@@ -1,6 +1,6 @@
 /**
  * WeatherCard.js
- * Local weather card with current conditions and 10-day forecast
+ * Local weather card with current conditions, hourly charts, and 10-day forecast
  * Listens for: 'comm:location-changed'
  */
 
@@ -23,8 +23,9 @@
       <path d="M9 14a3 3 0 0 0 3 3" stroke="#a7f0ff" stroke-width="1.5" stroke-linecap="round"/>
     </svg>`,
     pressure: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="9" stroke="#ffc46b" stroke-width="1.5" fill="rgba(255,196,107,0.1)"/>
-      <path d="M12 7v5l3.5 2" stroke="#ffdba3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4" stroke="#ffc46b" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="12" cy="12" r="6" stroke="#ffdba3" stroke-width="1.5" fill="rgba(255,196,107,0.15)"/>
+      <path d="M12 9v3l2 1" stroke="#ffe5a3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>`,
     wind: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M4 10h12a3 3 0 1 0-3-3" stroke="#7fd3ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -47,6 +48,11 @@
       <path d="M4 18h16" stroke="#ff7b54" stroke-width="1.5" stroke-linecap="round"/>
       <path d="M6 18a6 6 0 1 1 12 0" stroke="#ffb088" stroke-width="1.5" fill="rgba(255,120,80,0.15)"/>
       <path d="M12 8v3M5 11l2-2M19 11l-2-2" stroke="#ff9966" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>`,
+    history: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke="#a0d8ef" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M3 3v5h5" stroke="#a0d8ef" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 7v5l3 3" stroke="#c8e6f0" stroke-width="1.5" stroke-linecap="round"/>
     </svg>`
   };
 
@@ -64,6 +70,7 @@
       this.tempUnit = Storage.get('commTempUnit', 'F');
       this.currentWeather = null;
       this.forecast = null;
+      this.hourly = null;
       this.location = null;
       this.clockInterval = null;
     }
@@ -72,7 +79,6 @@
       super.init();
       this.loadCached();
 
-      // Listen for location changes
       this.subscribe('comm:location-changed', (loc) => {
         this.location = loc;
         if (loc?.coords) {
@@ -80,7 +86,6 @@
         }
       });
 
-      // Check if we have a location already
       const locationCard = window.CommDashboard?.CardRegistry?.get('comm-card-location');
       const existingLoc = locationCard?.getSelectedLocation?.();
       if (existingLoc?.coords) {
@@ -102,17 +107,18 @@
       this.showLoading();
 
       try {
-        const [weather, forecast] = await Promise.all([
+        const [weather, forecastData] = await Promise.all([
           this.fetchCurrentWeather(lat, lon),
-          this.fetchForecast(lat, lon)
+          this.fetchForecastAndHourly(lat, lon)
         ]);
 
         if (weather) {
           this.currentWeather = weather;
-          this.forecast = forecast;
+          this.forecast = forecastData?.daily || null;
+          this.hourly = forecastData?.hourly || null;
           this.cacheData();
           this.render();
-          Events.emit('weather:data-updated', { weather, forecast });
+          Events.emit('weather:data-updated', { weather, forecast: this.forecast, hourly: this.hourly });
         }
       } catch (err) {
         console.warn('[WeatherCard] Fetch error:', err);
@@ -126,13 +132,18 @@
       return res.json();
     }
 
-    async fetchForecast(lat, lon) {
+    async fetchForecastAndHourly(lat, lon) {
       try {
         const unitParam = this.tempUnit === 'C' ? 'celsius' : 'fahrenheit';
-        const url = `${FORECAST_API}?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=10&timezone=auto`;
+        const url = `${FORECAST_API}?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&hourly=temperature_2m,precipitation_probability,precipitation&temperature_unit=${unitParam}&windspeed_unit=mph&forecast_days=11&timezone=auto`;
         const res = await fetch(url);
         if (!res.ok) return null;
-        return res.json();
+        const data = await res.json();
+        return {
+          daily: data.daily,
+          hourly: data.hourly,
+          utc_offset_seconds: data.utc_offset_seconds
+        };
       } catch (err) {
         console.warn('[WeatherCard] Forecast fetch failed:', err);
         return null;
@@ -148,6 +159,7 @@
       if (cached && cached.weather) {
         this.currentWeather = cached.weather;
         this.forecast = cached.forecast;
+        this.hourly = cached.hourly;
         this.tempUnit = cached.tempUnit || 'F';
       }
     }
@@ -156,6 +168,7 @@
       Storage.set(STORAGE_KEY, {
         weather: this.currentWeather,
         forecast: this.forecast,
+        hourly: this.hourly,
         tempUnit: this.tempUnit,
         timestamp: Date.now()
       });
@@ -168,18 +181,14 @@
     tempToColor(temp, unit = 'F') {
       if (temp == null || isNaN(temp)) return { hue: 30, sat: 60, light: 50 };
       
-      // Convert to F for consistent calculation
       let tempF = temp;
       if (unit === 'C') {
         tempF = (temp * 9/5) + 32;
       }
       
-      // Clamp between 0°F and 100°F for color mapping
       const clamped = Math.max(0, Math.min(100, tempF));
-      
-      // Map temperature to hue: 240 (blue/cold) -> 0 (red/hot)
       const hue = 240 - (clamped / 100) * 240;
-      const sat = 70 + (Math.abs(50 - clamped) / 50) * 20; // More saturated at extremes
+      const sat = 70 + (Math.abs(50 - clamped) / 50) * 20;
       const light = 45 + (Math.abs(50 - clamped) / 50) * 10;
       
       return { hue, sat, light };
@@ -234,11 +243,9 @@
       const locationLabel = this.location?.label || 'Selected location';
       const desc = main.description || main.main || 'Weather';
 
-      // Temperature-based styling for hero
       const heroGradient = this.tempToGradient(tempF, 'F');
       const heroBorder = this.tempToBorder(tempF, 'F');
 
-      // Update meta bar
       this.updateStatus(`
         <div class="weather-meta-bar">
           <span class="status-pill ${severity}">${escapeHtml(this.toTitleCase(desc))}</span>
@@ -246,7 +253,6 @@
         </div>
       `);
 
-      // Summary line
       const summaryParts = [];
       if (wx.main?.temp_max != null && wx.main?.temp_min != null) {
         summaryParts.push(`High/Low ${this.formatTemp(wx.main.temp_max)} / ${this.formatTemp(wx.main.temp_min)}`);
@@ -259,28 +265,36 @@
         ? `Last Updated: ${this.formatUserStamp(wx.dt * 1000)}`
         : 'Last Updated: --';
 
-      // Build metrics grid
       const windDir = this.degreesToCardinal(wind.deg);
       const sunriseLabel = wx.sys?.sunrise ? this.formatLocalTime(wx.sys.sunrise, timezone) : null;
       const sunsetLabel = wx.sys?.sunset ? this.formatLocalTime(wx.sys.sunset, timezone) : null;
 
-      // Build forecast
+      // Get historical averages from forecast (today's data)
+      const historicalHtml = this.renderHistoricalAverages();
+
+      // Hourly charts
+      const hourlyChartsHtml = this.renderHourlyCharts();
+
+      // Forecast (starting from tomorrow)
       const forecastHtml = this.renderForecast();
 
       return `
         <div class="comm-weather-body">
           <div class="comm-weather-hero" style="background: ${heroGradient}; border-color: ${heroBorder};">
-            <div class="comm-weather-left">
-              <div class="comm-weather-location">${escapeHtml(locationLabel)}</div>
-              <div class="comm-weather-temp-row">
-                <div class="comm-weather-icon">${this.getWeatherIcon(main.main)}</div>
-                <div class="comm-weather-mainline">
-                  <div class="comm-weather-temp">${this.formatTemp(tempF)}</div>
-                  <div class="comm-weather-desc">${escapeHtml(desc)}</div>
-                  <div class="comm-weather-feels">Feels like ${this.formatTemp(feelsF)}</div>
+            <div class="comm-weather-hero-inner">
+              <div class="comm-weather-left">
+                <div class="comm-weather-location">${escapeHtml(locationLabel)}</div>
+                <div class="comm-weather-temp-row">
+                  <div class="comm-weather-icon">${this.getWeatherIcon(main.main)}</div>
+                  <div class="comm-weather-mainline">
+                    <div class="comm-weather-temp">${this.formatTemp(tempF)}</div>
+                    <div class="comm-weather-desc">${escapeHtml(desc)}</div>
+                    <div class="comm-weather-feels">Feels like ${this.formatTemp(feelsF)}</div>
+                  </div>
                 </div>
+                ${summaryParts.length ? `<div class="comm-weather-summary-row">${summaryParts.map(s => escapeHtml(s)).join(' <span>•</span> ')}</div>` : ''}
               </div>
-              ${summaryParts.length ? `<div class="comm-weather-summary-row">${summaryParts.map(s => escapeHtml(s)).join(' <span>•</span> ')}</div>` : ''}
+              ${historicalHtml}
             </div>
           </div>
 
@@ -295,12 +309,133 @@
             ${sunsetLabel ? this.metricHtml('Sunset', sunsetLabel, ICONS.sunset) : ''}
           </div>
 
+          ${hourlyChartsHtml}
+
           ${forecastHtml}
 
           <div class="comm-card-micro comm-card-footer">
             Source: <a class="inline-link" href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeather</a> / <a class="inline-link" href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> • ${escapeHtml(updatedLocal)}
           </div>
         </div>
+      `;
+    }
+
+    renderHistoricalAverages() {
+      // Use today's forecast high/low as comparison reference
+      if (!this.forecast?.temperature_2m_max || !this.forecast?.temperature_2m_min) {
+        return '';
+      }
+
+      const todayHigh = this.forecast.temperature_2m_max[0];
+      const todayLow = this.forecast.temperature_2m_min[0];
+
+      if (todayHigh == null && todayLow == null) return '';
+
+      return `
+        <div class="comm-weather-right">
+          <div class="weather-historical">
+            <div class="historical-label">${ICONS.history} Today's Forecast</div>
+            <div class="historical-values">
+              <div class="historical-item">
+                <span class="hist-label">High</span>
+                <span class="hist-value">${this.formatTempValue(todayHigh)}</span>
+              </div>
+              <div class="historical-item">
+                <span class="hist-label">Low</span>
+                <span class="hist-value">${this.formatTempValue(todayLow)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    renderHourlyCharts() {
+      if (!this.hourly?.time || !this.hourly?.temperature_2m) return '';
+
+      // Get next 24 hours of data
+      const now = new Date();
+      const currentHour = now.getHours();
+      
+      const temps = this.hourly.temperature_2m.slice(0, 24);
+      const precip = this.hourly.precipitation_probability?.slice(0, 24) || [];
+      const times = this.hourly.time.slice(0, 24);
+
+      if (temps.length < 12) return '';
+
+      const tempChart = this.renderTempChart(temps, times);
+      const precipChart = this.renderPrecipChart(precip, times);
+
+      return `
+        <div class="weather-hourly-charts">
+          <div class="hourly-chart-container">
+            <div class="chart-label">Temperature (24hr)</div>
+            ${tempChart}
+          </div>
+          <div class="hourly-chart-container">
+            <div class="chart-label">Precipitation % (24hr)</div>
+            ${precipChart}
+          </div>
+        </div>
+      `;
+    }
+
+    renderTempChart(temps, times) {
+      const width = 100;
+      const height = 40;
+      const padding = 2;
+      
+      const validTemps = temps.filter(t => t != null);
+      if (validTemps.length === 0) return '';
+      
+      const minTemp = Math.min(...validTemps);
+      const maxTemp = Math.max(...validTemps);
+      const range = maxTemp - minTemp || 1;
+
+      const points = temps.map((temp, i) => {
+        const x = padding + (i / (temps.length - 1)) * (width - padding * 2);
+        const y = height - padding - ((temp - minTemp) / range) * (height - padding * 2);
+        return `${x},${y}`;
+      }).join(' ');
+
+      // Color gradient based on average temp
+      const avgTemp = validTemps.reduce((a, b) => a + b, 0) / validTemps.length;
+      const { hue } = this.tempToColor(avgTemp, this.tempUnit);
+
+      return `
+        <svg class="hourly-chart temp-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="tempGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="hsla(${hue}, 80%, 60%, 0.6)"/>
+              <stop offset="100%" stop-color="hsla(${hue}, 80%, 40%, 0.1)"/>
+            </linearGradient>
+          </defs>
+          <polygon points="${padding},${height - padding} ${points} ${width - padding},${height - padding}" fill="url(#tempGrad)"/>
+          <polyline points="${points}" fill="none" stroke="hsla(${hue}, 90%, 70%, 0.9)" stroke-width="1.5"/>
+        </svg>
+        <div class="chart-range"><span>${this.formatTempValue(minTemp)}</span><span>${this.formatTempValue(maxTemp)}</span></div>
+      `;
+    }
+
+    renderPrecipChart(precip, times) {
+      const width = 100;
+      const height = 40;
+      const padding = 2;
+      const barWidth = (width - padding * 2) / precip.length;
+
+      const bars = precip.map((p, i) => {
+        const x = padding + i * barWidth;
+        const barHeight = (p / 100) * (height - padding * 2);
+        const y = height - padding - barHeight;
+        const opacity = 0.3 + (p / 100) * 0.7;
+        return `<rect x="${x}" y="${y}" width="${barWidth - 1}" height="${barHeight}" fill="rgba(100, 180, 255, ${opacity})" rx="1"/>`;
+      }).join('');
+
+      return `
+        <svg class="hourly-chart precip-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+          ${bars}
+        </svg>
+        <div class="chart-range"><span>0%</span><span>100%</span></div>
       `;
     }
 
@@ -318,16 +453,18 @@
     }
 
     renderForecast() {
-      if (!this.forecast?.daily?.time) return '';
+      if (!this.forecast?.time) return '';
 
-      const days = this.forecast.daily.time;
-      const highs = this.forecast.daily.temperature_2m_max || [];
-      const lows = this.forecast.daily.temperature_2m_min || [];
-      const codes = this.forecast.daily.weathercode || [];
-      const pop = this.forecast.daily.precipitation_probability_max || [];
-      const winds = this.forecast.daily.windspeed_10m_max || [];
+      const days = this.forecast.time;
+      const highs = this.forecast.temperature_2m_max || [];
+      const lows = this.forecast.temperature_2m_min || [];
+      const codes = this.forecast.weathercode || [];
+      const pop = this.forecast.precipitation_probability_max || [];
+      const winds = this.forecast.windspeed_10m_max || [];
 
-      const items = days.slice(0, 10).map((dateStr, idx) => {
+      // Start from index 1 (tomorrow) and get 10 days
+      const items = days.slice(1, 11).map((dateStr, idx) => {
+        const actualIdx = idx + 1; // Offset for sliced arrays
         const parts = String(dateStr).split('-');
         let dt;
         if (parts.length === 3) {
@@ -338,21 +475,20 @@
 
         const dayLabel = dt.toLocaleDateString(undefined, { weekday: 'short' });
         const dateLabel = dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
-        const mainWeather = this.weatherCodeToMain(codes[idx]);
+        const mainWeather = this.weatherCodeToMain(codes[actualIdx]);
         const icon = this.getWeatherIcon(mainWeather);
-        const high = highs[idx];
-        const low = lows[idx];
+        const high = highs[actualIdx];
+        const low = lows[actualIdx];
         const highDisplay = high != null ? this.formatTempValue(high) : '—';
         const lowDisplay = low != null ? this.formatTempValue(low) : '—';
 
-        // Calculate average temp for card color (use high temp as primary)
         const avgTemp = high != null ? high : null;
         const cardGradient = this.tempToGradient(avgTemp, this.tempUnit);
         const cardBorder = this.tempToBorder(avgTemp, this.tempUnit);
 
         const details = [];
-        if (pop[idx] != null && pop[idx] > 0) details.push(`${pop[idx]}%`);
-        if (winds[idx] != null) details.push(`${Math.round(winds[idx])} mph`);
+        if (pop[actualIdx] != null && pop[actualIdx] > 0) details.push(`${pop[actualIdx]}%`);
+        if (winds[actualIdx] != null) details.push(`${Math.round(winds[actualIdx])} mph`);
         const detail = details.join(' · ');
 
         return `
@@ -387,7 +523,6 @@
         toggle.addEventListener('click', () => {
           this.tempUnit = this.tempUnit === 'F' ? 'C' : 'F';
           Storage.set('commTempUnit', this.tempUnit);
-          // Refetch to get forecast in new unit
           if (this.location?.coords) {
             this.fetchWeather(this.location.coords.lat, this.location.coords.lon);
           }
@@ -427,7 +562,6 @@
     }
 
     formatTempValue(temp) {
-      // For forecast data that's already in the correct unit
       if (temp == null || isNaN(temp)) return '--';
       return `${Math.round(temp)}°`;
     }
@@ -530,9 +664,6 @@
     }
   }
 
-  // ============================================================
-  // Register Card
-  // ============================================================
   window.CommDashboard.WeatherCard = WeatherCard;
 
 })();
