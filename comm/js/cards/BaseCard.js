@@ -77,6 +77,12 @@
       return this.element ? this.element.querySelectorAll(selector) : [];
     }
 
+    updateStatus(text) {
+      if (this.metaElement) {
+        this.metaElement.innerHTML = text;
+      }
+    }
+
     updateRowSpan() {
       if (!this.element) return;
       requestAnimationFrame(() => {
