@@ -1,709 +1,682 @@
-
-
-
-Communication Planner Dashboard
-/
-so I want to do a code refactor, my concern is that this comm dashboard is overly dependent on a very large js file called comm-planner.js
-My idea is to refactor all the individual cards into their own js files so that I can edit them without risking breaking the whole project. Then those panels could be more modular and I could add or change them more easily.
-They should also have the same look and feel across the board.
-
-The comm-map.js is supposed to be a separate overlay file that will have toggles to turn features on and off within a map. Right now it has weather wired to it, long term it would have submarine cables, cable landing stations, cellular tower locations, internet exchange locations with associated ASNs, then long term a comm planning utility to estimate VHF/UHF coverages based on power/antenna height against the terrain and elevation data with the ability to input a distant end station and estimate connectivity with green yellow red.
-
-Show more
-
-Analyzed project structure to guide modularization strategy.
-
-
-
-I'll search the project knowledge to understand your current structure and then we can plan the refactor.
-
-
-2 steps
-
-Searched project for “comm-map.js overlay weather toggle features”
-5 results
-
-
-
-
-
-
-
-
-
-
-Examined current architecture to inform modularization strategy.
-
-Let me look at the current file structure to understand the full layout:
-
-
-View the project structure to understand the file layout
-
-
-Architected modular refactoring strategy for monolithic dashboard components.
-
-
-
-
-Good, I've got a clear picture of your current architecture. Here's what I see:
-
-Current State
-comm-planner.js is doing too much:
-
-Location selection (4 input modes: search, MGRS, lat/lon, maidenhead)
-Space weather card rendering
-Local weather card with metrics, forecast, radar
-GPS/PNT card
-HF propagation card
-SATCOM weather card
-SATCOM planner/angles card
-Cellular coverage card
-Panel toggles, masonry layout, PPTX export
-comm-map.js is already modular and handles the overlay card well.
-
-Proposed Refactor Architecture
-js/
-├── comm-core.js          # Shared utilities, events, layout, panel toggles, export
-├── comm-cards/
-│   ├── BaseCard.js       # Base class with common rendering, events, lifecycle
-│   ├── LocationCard.js   # Location search/input logic
-│   ├── SpaceWeatherCard.js
-│   ├── WeatherCard.js    # Local weather + forecast + radar
-│   ├── GpsCard.js
-│   ├── HfPropagationCard.js
-│   ├── SatcomWeatherCard.js
-│   ├── SatcomPlannerCard.js
-│   └── CellularCard.js
-├── comm-map.js           # (keep as-is, expand for future overlays)
-└── comm-planner.js       # Slim orchestrator: imports cards, initializes
-Key Benefits
-Isolation — Edit HfPropagationCard.js without touching weather logic
-Consistent API — BaseCard enforces same lifecycle (init(), render(), update(), destroy())
-Shared styles — Cards inherit from base CSS classes, card-specific overrides are scoped
-Testable — Each card can be loaded/tested independently
-Extensible — Add new cards by creating a file and registering with comm-planner.js
-Should I proceed with:
-Create the BaseCard class — Defines the contract for all cards (DOM binding, event hooks, state management)
-Refactor one card as an example — I'd suggest LocationCard.js since it's self-contained and has clear inputs/outputs
-Create comm-core.js — Extract shared utilities (escapeHtml, formatting, layout, panel toggles)
-Then you can follow the pattern for the remaining cards at your own pace.
-
-Would you like me to start building this out?
-
-I like the idea of making this a subordinate project, so from a directory structure maybe we do a new sub directory called comm and everything would go in there so I can keep it organized compared to the rest of the project?
-
-
-Endorsed modular restructuring with dedicated subdirectory organization.
-
-That's a much cleaner approach — keeps the comm dashboard as its own self-contained module. Here's the revised structure:
-
-comm/
-├── comm.html                 # Main dashboard page (moved from root)
-├── css/
-│   └── comm.css              # All comm styles (moved from /css/)
-├── js/
-│   ├── comm-core.js          # Shared utilities, events, layout, panel toggles, export
-│   ├── comm-map.js           # Overlay map (moved, expanded for future layers)
-│   ├── comm-planner.js       # Slim orchestrator: registers cards, initializes
-│   └── cards/
-│       ├── BaseCard.js       # Base class with common rendering, events, lifecycle
-│       ├── LocationCard.js
-│       ├── SpaceWeatherCard.js
-│       ├── WeatherCard.js
-│       ├── GpsCard.js
-│       ├── HfPropagationCard.js
-│       ├── SatcomWeatherCard.js
-│       ├── SatcomPlannerCard.js
-│       └── CellularCard.js
-└── README.md                 # Documentation for the comm module
-What Changes
-Before	After
-/comm.html	/comm/comm.html (or /comm/index.html)
-/css/comm.css	/comm/css/comm.css
-/js/comm-planner.js	/comm/js/comm-planner.js + /comm/js/cards/*.js
-/js/comm-map.js	/comm/js/comm-map.js
-Considerations
-Entry point — Do you want /comm/index.html so the URL is just /comm/ or keep it as /comm/comm.html?
-Shared dependencies — Things like russelltv-core.js, Events, Leaflet, etc. stay in the main /js/ folder and get referenced from the comm module
-Back to TV link — The header link would change from href="/" to href="/" (stays the same, still works)
-Build/bundling — Are you using any bundler, or is this vanilla JS with script tags? (I'll design accordingly)
-Want me to start building out this structure? I'd begin with:
-
-comm/js/comm-core.js — extract shared utilities
-comm/js/cards/BaseCard.js — define the card contract
-comm/js/cards/LocationCard.js — first refactored card as the template
-I like the idea of dropping the .html... /comm/ is much cleaner
-
-I don't want any dependencies to be honest, this should be a separate app that I can potentially move later, but yes the links should remain so the user interface looks clean like it's all one site.
-
-Not using anything special, just JS
-
-Defer to you on how to build this out.
-
-
-Architected self-contained vanilla JS app with modular component structure.
-
-
-
-
-
-
-Perfect. Self-contained and portable — that's the right call.
-
-Let me build this out. I'll create the full structure with:
-
-comm-core.js — Self-contained event system, utilities, layout engine
-BaseCard.js — Card contract/base class
-LocationCard.js — First card refactored as the template
-Slim comm-planner.js — Just orchestration
-index.html — Updated paths, clean /comm/ URL
-
-4 steps
-
-Create the BaseCard class that defines the contract for all dashboard cards
-BaseCard.js
-
-Architected component extraction strategy for location functionality.
-
-
-Now the LocationCard — the first fully refactored card:
-
-
-Create LocationCard - the first refactored card with search, MGRS, lat/lon, and maidenhead input modes
-LocationCard.js
-
-Architected lightweight orchestrator for card registration and initialization.
-
-Now the slim orchestrator that ties it all together:
-
-
-Create the slim comm-planner.js orchestrator
-comm-planner.js
-
-Architected clean URL structure while maintaining integrated user experience.
-
-Now let me create the index.html with updated paths:
-
-
-Create the comm dashboard index.html with updated paths for the new structure
-index.html
-
-Distilled CSS essentials to enable functional card components.
-
-Now let me create a starter CSS file with the essential card styles:
-
-
-Create the comm.css with essential card and layout styles
-comm.css
-
-Architected minimal JavaScript structure for clean routing.
-
-Now let me create a minimal comm-map.js stub that works with the new architecture:
-
-
-Create comm-map.js overlay module compatible with the new architecture
-comm-map.js
-
-Architected documentation strategy for modular card system.
-
-Finally, let me create the README to document the architecture:
-
-
-2 steps
-
-Copy comm directory to outputs and verify structure
-
-
-
-Synthesized user preferences for clean architecture and vanilla JavaScript implementation.
-
-Done! Here's what I've built:
-
-Structure
-comm/
-├── index.html              ← /comm/ entry point
-├── README.md               ← Architecture docs
-├── css/
-│   └── comm.css            ← Self-contained styles
-└── js/
-    ├── comm-core.js        ← Events, layout, utilities
-    ├── comm-map.js         ← Overlay map module
-    ├── comm-planner.js     ← Slim orchestrator
-    └── cards/
-        ├── BaseCard.js     ← Card contract/base class
-        └── LocationCard.js ← First refactored card
-What's Done
-Component	Status
-comm-core.js	Self-contained event system, layout engine, storage, panel toggles
-BaseCard.js	Lifecycle hooks, DOM helpers, auto-cleanup timers
-LocationCard.js	Fully refactored with all 4 input modes (search, MGRS, lat/lon, maidenhead)
-comm-map.js	Compatible with new architecture, ready for future overlay layers
-comm-planner.js	Slim ~80 lines, just registers cards and coordinates events
-How to Add More Cards
-Create js/cards/YourCard.js extending BaseCard
-Implement renderBody() method
-Register in comm-planner.js
-Add HTML article in index.html
-The README has full examples and the event reference.
-
-Next Steps
-The remaining cards to extract from your original comm-planner.js:
-
-SpaceWeatherCard
-WeatherCard
-GpsCard
-HfPropagationCard
-SatcomWeatherCard
-SatcomPlannerCard
-CellularCard
-Each one follows the same pattern as LocationCard. Want me to tackle any of these next?
-
-Download the comm module
-
-comm
- 
-so, will this allow me to keep my current comm.html online while I work on tv.russellmarine.tech/comm ?
-
-
-Validated parallel deployment strategy and outlined migration workflow.
-
-
-
-
-
-Yes, exactly. They're completely separate:
-
-Current (keep running)	New (develop in parallel)
-/comm.html	/comm/index.html
-/js/comm-planner.js	/comm/js/comm-planner.js
-/js/comm-map.js	/comm/js/comm-map.js
-/css/comm.css	/comm/css/comm.css
-No file conflicts. You can:
-
-Deploy the /comm/ folder alongside your existing files
-Test at tv.russellmarine.tech/comm/ while users still hit tv.russellmarine.tech/comm.html
-Migrate cards one by one — as you refactor each card, test it in the new structure
-Swap when ready — either redirect /comm.html → /comm/ or replace the old files entirely
-The only thing you might want to do is add a dev link somewhere so you can easily jump between them while testing:
-
-html
-<!-- Temporary: add to your current comm.html header during development -->
-<a href="/comm/" style="...">Test New Version</a>
-And vice versa in the new /comm/index.html if you want to compare side-by-side.
-
-ok, I will create this file structure and paste directly into github then do a pull
-
-
-Devised checklist for streamlined GitHub workflow integration.
-
-
-Perfect. Here's your checklist for GitHub:
-
-comm/
-├── index.html
-├── README.md
-├── css/
-│   └── comm.css
-└── js/
-    ├── comm-core.js
-    ├── comm-map.js
-    ├── comm-planner.js
-    └── cards/
-        ├── BaseCard.js
-        └── LocationCard.js
-7 files total, 3 folders to create.
-
-Once you pull, hit tv.russellmarine.tech/comm/ and you should see the Location card working. The other cards will show placeholders until we refactor them.
-
-Let me know when it's live and we can tackle the next card — I'd suggest SpaceWeatherCard or WeatherCard since they're high-visibility and will let you validate the event flow between cards.
-
-fuck how do I create a folder on github?
-
-
-Investigated GitHub's folder creation limitations and workaround.
-
-GitHub won't let you create empty folders. You have to create a file with the folder path.
-
-When creating a new file:
-
-Click Add file → Create new file
-In the filename box, type: comm/index.html
-The slash / automatically creates the folder
-So your sequence would be:
-
-comm/index.html          ← creates comm/
-comm/README.md
-comm/css/comm.css        ← creates comm/css/
-comm/js/comm-core.js     ← creates comm/js/
-comm/js/comm-map.js
-comm/js/comm-planner.js
-comm/js/cards/BaseCard.js      ← creates comm/js/cards/
-comm/js/cards/LocationCard.js
-Just type the full path in the filename field each time, paste the content, and commit. The folders appear automatically.
-
-ok the files you gave me are gone, where do I find them?
-
-
-1 step
-
-Check if the files still exist
-
-
-
-Reasserted file availability and prepared redelivery.
-
-They're still there. Here's the download link again:
-
-Download the comm folder
-
-Or if you want me to output each file's content directly so you can copy/paste into GitHub, I can do that too — just say the word.
-
-comm
- 
-not working
-
-
-Pivoted to direct content sharing for accessibility.
-
-No problem, I'll output each file here so you can copy/paste directly.
-
-File 1: comm/index.html
-
-
-Get index.html content for user to copy
-Show working file
-
-I'll continue outputting the other files for the user to copy/paste.
-
-File 2: comm/css/comm.css
-
-
-Get comm.css content for user to copy
-Show working file
-
-Resolved to persist with JavaScript file output.
-
-File 3: comm/js/comm-core.js
-
-
-Get comm-core.js content for user to copy
-Show working file
-
-Prepared to advance through remaining tasks.
-
-File 4: comm/js/comm-planner.js
-
-
-Get comm-planner.js content for user to copy
-Show working file
-
-Let me get the remaining 3 files: comm-map.js, BaseCard.js, and
-
-File 5: comm/js/comm-map.js
-
-
-Get comm-map.js content for user to copy
-Show working file
-
-Identified missing files to retrieve.
-
-File 6: comm/js/cards/BaseCard.js
-
-
-Get BaseCard.js content for user to copy
-Show working file
-
-One more file - LocationCard.js
-
-File 7: comm/js/cards/LocationCard.js
-
-
-Get LocationCard.js content for user to copy
-Show working file
-
-Identified file truncation and resolved completeness issue.
-
-The LocationCard.js got truncated. Let me get the full middle section:
-
-
-Get truncated section of LocationCard.js
-Show working file
-
-Assembled component documentation for user implementation.
-
-File 8 (optional): comm/README.md
-
-
-Get README.md content for user to copy
-Show working file
-
-Assembled fragmented files and prepared guidance.
-
-That's all 8 files. Here's your copy/paste order:
-
-#	GitHub filename	Lines
-1	comm/index.html	235
-2	comm/css/comm.css	683
-3	comm/js/comm-core.js	487
-4	comm/js/comm-planner.js	121
-5	comm/js/comm-map.js	394
-6	comm/js/cards/BaseCard.js	316
-7	comm/js/cards/LocationCard.js	875 (shown in two parts above)
-8	comm/README.md	200 (optional)
-For LocationCard.js, combine lines 1-259 from the first view + lines 255-620 from the second view + lines 617-875 from the first view. (There's some overlap at the boundaries, just don't duplicate.)
-
-Let me know once you've got it pulled and we'll test it or move to the next card.
-
-
-
-
-
-
-
-
-
-Communication Planner Dashboard
-
-
-
-Index · HTML
-Copy
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Comm Planner</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/png" href="/favicon.png">
-
-  <!-- External Dependencies -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-        crossorigin="">
-
-  <!-- Comm Dashboard Styles -->
-  <link rel="stylesheet" href="css/comm.css">
-</head>
-
-<body class="comm-page">
-  <header class="rtv-header">
-    <div class="rtv-brand">
-      <button type="button" id="rtv-brand-button" class="rtv-brand-button" aria-label="Contact">
-        <span class="rtv-brand-title">Russell TV</span>
-        <span class="rtv-brand-tagline">Transmit Feedback</span>
-      </button>
-    </div>
-
-    <div class="mode-toggle">
-      <div class="mode-toggle-row">
-        <!-- Back to main site -->
-        <a href="/" class="mode-link-btn" title="Back to TV">Back to TV</a>
-
-        <!-- Menu dropdown -->
-        <div class="mode-row-actions">
-          <details class="panel-toggle-dropdown" id="comm-panel-toggle-dropdown">
-            <summary class="btn panel-toggle-summary">Menu ▾</summary>
-            <div class="panel-toggle-menu" id="comm-panel-toggle-bar" aria-label="Toggle dashboard panels">
-              
-              <!-- Dashboard actions -->
-              <button type="button" class="panel-menu-item" id="comm-export-pptx">
-                Export Dashboard
-              </button>
-
-              <hr class="panel-menu-divider" />
-
-              <!-- Panel toggles -->
-              <button type="button" class="panel-toggle active" id="comm-map-toggle" data-target="comm-card-overlay">
-                Overlays Map
-              </button>
-              <button type="button" class="panel-toggle active" data-target="comm-card-location">
-                Location
-              </button>
-              <button type="button" class="panel-toggle active" data-target="comm-card-spacewx">
-                Space Weather
-              </button>
-              <button type="button" class="panel-toggle active" data-target="comm-card-weather">
-                Local Weather
-              </button>
-              <button type="button" class="panel-toggle active" data-target="comm-card-gps">
-                GPS &amp; PNT
-              </button>
-              <button type="button" class="panel-toggle active" data-target="comm-card-hf">
-                HF Propagation
-              </button>
-              <button type="button" class="panel-toggle active" data-target="comm-card-satcom">
-                SATCOM Weather
-              </button>
-              <button type="button" class="panel-toggle active" data-target="comm-card-satangles">
-                SATCOM Planner
-              </button>
-              <button type="button" class="panel-toggle active" data-target="comm-card-cellular">
-                Cellular Coverage
-              </button>
-
-              <button type="button" class="panel-toggle-all" id="comm-panel-toggle-all">
-                All On/Off
-              </button>
-            </div>
-          </details>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main>
-    <section id="comm-planner-view">
-      <div class="comm-layout-grid">
-
-        <!-- Location Card -->
-        <article id="comm-card-location" class="comm-card">
-          <div class="comm-card-header">
-            <div class="comm-card-title"><span>Location</span></div>
-            <div class="comm-card-meta" id="comm-location-status">No location selected</div>
-          </div>
-          <div class="comm-card-body" id="comm-location-body">
-            <!-- Rendered by LocationCard.js -->
-          </div>
-        </article>
-
-        <!-- Space Weather Card -->
-        <article id="comm-card-spacewx" class="comm-card">
-          <div class="comm-card-header">
-            <div class="comm-card-title"><span>Space Weather</span></div>
-            <div class="comm-card-meta" id="comm-spacewx-meta"></div>
-          </div>
-          <div class="comm-card-body" id="comm-spacewx-body">
-            <p class="comm-placeholder">
-              Global space-weather scales (R/S/G) and Kp index will appear here.
-            </p>
-          </div>
-        </article>
-
-        <!-- Overlay Map Card -->
-        <article id="comm-card-overlay" class="comm-card comm-span-2">
-          <div class="comm-card-header">
-            <div class="comm-card-title"><span>Operational Overlays</span></div>
-            <div class="comm-card-status"><span id="comm-overlay-status">off</span></div>
-          </div>
-          <div class="comm-card-body" id="comm-overlay-body">
-            <p class="comm-placeholder">Toggle the overlays map to view weather, towers, and critical infrastructure.</p>
-          </div>
-        </article>
-
-        <!-- Local Weather Card -->
-        <article id="comm-card-weather" class="comm-card comm-span-2">
-          <div class="comm-card-header">
-            <div class="comm-card-title"><span>Local Weather</span></div>
-            <div class="comm-card-meta" id="comm-weather-meta">Select a location</div>
-          </div>
-          <div class="comm-card-body" id="comm-weather-body">
-            <p class="comm-placeholder">
-              Detailed weather for the selected location will appear here.
-            </p>
-          </div>
-        </article>
-
-        <!-- GPS & PNT Card -->
-        <article id="comm-card-gps" class="comm-card">
-          <div class="comm-card-header">
-            <div class="comm-card-title"><span>GPS &amp; PNT</span></div>
-            <div class="comm-card-meta"><span id="comm-gps-status" class="status-pill">--</span></div>
-          </div>
-          <div class="comm-card-body" id="comm-gps-body">
-            <p class="comm-placeholder">
-              GPS constellation status and interference assessment.
-            </p>
-          </div>
-        </article>
-
-        <!-- HF Propagation Card -->
-        <article id="comm-card-hf" class="comm-card">
-          <div class="comm-card-header">
-            <div class="comm-card-title"><span>HF Propagation</span></div>
-            <div class="comm-card-meta"><span id="comm-hf-status" class="status-pill">--</span></div>
-          </div>
-          <div class="comm-card-body" id="comm-hf-body">
-            <p class="comm-placeholder">
-              HF band conditions and propagation forecast.
-            </p>
-          </div>
-        </article>
-
-        <!-- SATCOM Weather Card -->
-        <article id="comm-card-satcom" class="comm-card">
-          <div class="comm-card-header">
-            <div class="comm-card-title"><span>SATCOM Weather</span></div>
-            <div class="comm-card-meta"><span id="comm-sat-status" class="status-pill">--</span></div>
-          </div>
-          <div class="comm-card-body" id="comm-satcom-body">
-            <p class="comm-placeholder">
-              Satellite communication band status and risk assessment.
-            </p>
-          </div>
-        </article>
-
-        <!-- SATCOM Planner Card -->
-        <article id="comm-card-satangles" class="comm-card">
-          <div class="comm-card-header">
-            <div class="comm-card-title"><span>SATCOM Planner</span></div>
-            <div class="comm-card-meta" id="comm-satangles-meta"></div>
-          </div>
-          <div class="comm-card-body" id="comm-satangles-body">
-            <p class="comm-placeholder">
-              Satellite look angles and link budget calculator.
-            </p>
-          </div>
-        </article>
-
-        <!-- Cellular Coverage Card -->
-        <article id="comm-card-cellular" class="comm-card">
-          <div class="comm-card-header">
-            <div class="comm-card-title"><span>Cellular Coverage</span></div>
-            <div class="comm-card-meta" id="comm-cellular-meta"></div>
-          </div>
-          <div class="comm-card-body" id="comm-cellular-body">
-            <p class="comm-placeholder">
-              Cellular tower density and coverage assessment for selected location.
-            </p>
-          </div>
-        </article>
-
-      </div>
-    </section>
-  </main>
-
-  <!-- External Libraries -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
-          crossorigin=""></script>
-  
-  <!-- Export Libraries (optional, loaded on demand) -->
-  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
-
-  <!-- Comm Dashboard Core -->
-  <script src="js/comm-core.js"></script>
-  
-  <!-- Card Modules -->
-  <script src="js/cards/BaseCard.js"></script>
-  <script src="js/cards/LocationCard.js"></script>
-  <!-- Future cards loaded here -->
-  <!-- <script src="js/cards/SpaceWeatherCard.js"></script> -->
-  <!-- <script src="js/cards/WeatherCard.js"></script> -->
-  <!-- <script src="js/cards/GpsCard.js"></script> -->
-  <!-- <script src="js/cards/HfPropagationCard.js"></script> -->
-  <!-- <script src="js/cards/SatcomWeatherCard.js"></script> -->
-  <!-- <script src="js/cards/SatcomPlannerCard.js"></script> -->
-  <!-- <script src="js/cards/CellularCard.js"></script> -->
-
-  <!-- Map Overlay Module -->
-  <script src="js/comm-map.js" defer></script>
-
-  <!-- Main Orchestrator (must be last) -->
-  <script src="js/comm-planner.js"></script>
-</body>
-</html>
-
-
-Claude
+/**
+ * comm.css
+ * Styles for the Comm Dashboard
+ * Self-contained — no external dependencies
+ */
+
+/* ============================================================
+   CSS Variables
+   ============================================================ */
+:root {
+  --card-accent: rgba(255, 140, 0, 0.45);
+  --card-glow: rgba(255, 120, 0, 0.35);
+  --bg-dark: #0b0b0d;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 210, 170, 0.85);
+  --text-muted: rgba(255, 255, 255, 0.7);
+  --border-color: rgba(255, 140, 0, 0.5);
+  --accent-orange: #ff9f54;
+  --accent-warm: #ffb366;
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body.comm-page {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: linear-gradient(135deg, #0a0506, #1a0a05, #0a0506);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* ============================================================
+   Header
+   ============================================================ */
+.rtv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(180deg, rgba(20, 10, 5, 0.95), rgba(10, 5, 2, 0.9));
+  border-bottom: 1px solid rgba(255, 140, 0, 0.3);
+}
+
+.rtv-brand-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}
+
+.rtv-brand-title {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #ffb366;
+  text-shadow: 0 0 12px rgba(255, 120, 0, 0.6);
+}
+
+.rtv-brand-tagline {
+  display: block;
+  font-size: 0.7rem;
+  color: rgba(255, 200, 150, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.mode-toggle-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.mode-link-btn {
+  padding: 0.4rem 0.9rem;
+  background: linear-gradient(135deg, rgba(255, 120, 0, 0.2), rgba(80, 30, 0, 0.3));
+  border: 1px solid rgba(255, 180, 120, 0.5);
+  border-radius: 999px;
+  color: rgba(255, 220, 180, 0.9);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.mode-link-btn:hover {
+  background: rgba(255, 140, 0, 0.25);
+  border-color: rgba(255, 200, 140, 0.8);
+  box-shadow: 0 0 12px rgba(255, 140, 0, 0.4);
+}
+
+/* ============================================================
+   Panel Toggle Dropdown
+   ============================================================ */
+.panel-toggle-dropdown {
+  position: relative;
+}
+
+.panel-toggle-summary {
+  padding: 0.4rem 0.9rem;
+  background: linear-gradient(135deg, rgba(255, 120, 0, 0.2), rgba(80, 30, 0, 0.3));
+  border: 1px solid rgba(255, 180, 120, 0.5);
+  border-radius: 999px;
+  color: rgba(255, 220, 180, 0.9);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  list-style: none;
+}
+
+.panel-toggle-summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel-toggle-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  background: linear-gradient(135deg, rgba(20, 10, 5, 0.98), rgba(35, 15, 5, 0.98));
+  border: 1px solid rgba(255, 180, 120, 0.4);
+  border-radius: 12px;
+  padding: 0.5rem;
+  min-width: 180px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.panel-menu-item,
+.panel-toggle,
+.panel-toggle-all {
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 120, 0, 0.1);
+  border: 1px solid rgba(255, 180, 120, 0.3);
+  border-radius: 8px;
+  color: rgba(255, 220, 180, 0.85);
+  font-size: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.panel-toggle.active {
+  background: linear-gradient(135deg, rgba(255, 150, 80, 0.35), rgba(120, 40, 0, 0.4));
+  border-color: rgba(255, 200, 140, 0.7);
+  color: #ffe7c8;
+}
+
+.panel-menu-item:hover,
+.panel-toggle:hover,
+.panel-toggle-all:hover {
+  background: rgba(255, 140, 0, 0.2);
+  border-color: rgba(255, 200, 140, 0.6);
+}
+
+.panel-menu-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 180, 120, 0.2);
+  margin: 0.25rem 0;
+}
+
+/* ============================================================
+   Layout Grid
+   ============================================================ */
+#comm-planner-view {
+  padding: 1rem;
+}
+
+#comm-planner-view .comm-layout-grid {
+  width: min(100%, calc(100% - 1rem));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  grid-auto-rows: 4px;
+  gap: 0.75rem;
+  align-items: start;
+  align-content: start;
+  grid-auto-flow: row dense;
+}
+
+.comm-hidden {
+  display: none !important;
+}
+
+.comm-span-2 {
+  grid-column: span 1;
+}
+
+/* Responsive breakpoints */
+@media (min-width: 600px) {
+  #comm-planner-view .comm-layout-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .comm-span-2 {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 960px) {
+  #comm-planner-view .comm-layout-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  #comm-planner-view .comm-layout-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1600px) {
+  #comm-planner-view .comm-layout-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1900px) {
+  #comm-planner-view .comm-layout-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* ============================================================
+   Card Base Styles
+   ============================================================ */
+#comm-planner-view .comm-card {
+  background: linear-gradient(135deg, rgba(10, 5, 0, 0.82), rgba(25, 12, 0, 0.82));
+  border: 1px solid var(--card-accent);
+  border-radius: 16px;
+  padding: 0.75rem 1rem 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85), 0 0 18px var(--card-glow);
+  color: var(--text-primary);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  grid-row-end: span var(--row-span, 1);
+}
+
+#comm-planner-view .comm-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+#comm-planner-view .comm-card-title span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-warm);
+  text-shadow: 0 0 6px rgba(255, 120, 0, 0.7);
+}
+
+#comm-planner-view .comm-card-meta {
+  font-size: 0.72rem;
+  opacity: 0.82;
+  color: #ffd7a1;
+  text-align: right;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+}
+
+#comm-planner-view .comm-card-body {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.comm-placeholder {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin: 0;
+  padding: 0.5rem 0;
+}
+
+.comm-card-micro {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  opacity: 0.78;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.comm-card-footer {
+  margin-top: auto;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 200, 150, 0.25);
+}
+
+/* ============================================================
+   Location Card Styles
+   ============================================================ */
+.comm-location-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.location-mode-tab {
+  flex: 1;
+  padding: 0.35rem 0.25rem;
+  background: linear-gradient(135deg, rgba(255, 110, 0, 0.28), rgba(70, 25, 0, 0.35));
+  border: 1px solid rgba(255, 170, 100, 0.65);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.location-mode-tab:hover {
+  background: rgba(255, 140, 0, 0.18);
+  border-color: rgba(255, 140, 0, 0.7);
+}
+
+.location-mode-tab.active {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 200, 120, 0.4), rgba(120, 50, 0, 0.65)),
+    linear-gradient(135deg, rgba(255, 120, 0, 0.55), rgba(140, 40, 0, 0.45));
+  border-color: rgba(255, 200, 140, 0.95);
+  color: #ffe7c8;
+  box-shadow: 0 0 14px rgba(255, 150, 0, 0.7);
+}
+
+.comm-location-input-area {
+  margin-bottom: 0.5rem;
+}
+
+.location-input-hint {
+  font-size: 0.7rem;
+  color: rgba(255, 200, 150, 0.8);
+  margin-bottom: 0.35rem;
+  font-style: italic;
+}
+
+.location-search-container {
+  position: relative;
+}
+
+.location-search-input,
+.location-coord-field {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 180, 120, 0.5);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.location-search-input:focus,
+.location-coord-field:focus {
+  border-color: rgba(255, 200, 140, 0.9);
+  box-shadow: 0 0 8px rgba(255, 140, 0, 0.4);
+}
+
+.location-search-input::placeholder,
+.location-coord-field::placeholder {
+  color: rgba(255, 200, 150, 0.5);
+}
+
+.location-coord-input,
+.location-coord-inputs {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.location-coord-inputs .location-coord-field {
+  flex: 1;
+}
+
+.location-go-btn,
+.location-browser-btn {
+  padding: 0.5rem 0.9rem;
+  background: linear-gradient(135deg, rgba(255, 120, 0, 0.35), rgba(100, 40, 0, 0.4));
+  border: 1px solid rgba(255, 180, 120, 0.6);
+  border-radius: 8px;
+  color: #ffe7c8;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.location-go-btn:hover,
+.location-browser-btn:hover {
+  background: rgba(255, 140, 0, 0.3);
+  border-color: rgba(255, 200, 140, 0.9);
+  box-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
+}
+
+.location-browser-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* Autocomplete */
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(20, 10, 5, 0.98);
+  border: 1px solid rgba(255, 180, 120, 0.5);
+  border-radius: 8px;
+  margin-top: 0.25rem;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 50;
+  display: none;
+}
+
+.autocomplete-list.active {
+  display: block;
+}
+
+.autocomplete-item {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 180, 120, 0.15);
+  transition: background 0.15s;
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover {
+  background: rgba(255, 140, 0, 0.2);
+}
+
+/* Location Display */
+.comm-location-display {
+  padding: 0.5rem 0;
+}
+
+.comm-location-lines {
+  display: grid;
+  gap: 0.3rem;
+  line-height: 1.25;
+}
+
+.loc-group {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.loc-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 230, 200, 0.7);
+}
+
+.loc-primary,
+.loc-value {
+  font-weight: 600;
+  color: #ffdcb5;
+  font-size: 0.9rem;
+}
+
+/* Recent Locations */
+.comm-location-footer {
+  margin-top: auto;
+}
+
+.comm-recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.comm-recent-label {
+  font-size: 0.75rem;
+  color: rgba(255, 210, 160, 0.9);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.comm-recent-clear {
+  border: 1px solid rgba(255, 190, 140, 0.45);
+  background: rgba(255, 200, 150, 0.1);
+  color: rgba(255, 220, 190, 0.9);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.comm-recent-clear:hover {
+  background: rgba(255, 200, 150, 0.25);
+  box-shadow: 0 0 10px rgba(255, 150, 80, 0.35);
+}
+
+.comm-recent-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.3rem;
+}
+
+.recent-location-pill {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 200, 140, 0.6);
+  background:
+    radial-gradient(circle at 10% 10%, rgba(255, 200, 140, 0.15), transparent 55%),
+    rgba(15, 6, 0, 0.6);
+  color: rgba(215, 185, 155, 0.95);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 120, 0, 0.2), 0 0 6px rgba(255, 120, 0, 0.25);
+  transition: all 0.18s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.recent-location-pill:hover {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 220, 180, 0.3), transparent 60%),
+    linear-gradient(135deg, rgba(255, 150, 90, 0.3), rgba(120, 40, 0, 0.3));
+  border-color: rgba(255, 210, 160, 1);
+  box-shadow: 0 0 10px rgba(255, 180, 120, 0.5);
+}
+
+.recent-location-pill .recent-label {
+  font-weight: 600;
+  color: #ffdcb5;
+  display: block;
+}
+
+.recent-location-pill .recent-sub {
+  display: block;
+  margin-top: 0.05rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ============================================================
+   Status Pills
+   ============================================================ */
+.status-pill {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.severity-good {
+  background: rgba(80, 200, 120, 0.25);
+  color: #7feba8;
+  border: 1px solid rgba(80, 200, 120, 0.5);
+}
+
+.severity-fair {
+  background: rgba(255, 200, 80, 0.25);
+  color: #ffe08a;
+  border: 1px solid rgba(255, 200, 80, 0.5);
+}
+
+.severity-watch {
+  background: rgba(255, 150, 50, 0.25);
+  color: #ffb86b;
+  border: 1px solid rgba(255, 150, 50, 0.5);
+}
+
+.severity-poor {
+  background: rgba(255, 80, 80, 0.25);
+  color: #ff9090;
+  border: 1px solid rgba(255, 80, 80, 0.5);
+}
+
+/* ============================================================
+   Utility Classes
+   ============================================================ */
+.inline-link {
+  color: var(--accent-orange);
+  text-decoration: none;
+}
+
+.inline-link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Overlay Map Styles (for comm-map.js)
+   ============================================================ */
+.overlay-map-body {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.overlay-map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.overlay-map-controls label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 200, 140, 0.35);
+  cursor: pointer;
+}
+
+.overlay-map-controls input[type="checkbox"] {
+  accent-color: var(--accent-orange);
+}
+
+.overlay-map-frame {
+  position: relative;
+  border: 1px solid rgba(255, 200, 140, 0.35);
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 300px;
+  height: clamp(320px, 34vw, 560px);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 160, 80, 0.08), rgba(0, 0, 0, 0.55)),
+    rgba(0, 0, 0, 0.4);
+}
+
+.overlay-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* ============================================================
+   Scrollbar Styling
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 140, 0, 0.4);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 140, 0, 0.6);
+}
