@@ -157,25 +157,25 @@
 
     async fetchHistoricalAverages(lat, lon) {
       try {
-          // Get last year's data for this date (single request - avoids rate limits)
+        // Get last year's data for this date (single request - avoids rate limits)
         const today = new Date();
         const lastYear = today.getFullYear() - 1;
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         const dateStr = `${lastYear}-${month}-${day}`;
-    
+
         const unitParam = this.tempUnit === 'C' ? 'celsius' : 'fahrenheit';
         const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,temperature_2m_min&temperature_unit=${unitParam}&timezone=auto`;
-    
+
         const res = await fetch(url);
         if (!res.ok) return null;
-    
+
         const data = await res.json();
         const high = data.daily?.temperature_2m_max?.[0];
         const low = data.daily?.temperature_2m_min?.[0];
-    
+
         if (high == null && low == null) return null;
-    
+
         return {
           avgHigh: high != null ? Math.round(high) : null,
           avgLow: low != null ? Math.round(low) : null,
@@ -221,17 +221,17 @@
 
     tempToColor(temp, unit = 'F') {
       if (temp == null || isNaN(temp)) return { hue: 30, sat: 60, light: 50 };
-      
+
       let tempF = temp;
       if (unit === 'C') {
-        tempF = (temp * 9/5) + 32;
+        tempF = (temp * 9 / 5) + 32;
       }
-      
+
       const clamped = Math.max(0, Math.min(100, tempF));
       const hue = 240 - (clamped / 100) * 240;
       const sat = 70 + (Math.abs(50 - clamped) / 50) * 20;
       const light = 45 + (Math.abs(50 - clamped) / 50) * 10;
-      
+
       return { hue, sat, light };
     }
 
@@ -271,7 +271,7 @@
       const wx = this.currentWeather;
       const main = wx.weather?.[0] || {};
       const wind = wx.wind || {};
-      
+
       const tempF = wx.main?.temp != null ? Math.round(wx.main.temp) : null;
       const feelsF = wx.main?.feels_like != null ? Math.round(wx.main.feels_like) : null;
       const humidity = wx.main?.humidity;
@@ -302,7 +302,7 @@
         summaryParts.push(`Clouds ${clouds}%`);
       }
 
-      const updatedLocal = wx.dt 
+      const updatedLocal = wx.dt
         ? `Last Updated: ${this.formatUserStamp(wx.dt * 1000)}`
         : 'Last Updated: --';
 
@@ -328,7 +328,7 @@
                     <div class="comm-weather-feels">Feels like ${this.formatTemp(feelsF)}</div>
                   </div>
                 </div>
-                ${summaryParts.length ? `<div class="comm-weather-summary-row">${summaryParts.map(s => escapeHtml(s)).join(' <span>•</span> ')}</div>` : ''}
+                ${summaryParts.length ? `<div class="comm-weather-summary-row">${summaryParts.map((s) => escapeHtml(s)).join(' <span>•</span> ')}</div>` : ''}
               </div>
               ${historicalHtml}
             </div>
@@ -398,10 +398,12 @@
                 <span class="hist-label">Avg Low</span>
                 <span class="hist-value">${this.formatTempValue(h.avgLow)}</span>
               </div>
+              ${h.recordHigh != null ? `
               <div class="historical-item record">
                 <span class="hist-label">Record</span>
                 <span class="hist-value">${this.formatTempValue(h.recordHigh)} / ${this.formatTempValue(h.recordLow)}</span>
               </div>
+              ` : ''}
             </div>
           </div>
         </div>
@@ -443,10 +445,10 @@
       const padBottom = 22;
       const chartWidth = width - padLeft - padRight;
       const chartHeight = height - padTop - padBottom;
-      
-      const validTemps = temps.filter(t => t != null);
+
+      const validTemps = temps.filter((t) => t != null);
       if (validTemps.length === 0) return '';
-      
+
       // Round to nice numbers for axis
       const dataMin = Math.min(...validTemps);
       const dataMax = Math.max(...validTemps);
@@ -455,11 +457,13 @@
       const range = maxTemp - minTemp || 10;
 
       // Generate data line
-      const points = temps.map((temp, i) => {
-        const x = padLeft + (i / (temps.length - 1)) * chartWidth;
-        const y = padTop + chartHeight - ((temp - minTemp) / range) * chartHeight;
-        return `${x},${y}`;
-      }).join(' ');
+      const points = temps
+        .map((temp, i) => {
+          const x = padLeft + (i / (temps.length - 1)) * chartWidth;
+          const y = padTop + chartHeight - ((temp - minTemp) / range) * chartHeight;
+          return `${x},${y}`;
+        })
+        .join(' ');
 
       // Fill polygon
       const fillPoints = `${padLeft},${padTop + chartHeight} ${points} ${padLeft + chartWidth},${padTop + chartHeight}`;
@@ -469,23 +473,29 @@
       const { hue } = this.tempToColor(avgTemp, this.tempUnit);
 
       // Y-axis gridlines and labels (3 lines: min, mid, max)
-      const yValues = [minTemp, minTemp + range/2, maxTemp];
-      const gridLines = yValues.map(val => {
-        const y = padTop + chartHeight - ((val - minTemp) / range) * chartHeight;
-        return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-      }).join('');
-      
-      const yLabels = yValues.map(val => {
-        const y = padTop + chartHeight - ((val - minTemp) / range) * chartHeight;
-        return `<text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" class="chart-axis-label">${Math.round(val)}°</text>`;
-      }).join('');
+      const yValues = [minTemp, minTemp + range / 2, maxTemp];
+      const gridLines = yValues
+        .map((val) => {
+          const y = padTop + chartHeight - ((val - minTemp) / range) * chartHeight;
+          return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+        })
+        .join('');
+
+      const yLabels = yValues
+        .map((val) => {
+          const y = padTop + chartHeight - ((val - minTemp) / range) * chartHeight;
+          return `<text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" class="chart-axis-label">${Math.round(val)}°</text>`;
+        })
+        .join('');
 
       // X-axis labels (0, 6, 12, 18, 24)
-      const xLabels = [0, 6, 12, 18, 23].map(idx => {
-        const x = padLeft + (idx / (temps.length - 1)) * chartWidth;
-        const hour = idx === 23 ? '24' : String(idx).padStart(2, '0');
-        return `<text x="${x}" y="${height - 6}" text-anchor="middle" class="chart-axis-label">${hour}:00</text>`;
-      }).join('');
+      const xLabels = [0, 6, 12, 18, 23]
+        .map((idx) => {
+          const x = padLeft + (idx / (temps.length - 1)) * chartWidth;
+          const hour = idx === 23 ? '24' : String(idx).padStart(2, '0');
+          return `<text x="${x}" y="${height - 6}" text-anchor="middle" class="chart-axis-label">${hour}:00</text>`;
+        })
+        .join('');
 
       return `
         <svg class="hourly-chart temp-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
@@ -515,45 +525,54 @@
       const chartHeight = height - padTop - padBottom;
 
       // Find max precipitation, minimum 0.1 inch for scale
-      const maxPrecip = Math.max(0.1, ...precip.filter(p => p != null));
+      const maxPrecip = Math.max(0.1, ...precip.filter((p) => p != null));
       // Round up to nice number
       const yMax = maxPrecip <= 0.1 ? 0.1 : Math.ceil(maxPrecip * 10) / 10;
 
       const barWidth = chartWidth / precip.length;
 
-      const bars = precip.map((p, i) => {
-        if (p == null || p === 0) return '';
-        const x = padLeft + i * barWidth;
-        const barHeight = (p / yMax) * chartHeight;
-        const y = padTop + chartHeight - barHeight;
-        const opacity = 0.4 + (p / yMax) * 0.6;
-        return `<rect x="${x + 1}" y="${y}" width="${barWidth - 2}" height="${barHeight}" fill="rgba(100, 180, 255, ${opacity})" rx="1"/>`;
-      }).join('');
+      const bars = precip
+        .map((p, i) => {
+          if (p == null || p === 0) return '';
+          const x = padLeft + i * barWidth;
+          const barHeight = (p / yMax) * chartHeight;
+          const y = padTop + chartHeight - barHeight;
+          const opacity = 0.4 + (p / yMax) * 0.6;
+          return `<rect x="${x + 1}" y="${y}" width="${barWidth - 2}" height="${barHeight}" fill="rgba(100, 180, 255, ${opacity})" rx="1"/>`;
+        })
+        .join('');
 
       // Y-axis gridlines and labels
       const yValues = [0, yMax / 2, yMax];
-      const gridLines = yValues.map(val => {
-        const y = padTop + chartHeight - (val / yMax) * chartHeight;
-        return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-      }).join('');
-      
-      const yLabels = yValues.map(val => {
-        const y = padTop + chartHeight - (val / yMax) * chartHeight;
-        const label = val === 0 ? '0"' : val.toFixed(2) + '"';
-        return `<text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" class="chart-axis-label">${label}</text>`;
-      }).join('');
+      const gridLines = yValues
+        .map((val) => {
+          const y = padTop + chartHeight - (val / yMax) * chartHeight;
+          return `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="rgba(255,210,170,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+        })
+        .join('');
+
+      const yLabels = yValues
+        .map((val) => {
+          const y = padTop + chartHeight - (val / yMax) * chartHeight;
+          const label = val === 0 ? '0"' : val.toFixed(2) + '"';
+          return `<text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" class="chart-axis-label">${label}</text>`;
+        })
+        .join('');
 
       // X-axis labels
-      const xLabels = [0, 6, 12, 18, 23].map(idx => {
-        const x = padLeft + (idx / (precip.length - 1)) * chartWidth;
-        const hour = idx === 23 ? '24' : String(idx).padStart(2, '0');
-        return `<text x="${x}" y="${height - 6}" text-anchor="middle" class="chart-axis-label">${hour}:00</text>`;
-      }).join('');
+      const xLabels = [0, 6, 12, 18, 23]
+        .map((idx) => {
+          const x = padLeft + (idx / (precip.length - 1)) * chartWidth;
+          const hour = idx === 23 ? '24' : String(idx).padStart(2, '0');
+          return `<text x="${x}" y="${height - 6}" text-anchor="middle" class="chart-axis-label">${hour}:00</text>`;
+        })
+        .join('');
 
       // Check if there's any precipitation
-      const hasPrecip = precip.some(p => p > 0);
-      const noPrecipText = !hasPrecip ? 
-        `<text x="${padLeft + chartWidth/2}" y="${padTop + chartHeight/2 + 4}" text-anchor="middle" class="chart-no-data">No precipitation expected</text>` : '';
+      const hasPrecip = precip.some((p) => p > 0);
+      const noPrecipText = !hasPrecip
+        ? `<text x="${padLeft + chartWidth / 2}" y="${padTop + chartHeight / 2 + 4}" text-anchor="middle" class="chart-no-data">No precipitation expected</text>`
+        : '';
 
       return `
         <svg class="hourly-chart precip-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
@@ -590,35 +609,37 @@
       const winds = this.forecast.windspeed_10m_max || [];
 
       // Start from index 1 (tomorrow) and get 9 days
-      const items = days.slice(1, 10).map((dateStr, idx) => {
-        const actualIdx = idx + 1;
-        const parts = String(dateStr).split('-');
-        let dt;
-        if (parts.length === 3) {
-          dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        } else {
-          dt = new Date(dateStr);
-        }
+      const items = days
+        .slice(1, 10)
+        .map((dateStr, idx) => {
+          const actualIdx = idx + 1;
+          const parts = String(dateStr).split('-');
+          let dt;
+          if (parts.length === 3) {
+            dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          } else {
+            dt = new Date(dateStr);
+          }
 
-        const dayLabel = dt.toLocaleDateString(undefined, { weekday: 'short' });
-        const dateLabel = dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
-        const mainWeather = this.weatherCodeToMain(codes[actualIdx]);
-        const icon = this.getWeatherIcon(mainWeather);
-        const high = highs[actualIdx];
-        const low = lows[actualIdx];
-        const highDisplay = high != null ? this.formatTempValue(high) : '—';
-        const lowDisplay = low != null ? this.formatTempValue(low) : '—';
+          const dayLabel = dt.toLocaleDateString(undefined, { weekday: 'short' });
+          const dateLabel = dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+          const mainWeather = this.weatherCodeToMain(codes[actualIdx]);
+          const icon = this.getWeatherIcon(mainWeather);
+          const high = highs[actualIdx];
+          const low = lows[actualIdx];
+          const highDisplay = high != null ? this.formatTempValue(high) : '—';
+          const lowDisplay = low != null ? this.formatTempValue(low) : '—';
 
-        const avgTemp = high != null ? high : null;
-        const cardGradient = this.tempToGradient(avgTemp, this.tempUnit);
-        const cardBorder = this.tempToBorder(avgTemp, this.tempUnit);
+          const avgTemp = high != null ? high : null;
+          const cardGradient = this.tempToGradient(avgTemp, this.tempUnit);
+          const cardBorder = this.tempToBorder(avgTemp, this.tempUnit);
 
-        const details = [];
-        if (pop[actualIdx] != null && pop[actualIdx] > 0) details.push(`${pop[actualIdx]}%`);
-        if (winds[actualIdx] != null) details.push(`${Math.round(winds[actualIdx])} mph`);
-        const detail = details.join(' · ');
+          const details = [];
+          if (pop[actualIdx] != null && pop[actualIdx] > 0) details.push(`${pop[actualIdx]}%`);
+          if (winds[actualIdx] != null) details.push(`${Math.round(winds[actualIdx])} mph`);
+          const detail = details.join(' · ');
 
-        return `
+          return `
           <div class="forecast-card" style="background: ${cardGradient}; border-color: ${cardBorder};">
             <div class="forecast-day">${escapeHtml(dayLabel)}</div>
             <div class="forecast-date">${escapeHtml(dateLabel)}</div>
@@ -627,7 +648,8 @@
             ${detail ? `<div class="forecast-detail">${escapeHtml(detail)}</div>` : ''}
           </div>
         `;
-      }).join('');
+        })
+        .join('');
 
       if (!items) return '';
 
@@ -783,7 +805,7 @@
 
     toTitleCase(str) {
       if (!str) return '';
-      return str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+      return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
     }
 
     getMetaText() {
@@ -792,5 +814,4 @@
   }
 
   window.CommDashboard.WeatherCard = WeatherCard;
-
 })();
