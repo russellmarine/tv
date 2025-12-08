@@ -14,7 +14,7 @@
   // ============================================================
   const ENDPOINTS = {
     SCALES: '/api/spaceweather/noaa-scales.json',
-    KP_INDEX: '/api/spaceweather/planetary-k-index.json',
+    KP_INDEX: '/api/spaceweather/noaa-planetary-k-index.json',
     SOLAR_CYCLE: '/api/spaceweather/json/solar-cycle/observed-solar-cycle-indices.json',
     XRAY: '/api/spaceweather/json/goes/primary/xrays-1-day.json'
   };
