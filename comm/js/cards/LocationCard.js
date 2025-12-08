@@ -36,7 +36,7 @@
       super({
         id: 'comm-card-location',
         title: 'Location',
-        metaId: 'comm-location-status'
+        metaId: null  // No status display in header
       });
 
       this.mode = INPUT_MODES.SEARCH;
@@ -129,9 +129,6 @@
                  autocomplete="off">
           <div id="comm-autocomplete-list" class="autocomplete-list"></div>
         </div>
-        <button type="button" id="comm-use-browser-location" class="location-browser-btn">
-          📍 Use My Location
-        </button>
       `;
     }
 
@@ -259,11 +256,6 @@
         searchInput.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') this.handleSearchSubmit();
         });
-      }
-
-      const browserBtn = this.$('#comm-use-browser-location');
-      if (browserBtn) {
-        browserBtn.addEventListener('click', () => this.useBrowserLocation());
       }
 
       // MGRS mode
@@ -448,66 +440,6 @@
       // If we have autocomplete results, select the first one
       if (this.autocompleteResults.length) {
         this.selectAutocompleteResult(this.autocompleteResults[0]);
-      }
-    }
-
-    // ============================================================
-    // Browser Location
-    // ============================================================
-
-    useBrowserLocation() {
-      if (!navigator.geolocation) {
-        alert('Geolocation is not supported by your browser');
-        return;
-      }
-
-      const btn = this.$('#comm-use-browser-location');
-      if (btn) btn.textContent = '📍 Locating...';
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-
-          const loc = {
-            label: 'Current Location',
-            coords: { lat, lon },
-            source: 'browser',
-            identifiers: this.buildIdentifiers({ lat, lon })
-          };
-
-          this.applyLocation(loc);
-          if (btn) btn.textContent = '📍 Use My Location';
-
-          // Try to reverse geocode for a better label
-          this.reverseGeocode(lat, lon);
-        },
-        (err) => {
-          console.warn('[LocationCard] Geolocation error:', err);
-          alert('Unable to get your location');
-          if (btn) btn.textContent = '📍 Use My Location';
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }
-
-    async reverseGeocode(lat, lon) {
-      try {
-        const url = `${NOMINATIM_URL}/reverse?format=json&lat=${lat}&lon=${lon}`;
-        const resp = await fetch(url, {
-          headers: { 'User-Agent': 'CommDashboard/1.0' }
-        });
-
-        if (!resp.ok) return;
-
-        const data = await resp.json();
-        if (data && data.display_name && this.selectedLocation) {
-          this.selectedLocation.label = this.formatLocationLabel(data);
-          this.updateDisplay();
-          this.saveSelected();
-        }
-      } catch (err) {
-        console.warn('[LocationCard] Reverse geocode error:', err);
       }
     }
 
@@ -841,7 +773,7 @@
 
     getMetaText() {
       if (!this.selectedLocation) {
-        return 'No location selected';
+        return '';
       }
       return escapeHtml(this.selectedLocation.label || 'Location set');
     }
