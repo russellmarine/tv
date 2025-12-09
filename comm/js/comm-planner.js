@@ -27,7 +27,7 @@
   // Card Registration
   // ============================================================
   function registerCards() {
-    const { LocationCard, SpaceWeatherCard, WeatherCard, GnssCard, HfPropagationCard } = window.CommDashboard;
+    const { LocationCard, SpaceWeatherCard, WeatherCard, GnssCard, HfPropagationCard, CellularCard } = window.CommDashboard;
     
     CardRegistry.register('comm-card-location', new LocationCard());
     CardRegistry.register('comm-card-spacewx', new SpaceWeatherCard());
