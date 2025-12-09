@@ -481,7 +481,7 @@
     renderNearestTowersDropdown(towers) {
       if (!towers?.length) return '';
 
-      // Show all towers (API already limits to top 20)
+      // Show all towers returned by the API (nearest sample, currently up to 50)
       const nearestDist = towers[0]?.distance;
       const summaryText = `${towers.length} tower${towers.length !== 1 ? 's' : ''} · nearest ${this.formatDistance(nearestDist)}`;
 
@@ -581,11 +581,15 @@
       const totalCount = carrier.count || 0;
 
       // Get this carrier's towers from the returned data
-      // Note: API only returns top 20 towers total, so this may be a subset
+      // API returns a nearest sample (currently up to 50 towers total), so this may be a subset
       const carrierTowers = (allTowers || []).filter(t => 
         String(t.mcc) === String(mcc) && String(t.mnc) === String(mnc)
       );
       const availableCount = carrierTowers.length;
+      const nearestSampleSize = (allTowers || []).length;
+      const noTowersLabel = nearestSampleSize
+        ? `Towers not in nearest ${nearestSampleSize}`
+        : 'Towers not in nearest sample';
 
       // Tech breakdown
       const techBreakdown = Object.entries(carrier.technologies || {})
@@ -639,7 +643,7 @@
                   ${towerRows}
                 </div>
               </details>
-            ` : '<div class="cell-carrier-no-towers">Towers not in nearest 20</div>'}
+            ` : `<div class="cell-carrier-no-towers">${escapeHtml(noTowersLabel)}</div>`}
           </div>
         </details>
       `;
