@@ -253,6 +253,14 @@
   font-size: 0.75rem;
 }
 
+/* Make tower lists scroll inside the card when there are many rows */
+.cell-dropdown-content .cell-tower-table,
+.cell-carrier-tower-table {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 0.25rem; /* room for scrollbar */
+}
+
 .cell-tower-header {
   display: grid;
   grid-template-columns: 50px 1fr 50px 100px;
