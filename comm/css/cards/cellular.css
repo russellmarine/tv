@@ -255,7 +255,7 @@
 
 .cell-tower-header {
   display: grid;
-  grid-template-columns: 50px 1fr 50px 85px 28px;
+  grid-template-columns: 50px 1fr 50px 100px;
   gap: 0.35rem;
   padding: 0.25rem 0.4rem;
   font-size: 0.65rem;
@@ -265,9 +265,14 @@
   border-bottom: 1px solid rgba(255, 180, 120, 0.15);
 }
 
+/* Compact header for nested carrier towers (no carrier column) */
+.cell-tower-header-compact {
+  grid-template-columns: 50px 50px 100px;
+}
+
 .cell-tower-row {
   display: grid;
-  grid-template-columns: 50px 1fr 50px 85px 28px;
+  grid-template-columns: 50px 1fr 50px 100px;
   gap: 0.35rem;
   padding: 0.3rem 0.4rem;
   align-items: center;
@@ -277,16 +282,30 @@
   transition: background 0.1s ease;
 }
 
+/* Compact row for nested carrier towers (no carrier column) */
+.cell-tower-row-compact {
+  grid-template-columns: 50px 50px 100px;
+}
+
 .cell-tower-row:hover {
   background: rgba(0, 0, 0, 0.35);
 }
 
+/* Tech pill - clickable link to map */
 .cell-tower-tech {
   font-size: 0.65rem;
   font-weight: 600;
-  padding: 0.1rem 0.25rem;
+  padding: 0.12rem 0.25rem;
   border-radius: 4px;
   text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+a.cell-tower-tech:hover {
+  filter: brightness(1.2);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
 }
 
 .cell-tower-carrier {
@@ -309,21 +328,6 @@
   font-size: 0.68rem;
   text-align: center;
   color: rgba(255, 210, 170, 0.85);
-}
-
-.cell-tower-map {
-  text-align: center;
-}
-
-.cell-map-link {
-  text-decoration: none;
-  font-size: 0.85rem;
-  opacity: 0.65;
-  transition: opacity 0.1s ease;
-}
-
-.cell-map-link:hover {
-  opacity: 1;
 }
 
 /* ============================================================
@@ -558,8 +562,13 @@
   
   .cell-tower-header,
   .cell-tower-row {
-    grid-template-columns: 45px 1fr 45px 70px 24px;
+    grid-template-columns: 45px 1fr 45px 80px;
     font-size: 0.7rem;
+  }
+  
+  .cell-tower-header-compact,
+  .cell-tower-row-compact {
+    grid-template-columns: 45px 45px 80px;
   }
   
   .cell-tower-bearing {
@@ -574,7 +583,12 @@
 @media (max-width: 350px) {
   .cell-tower-header,
   .cell-tower-row {
-    grid-template-columns: 40px 1fr 40px 24px;
+    grid-template-columns: 40px 1fr 40px;
+  }
+  
+  .cell-tower-header-compact,
+  .cell-tower-row-compact {
+    grid-template-columns: 40px 40px;
   }
   
   .cell-tower-bearing {
