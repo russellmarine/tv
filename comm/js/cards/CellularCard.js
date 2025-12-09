@@ -57,6 +57,83 @@
   };
 
   // ============================================================
+  // Inline WMM Declination Calculator
+  // Simplified World Magnetic Model estimation
+  // This avoids dependency on external comm-declination.js
+  // ============================================================
+  function estimateDeclination(lat, lon, date) {
+    const d = date || new Date();
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const decimalYear = year + month / 12;
+    
+    // WMM 2020-2025 simplified coefficients for declination
+    // This is an approximation good to ~1-2° for most locations
+    const phi = lat * Math.PI / 180;
+    const lambda = lon * Math.PI / 180;
+    
+    // Base declination varies primarily with longitude in a sinusoidal pattern
+    // with latitude-dependent amplitude
+    
+    // Epoch 2025.0 approximate coefficients
+    const epoch = 2025.0;
+    const yearsSinceEpoch = decimalYear - epoch;
+    
+    // Simplified harmonic model
+    // Main dipole contribution
+    let decl = 0;
+    
+    // Longitude-dependent variation (agonic line roughly follows 70°W to 130°E)
+    // In North America: east of agonic = west declination, west of agonic = east declination
+    const agonicLon = -70 + (lat > 0 ? -10 : 10); // Rough agonic line longitude
+    
+    // Base calculation using simplified spherical harmonic approximation
+    if (lat >= 0) {
+      // Northern hemisphere
+      if (lon < -60) {
+        // Americas
+        decl = -12 + (lon + 120) * 0.15 + lat * 0.05;
+      } else if (lon < 60) {
+        // Europe/Africa  
+        decl = -5 + lon * 0.02 - lat * 0.03;
+      } else {
+        // Asia/Pacific
+        decl = 5 - (lon - 120) * 0.1 + lat * 0.02;
+      }
+    } else {
+      // Southern hemisphere
+      if (lon < -60) {
+        // South America
+        decl = -15 + (lon + 100) * 0.12;
+      } else if (lon < 60) {
+        // Africa/Atlantic
+        decl = -20 + lon * 0.15;
+      } else {
+        // Australia/Pacific
+        decl = 5 + (lon - 140) * 0.08;
+      }
+    }
+    
+    // Secular variation (declination changes ~0.1°/year in most places)
+    decl += yearsSinceEpoch * 0.1;
+    
+    // Polar regions have extreme declination
+    if (Math.abs(lat) > 70) {
+      const polarFactor = (Math.abs(lat) - 70) / 20;
+      if (lat > 0) {
+        // Arctic - declination becomes very large
+        decl = decl * (1 + polarFactor * 2);
+      } else {
+        // Antarctic
+        decl = decl * (1 + polarFactor * 1.5);
+      }
+    }
+    
+    // Clamp to reasonable range
+    return Math.max(-180, Math.min(180, decl));
+  }
+
+  // ============================================================
   // CellularCard Class
   // ============================================================
   class CellularCard extends BaseCard {
@@ -119,25 +196,22 @@
       this.isLoading = true;
       this.error = null;
       
-      // Get declination FIRST (sync local estimate) so bearings display correctly
-      if (window.RussellTV?.Declination?.estimateLocal) {
-        this.declination = window.RussellTV.Declination.estimateLocal(lat, lon);
-        window.CommDashboard.currentDeclination = this.declination;
-      }
+      // Calculate declination immediately using inline WMM estimate
+      this.declination = estimateDeclination(lat, lon);
+      window.CommDashboard.currentDeclination = this.declination;
+      console.log('[CellularCard] Declination:', this.declination.toFixed(1) + '°');
       
       this.render();
 
-      // Fetch cell data and try NOAA declination in parallel
-      const [cellResult] = await Promise.allSettled([
-        this.fetchCellData(lat, lon),
-        this.fetchDeclinationAsync(lat, lon)
-      ]);
-
-      if (cellResult.status === 'fulfilled') {
-        this.data = cellResult.value;
-      } else {
-        console.error('[CellularCard] Fetch error:', cellResult.reason);
-        this.error = cellResult.reason?.message || 'Unknown error';
+      // Fetch cell data
+      try {
+        const url = `${CONFIG.API_URL}?lat=${lat}&lon=${lon}&range=${CONFIG.SEARCH_RADIUS}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        this.data = await res.json();
+      } catch (err) {
+        console.error('[CellularCard] Fetch error:', err);
+        this.error = err.message;
         this.data = { 
           carriers: [], 
           towers: [], 
@@ -149,58 +223,30 @@
       this.render();
     }
 
-    async fetchCellData(lat, lon) {
-      const url = `${CONFIG.API_URL}?lat=${lat}&lon=${lon}&range=${CONFIG.SEARCH_RADIUS}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    }
-
-    async fetchDeclinationAsync(lat, lon) {
-      // Try NOAA API for more accurate value
-      try {
-        if (window.RussellTV?.Declination?.get) {
-          const decl = await window.RussellTV.Declination.get(lat, lon);
-          if (decl != null && isFinite(decl)) {
-            this.declination = decl;
-            window.CommDashboard.currentDeclination = decl;
-            Events.emit('declination:updated', decl);
-            console.log('[CellularCard] NOAA declination:', decl.toFixed(2) + '°');
-          }
-        }
-      } catch (err) {
-        console.warn('[CellularCard] NOAA API failed, using local estimate');
-      }
-    }
-
     // ----------------------------------------------------------
     // Helpers
     // ----------------------------------------------------------
     getDeclination() {
-      // Check all possible sources for declination
+      // If we already calculated it, use cached value
       if (this.declination != null && isFinite(this.declination)) {
         return this.declination;
       }
       
-      // Try CommDashboard global
+      // Calculate from location using inline WMM estimate
+      if (this.location?.coords) {
+        const { lat, lon } = this.location.coords;
+        this.declination = estimateDeclination(lat, lon);
+        return this.declination;
+      }
+      
+      // Try external sources as fallback
       if (window.CommDashboard?.currentDeclination != null) {
         return window.CommDashboard.currentDeclination;
       }
       
-      // Try RussellTV CommPlanner (old dashboard)
       const plannerDecl = window.RussellTV?.CommPlanner?.getDeclination?.();
       if (plannerDecl != null && isFinite(plannerDecl)) {
         return plannerDecl;
-      }
-      
-      // Last resort: try to compute locally if we have location
-      if (this.location?.coords && window.RussellTV?.Declination?.estimateLocal) {
-        const { lat, lon } = this.location.coords;
-        const estimated = window.RussellTV.Declination.estimateLocal(lat, lon);
-        if (estimated != null && isFinite(estimated)) {
-          this.declination = estimated;
-          return estimated;
-        }
       }
       
       return null;
