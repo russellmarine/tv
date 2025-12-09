@@ -34,6 +34,7 @@
     CardRegistry.register('comm-card-weather', new WeatherCard());
     CardRegistry.register('comm-card-gnss', new GnssCard());
     CardRegistry.register('comm-card-hf', new HfPropagationCard())
+    CardRegistry.register('comm-card-cellular', new CellularCard());
     
     // Initialize all registered cards
     CardRegistry.init();
