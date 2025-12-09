@@ -1,0 +1,477 @@
+/**
+ * cellular.css
+ * Styles for the Cellular Coverage card
+ * Comm Dashboard
+ */
+
+/* ============================================================
+   Waiting / Loading / Error States
+   ============================================================ */
+.cell-waiting,
+.cell-loading,
+.cell-error,
+.cell-no-coverage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  gap: 0.5rem;
+}
+
+.cell-waiting-icon,
+.cell-error-icon,
+.cell-no-coverage-icon {
+  font-size: 2.5rem;
+  opacity: 0.6;
+  margin-bottom: 0.25rem;
+}
+
+.cell-waiting-hint,
+.cell-error-detail,
+.cell-no-coverage-hint {
+  font-size: 0.72rem;
+  opacity: 0.6;
+  margin: 0;
+  max-width: 280px;
+}
+
+.cell-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 140, 0, 0.2);
+  border-top-color: rgba(255, 140, 0, 0.8);
+  border-radius: 50%;
+  animation: cell-spin 0.8s linear infinite;
+}
+
+@keyframes cell-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   Summary Section
+   ============================================================ */
+.cell-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 190, 140, 0.4);
+  background: linear-gradient(135deg, rgba(255, 140, 0, 0.08), rgba(0, 0, 0, 0.35));
+  margin-bottom: 0.65rem;
+}
+
+.cell-summary-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.cell-coverage-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.cell-coverage-icon {
+  font-size: 1.1rem;
+}
+
+.cell-summary-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.cell-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.cell-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffd7a1;
+}
+
+.cell-stat-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+/* Technology badges row */
+.cell-tech-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cell-tech-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cell-tech-count {
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+/* Technology color variants */
+.cell-tech-5g {
+  background: linear-gradient(135deg, rgba(0, 200, 150, 0.25), rgba(0, 80, 60, 0.4));
+  border: 1px solid rgba(0, 220, 170, 0.5);
+  color: #aaffee;
+}
+
+.cell-tech-lte {
+  background: linear-gradient(135deg, rgba(80, 160, 255, 0.25), rgba(30, 60, 120, 0.4));
+  border: 1px solid rgba(100, 180, 255, 0.5);
+  color: #bbddff;
+}
+
+.cell-tech-umts {
+  background: linear-gradient(135deg, rgba(255, 180, 80, 0.25), rgba(100, 60, 20, 0.4));
+  border: 1px solid rgba(255, 200, 120, 0.5);
+  color: #ffe4c4;
+}
+
+.cell-tech-gsm {
+  background: linear-gradient(135deg, rgba(180, 140, 200, 0.25), rgba(70, 50, 80, 0.4));
+  border: 1px solid rgba(200, 160, 220, 0.5);
+  color: #e8d8f0;
+}
+
+.cell-tech-cdma {
+  background: linear-gradient(135deg, rgba(200, 160, 120, 0.25), rgba(80, 60, 40, 0.4));
+  border: 1px solid rgba(220, 180, 140, 0.5);
+  color: #f0e0d0;
+}
+
+.cell-tech-other {
+  background: linear-gradient(135deg, rgba(150, 150, 150, 0.2), rgba(60, 60, 60, 0.4));
+  border: 1px solid rgba(180, 180, 180, 0.4);
+  color: #ddd;
+}
+
+/* ============================================================
+   Roaming Warning
+   ============================================================ */
+.cell-roaming-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 170, 0, 0.15), rgba(0, 0, 0, 0.25));
+  border: 1px solid rgba(255, 170, 0, 0.4);
+  margin-bottom: 0.65rem;
+  font-size: 0.78rem;
+  color: #ffdd88;
+}
+
+.cell-roaming-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Section Headers
+   ============================================================ */
+.cell-section {
+  margin-bottom: 0.65rem;
+}
+
+.cell-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(255, 180, 120, 0.2);
+}
+
+.cell-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 210, 170, 0.9);
+}
+
+.cell-section-count {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+  background: rgba(255, 140, 0, 0.15);
+  border: 1px solid rgba(255, 180, 120, 0.3);
+  border-radius: 999px;
+  color: rgba(255, 210, 170, 0.85);
+}
+
+/* ============================================================
+   Carriers Grid
+   ============================================================ */
+.cell-carriers-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.cell-carrier {
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 180, 120, 0.25);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.cell-carrier:hover {
+  border-color: rgba(255, 180, 120, 0.45);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.cell-carrier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cell-carrier-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cell-carrier-flag {
+  font-size: 1.1rem;
+}
+
+.cell-carrier-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #fff;
+}
+
+.cell-carrier-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.cell-carrier-plmn {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  padding: 0.1rem 0.35rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+}
+
+.cell-carrier-techs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  font-size: 0.7rem;
+}
+
+.cell-carrier-tech {
+  padding: 0.12rem 0.35rem;
+  border-radius: 6px;
+  opacity: 0.9;
+}
+
+.cell-carrier-bands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+}
+
+.cell-band-badge {
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+/* ============================================================
+   Tower Table
+   ============================================================ */
+.cell-tower-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+}
+
+.cell-tower-header {
+  display: grid;
+  grid-template-columns: 60px 1fr 55px 90px 30px;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+  border-bottom: 1px solid rgba(255, 180, 120, 0.15);
+}
+
+.cell-tower-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 55px 90px 30px;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  align-items: center;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 180, 120, 0.1);
+  transition: background 0.12s ease;
+}
+
+.cell-tower-row:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.cell-tower-tech {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.12rem 0.3rem;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.cell-tower-carrier {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 220, 180, 0.9);
+}
+
+.cell-tower-distance {
+  text-align: right;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.75rem;
+  color: #ffd7a1;
+}
+
+.cell-tower-bearing {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.72rem;
+  text-align: center;
+  color: rgba(255, 210, 170, 0.85);
+}
+
+.cell-tower-map {
+  text-align: center;
+}
+
+.cell-map-link {
+  text-decoration: none;
+  font-size: 0.9rem;
+  opacity: 0.7;
+  transition: opacity 0.12s ease;
+}
+
+.cell-map-link:hover {
+  opacity: 1;
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.cell-footer {
+  margin-top: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 180, 120, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cell-footer-note {
+  font-size: 0.7rem;
+  opacity: 0.65;
+  line-height: 1.3;
+}
+
+.cell-footer-source {
+  font-size: 0.7rem;
+  opacity: 0.6;
+  margin-top: 0.15rem;
+}
+
+.cell-footer-source .inline-link {
+  color: #88bbff;
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(136, 187, 255, 0.4);
+}
+
+.cell-footer-source .inline-link:hover {
+  color: #aaddff;
+  border-bottom-color: rgba(170, 221, 255, 0.6);
+}
+
+/* ============================================================
+   Responsive Adjustments
+   ============================================================ */
+@media (max-width: 480px) {
+  .cell-summary-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .cell-tower-header,
+  .cell-tower-row {
+    grid-template-columns: 50px 1fr 45px 70px 28px;
+    font-size: 0.72rem;
+  }
+  
+  .cell-tower-bearing {
+    font-size: 0.68rem;
+  }
+  
+  .cell-carrier-header {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+}
+
+@media (max-width: 350px) {
+  .cell-tower-header,
+  .cell-tower-row {
+    grid-template-columns: 45px 1fr 40px 24px;
+  }
+  
+  .cell-tower-bearing {
+    display: none;
+  }
+  
+  .cell-tech-row {
+    gap: 0.25rem;
+  }
+  
+  .cell-tech-badge {
+    font-size: 0.68rem;
+    padding: 0.15rem 0.4rem;
+  }
+}
