@@ -68,20 +68,20 @@
   };
 
   const SBAS_SYSTEMS = [
-    { id: 'waas', name: 'WAAS', fullName: 'Wide Area Augmentation System', region: 'North America', flag: '🇺🇸' },
-    { id: 'egnos', name: 'EGNOS', fullName: 'European Geostationary Navigation Overlay Service', region: 'Europe', flag: '🇪🇺' },
-    { id: 'msas', name: 'MSAS', fullName: 'Multi-functional Satellite Augmentation System', region: 'Japan', flag: '🇯🇵' },
-    { id: 'gagan', name: 'GAGAN', fullName: 'GPS Aided Geo Augmented Navigation', region: 'India', flag: '🇮🇳' },
-    { id: 'sdcm', name: 'SDCM', fullName: 'System for Differential Corrections and Monitoring', region: 'Russia', flag: '🇷🇺' }
+    { id: 'waas',  name: 'WAAS',  fullName: 'Wide Area Augmentation System',                          region: 'North America', flag: '🇺🇸' },
+    { id: 'egnos', name: 'EGNOS', fullName: 'European Geostationary Navigation Overlay Service',      region: 'Europe',        flag: '🇪🇺' },
+    { id: 'msas',  name: 'MSAS',  fullName: 'Multi-functional Satellite Augmentation System (QZSS)', region: 'Japan',         flag: '🇯🇵' },
+    { id: 'gagan', name: 'GAGAN', fullName: 'GPS Aided Geo Augmented Navigation',                     region: 'India',         flag: '🇮🇳' },
+    { id: 'sdcm',  name: 'SDCM',  fullName: 'System for Differential Corrections and Monitoring',     region: 'Russia',        flag: '🇷🇺' }
   ];
 
   const INTERFERENCE_ZONES = [
-    { name: 'Eastern Mediterranean', lat: 35.0, lon: 33.0, radius: 500, severity: 'high', source: 'Ongoing conflict' },
-    { name: 'Black Sea', lat: 43.5, lon: 34.0, radius: 400, severity: 'high', source: 'GPS jamming reported' },
-    { name: 'Baltic Sea', lat: 55.0, lon: 20.0, radius: 300, severity: 'moderate', source: 'Intermittent jamming' },
-    { name: 'Sea of Azov', lat: 46.0, lon: 36.5, radius: 200, severity: 'high', source: 'Conflict zone' },
-    { name: 'Northern Syria', lat: 36.5, lon: 38.0, radius: 250, severity: 'high', source: 'Military activity' },
-    { name: 'Korean Peninsula', lat: 38.0, lon: 127.0, radius: 150, severity: 'moderate', source: 'Periodic jamming' }
+    { name: 'Eastern Mediterranean', lat: 35.0, lon: 33.0, radius: 500, severity: 'high',    source: 'Ongoing conflict' },
+    { name: 'Black Sea',            lat: 43.5, lon: 34.0, radius: 400, severity: 'high',    source: 'GPS jamming reported' },
+    { name: 'Baltic Sea',           lat: 55.0, lon: 20.0, radius: 300, severity: 'moderate', source: 'Intermittent jamming' },
+    { name: 'Sea of Azov',          lat: 46.0, lon: 36.5, radius: 200, severity: 'high',    source: 'Conflict zone' },
+    { name: 'Northern Syria',       lat: 36.5, lon: 38.0, radius: 250, severity: 'high',    source: 'Military activity' },
+    { name: 'Korean Peninsula',     lat: 38.0, lon: 127.0, radius: 150, severity: 'moderate', source: 'Periodic jamming' }
   ];
 
   const ICONS = {
@@ -326,18 +326,19 @@
         this.sbasData = SBAS_SYSTEMS.map(system => {
           const sats = data.filter(sat => {
             const name = (sat.OBJECT_NAME || '').toUpperCase();
-            if (system.id === 'waas') return name.includes('WAAS') || name.includes('GALAXY 15') || name.includes('INMARSAT');
+            if (system.id === 'waas')  return name.includes('WAAS')  || name.includes('GALAXY 15') || name.includes('INMARSAT');
             if (system.id === 'egnos') return name.includes('EGNOS') || name.includes('ASTRA');
-            if (system.id === 'msas') return name.includes('MTSAT') || name.includes('MSAS');
-            if (system.id === 'gagan') return name.includes('GSAT') || name.includes('GAGAN');
-            if (system.id === 'sdcm') return name.includes('LUCH');
+            if (system.id === 'msas')  return name.includes('MTSAT') || name.includes('MSAS') || name.includes('QZS');
+            if (system.id === 'gagan') return name.includes('GSAT')  || name.includes('GAGAN');
+            if (system.id === 'sdcm')  return name.includes('LUCH');
             return false;
           });
 
           return {
             ...system,
             satellites: sats.length,
-            operational: sats.length > 0
+            rawSats: sats,                 // raw GP rows for visibility checks
+            operational: sats.length > 0   // system exists in feed
           };
         });
 
@@ -348,7 +349,7 @@
     }
 
     // ============================================================
-    // DOP Calculation (unchanged)
+    // DOP Calculation
     // ============================================================
 
     calculateDOP() {
@@ -384,7 +385,7 @@
         return;
       }
 
-      const dop = this.computeDOPFromSatellites(visibleSats, userPos, lat, lon);
+      const dop = this.computeDOPFromSatellites(visibleSats);
       this.dopValues = {
         ...dop,
         visibleSatellites: visibleSats.length,
@@ -554,6 +555,49 @@
     }
 
     // ============================================================
+    // SBAS Visibility Helper
+    // ============================================================
+
+    /**
+     * Check if any SBAS satellites are visible (>5° elevation)
+     * from the given user location.
+     */
+    isSbasVisibleFromLocation(rawSats, coords) {
+      if (!coords || !rawSats || !rawSats.length) return false;
+
+      const { lat, lon } = coords;
+      const userPos = this.geodToECEF(lat, lon, 0);
+
+      for (const raw of rawSats) {
+        const satState = {
+          meanMotion:   parseFloat(raw.MEAN_MOTION)       || 0,
+          epoch:        raw.EPOCH,
+          eccentricity: parseFloat(raw.ECCENTRICITY)      || 0,
+          inclination:  parseFloat(raw.INCLINATION)       || 0,
+          argOfPerigee: parseFloat(raw.ARG_OF_PERICENTER) || 0,
+          raan:         parseFloat(raw.RA_OF_ASC_NODE)    || 0,
+          meanAnomaly:  parseFloat(raw.MEAN_ANOMALY)      || 0
+        };
+
+        const satPos = this.calculateSatPosition(satState);
+        if (!satPos) continue;
+
+        const { elevation } = this.calculateElevationAzimuth(
+          userPos,
+          satPos,
+          lat,
+          lon
+        );
+
+        if (elevation > 5) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    // ============================================================
     // Interference Checking
     // ============================================================
 
@@ -656,7 +700,6 @@
     renderBody() {
       const hasData = Object.keys(this.constellationData).length > 0;
 
-      // If we tried to fetch but got nothing, surface that instead of infinite "loading"
       if (!hasData && this.fetchAttempted) {
         const msg = this.lastFetchError ||
           'Unable to load GNSS data (no satellite data returned from API).';
@@ -812,11 +855,11 @@
       const locationName = this.location.label || 'Selected Location';
 
       const dopItems = [
-        { key: 'gdop', label: 'GDOP', desc: 'Geometric', good: 4, fair: 8 },
-        { key: 'pdop', label: 'PDOP', desc: 'Position', good: 3, fair: 6 },
+        { key: 'gdop', label: 'GDOP', desc: 'Geometric',  good: 4, fair: 8 },
+        { key: 'pdop', label: 'PDOP', desc: 'Position',   good: 3, fair: 6 },
         { key: 'hdop', label: 'HDOP', desc: 'Horizontal', good: 2, fair: 4 },
-        { key: 'vdop', label: 'VDOP', desc: 'Vertical', good: 3, fair: 6 },
-        { key: 'tdop', label: 'TDOP', desc: 'Time', good: 2, fair: 4 }
+        { key: 'vdop', label: 'VDOP', desc: 'Vertical',   good: 3, fair: 6 },
+        { key: 'tdop', label: 'TDOP', desc: 'Time',       good: 2, fair: 4 }
       ];
 
       const dopCards = dopItems.map(item => {
@@ -918,9 +961,22 @@
       if (!this.sbasData || this.sbasData.length === 0) return '';
 
       const items = this.sbasData.map(sys => {
-        const icon = sys.operational ? ICONS.check : ICONS.degraded;
+        let operational = sys.operational;
+
+        if (this.location?.coords && sys.rawSats && sys.rawSats.length) {
+          const visible = this.isSbasVisibleFromLocation(sys.rawSats, this.location.coords);
+
+          // Option C: For MSAS/QZSS, only show green when actually visible
+          if (sys.id === 'msas') {
+            operational = operational && visible;
+          }
+        }
+
+        const icon = operational ? ICONS.check : ICONS.degraded;
+        const className = operational ? 'operational' : 'unavailable';
+
         return `
-          <div class="sbas-item ${sys.operational ? 'operational' : 'unavailable'}" title="${escapeHtml(sys.fullName)}">
+          <div class="sbas-item ${className}" title="${escapeHtml(sys.fullName)}">
             <span class="sbas-flag">${sys.flag}</span>
             <span class="sbas-name">${sys.name}</span>
             <span class="sbas-status">${icon}</span>
