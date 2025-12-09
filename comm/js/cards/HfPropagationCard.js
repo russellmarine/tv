@@ -70,28 +70,41 @@
 
     init() {
       super.init();
-      
+
       // DON'T load cached or fetch data until location is selected
-      // this.loadCached();  // Disabled - wait for location
 
       // Subscribe to location changes
       this.subscribe('comm:location-changed', (loc) => {
         this.location = loc;
+
+        // Update day/night state for the new location
         this.updateDayNight();
-        
-        // First fetch when location is selected
+
         if (!this.hasLoadedData) {
+          // First time a location is selected: load any cached data and fetch fresh data
           this.loadCached();
+
+          // If we have cached solar data, compute MUF immediately for this location
+          if (this.solarData) {
+            this.calculateMuf();
+          }
+
           this.fetchData();
           this.hasLoadedData = true;
-          
+
           // Set up periodic updates only after location is set
           this.updateTimer = this.setInterval(() => this.fetchData(), UPDATE_INTERVAL);
-          
+
           // Update day/night every minute
           this.setInterval(() => this.updateDayNight(), 60000);
+
+          // Render after initial setup
+          this.render();
         } else {
-          // Just update for new location
+          // Subsequent location changes: reuse existing solar data, just recompute MUF
+          if (this.solarData) {
+            this.calculateMuf();
+          }
           this.render();
         }
       });
@@ -102,6 +115,10 @@
         // Re-merge NOAA data if we have solar data loaded
         if (this.solarData) {
           this.mergeNoaaData();
+          // MUF depends on solar/geomag too, so recompute for current location
+          if (this.location?.coords) {
+            this.calculateMuf();
+          }
           this.render();
         }
       });
@@ -137,30 +154,30 @@
     calculateDayNightForLocation(lat, lon) {
       const now = new Date();
       const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-      
+
       // Solar declination approximation
       const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * (Math.PI / 180));
-      
+
       // Hour angle for sunrise/sunset
       const latRad = lat * (Math.PI / 180);
       const decRad = declination * (Math.PI / 180);
-      
+
       const cosHourAngle = -Math.tan(latRad) * Math.tan(decRad);
-      
+
       // Handle polar day/night
       if (cosHourAngle < -1) return true;  // Polar day
       if (cosHourAngle > 1) return false;  // Polar night
-      
+
       const hourAngle = Math.acos(cosHourAngle) * (180 / Math.PI);
-      
+
       // Convert to hours
       const sunriseHour = 12 - (hourAngle / 15);
       const sunsetHour = 12 + (hourAngle / 15);
-      
+
       // Get local solar time (approximate)
       const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
       const localSolarHours = (utcHours + lon / 15 + 24) % 24;
-      
+
       return localSolarHours >= sunriseHour && localSolarHours < sunsetHour;
     }
 
@@ -174,17 +191,17 @@
         if (hamqsl) {
           this.solarData = hamqsl.solar;
           this.bandConditions = hamqsl.bands;
-          
+
           // Always try to override SSN with NOAA data from SpaceWeatherCard
           this.mergeNoaaData();
-          
-          // Calculate MUF from HamQSL data (foF2 * factor)
+
+          // Calculate MUF from HamQSL/NOAA data for the current location
           this.calculateMuf();
-          
+
           this.lastUpdate = new Date();
           this.cacheData();
           this.render();
-          
+
           // Emit event for other cards
           Events.emit('hf:data-updated', {
             bands: this.bandConditions,
@@ -197,22 +214,21 @@
         console.warn('[HfPropagationCard] Fetch error:', err);
       }
     }
-    
+
     mergeNoaaData() {
       // Get SSN from SpaceWeatherCard via CardRegistry if available
       const spacewxCard = window.CommDashboard?.CardRegistry?.get('comm-card-spacewx');
       console.log('[HfPropagationCard] Trying to merge NOAA data, spacewxCard:', !!spacewxCard);
-      
+
       if (spacewxCard) {
         // Access sunspotData directly from card instance (not via getData())
-        // SpaceWeatherCard stores sunspots in this.sunspotData, not in this.data
         const sunspots = spacewxCard.sunspotData;
         console.log('[HfPropagationCard] SpaceWeatherCard.sunspotData:', sunspots?.length, 'entries');
-        
+
         if (Array.isArray(sunspots) && sunspots.length > 0) {
           const latestSsn = sunspots[sunspots.length - 1]?.value;
           console.log('[HfPropagationCard] Latest NOAA SSN value:', latestSsn);
-          
+
           if (latestSsn !== undefined && !isNaN(latestSsn)) {
             const oldSsn = this.solarData.sunspots;
             this.solarData.sunspots = Math.round(latestSsn);
@@ -222,7 +238,7 @@
         } else {
           console.log('[HfPropagationCard] No sunspot data available from SpaceWeatherCard');
         }
-        
+
         // Also grab Kp from the card's data
         const swData = spacewxCard.getData?.();
         if (swData?.kpIndex !== undefined) {
@@ -232,7 +248,7 @@
         console.log('[HfPropagationCard] SpaceWeatherCard not found in registry');
       }
     }
-    
+
     calculateMuf() {
       // Use location-based MUF estimation (like old dashboard)
       // This is based on empirical formulas, not real-time ionosonde data
@@ -251,8 +267,7 @@
       const dayNight = this.getDayNightStatus(lat, lon);
 
       // Base MUF varies by time of day
-      // Night: lower (F-layer thins), Day: higher, Greyline: transitional
-      let baseMUF = dayNight.status === 'day' ? 21 : 
+      let baseMUF = dayNight.status === 'day' ? 21 :
                     dayNight.status === 'greyline' ? 18 : 10;
 
       // Seasonal adjustment - summer has higher MUF
@@ -295,26 +310,26 @@
     getDayNightStatus(lat, lon) {
       const now = new Date();
       const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-      
+
       // Solar declination
       const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * (Math.PI / 180));
       const latRad = lat * (Math.PI / 180);
       const decRad = declination * (Math.PI / 180);
-      
+
       const cosHourAngle = -Math.tan(latRad) * Math.tan(decRad);
-      
+
       // Handle polar day/night
       if (cosHourAngle < -1) return { status: 'day', label: 'Polar Day' };
       if (cosHourAngle > 1) return { status: 'night', label: 'Polar Night' };
-      
+
       const hourAngle = Math.acos(cosHourAngle) * (180 / Math.PI);
       const sunriseHour = 12 - (hourAngle / 15);
       const sunsetHour = 12 + (hourAngle / 15);
-      
+
       // Get local solar time
       const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
       const localSolarHours = (utcHours + lon / 15 + 24) % 24;
-      
+
       // Check for greyline (within 30 min of sunrise/sunset)
       const greylineWindow = 0.5; // hours
       if (Math.abs(localSolarHours - sunriseHour) < greylineWindow) {
@@ -323,7 +338,7 @@
       if (Math.abs(localSolarHours - sunsetHour) < greylineWindow) {
         return { status: 'greyline', label: 'Sunset Greyline' };
       }
-      
+
       if (localSolarHours >= sunriseHour && localSolarHours < sunsetHour) {
         return { status: 'day', label: 'Daytime' };
       }
@@ -334,7 +349,7 @@
       try {
         const resp = await fetch(ENDPOINTS.HAMQSL);
         if (!resp.ok) return null;
-        
+
         const text = await resp.text();
         return this.parseHamQSLXml(text);
       } catch (err) {
@@ -347,7 +362,7 @@
       try {
         const parser = new DOMParser();
         const doc = parser.parseFromString(xmlText, 'text/xml');
-        
+
         const solar = doc.querySelector('solardata');
         if (!solar) return null;
 
@@ -380,12 +395,12 @@
         // Parse band conditions
         const bands = {};
         const bandNodes = solar.querySelectorAll('calculatedconditions band');
-        
+
         bandNodes.forEach(band => {
           const name = band.getAttribute('name');
           const time = band.getAttribute('time');
           const condition = band.textContent.trim();
-          
+
           if (!bands[name]) bands[name] = {};
           bands[name][time] = condition;
         });
@@ -399,8 +414,8 @@
           vhfConditions[`${name}_${location}`] = p.textContent.trim();
         });
 
-        return { 
-          solar: solarData, 
+        return {
+          solar: solarData,
           bands,
           vhf: vhfConditions
         };
@@ -421,18 +436,22 @@
           this.solarData = cached.solar || null;
           this.bandConditions = cached.bands || null;
           this.lastUpdate = new Date(cached.timestamp);
-          
+
           // Try to merge NOAA SSN immediately (SpaceWeatherCard might already have data)
           if (this.solarData) {
             this.mergeNoaaData();
           }
-          
+
           this.render();
-          
+
           // Also retry after a short delay in case SpaceWeatherCard loads after us
           this.setTimeout(() => {
             if (this.solarData) {
               this.mergeNoaaData();
+              // Recompute MUF for current location if available
+              if (this.location?.coords) {
+                this.calculateMuf();
+              }
               this.render();
             }
           }, 500);
@@ -447,7 +466,7 @@
         sunspots: null,  // Don't cache SSN - always get from SpaceWeatherCard
         ssnSource: null
       } : null;
-      
+
       Storage.set(STORAGE_KEY, {
         solar: solarForCache,
         bands: this.bandConditions,
@@ -469,7 +488,7 @@
           </div>
         `;
       }
-      
+
       if (!this.solarData || !this.bandConditions) {
         return '<p class="comm-placeholder">Loading HF propagation data...</p>';
       }
@@ -493,7 +512,7 @@
       const sfiColor = this.getSfiColor(s.sfi);
       const kColor = this.getKpColor(s.kIndex);
       const aColor = this.getAIndexColor(s.aIndex);
-      
+
       // Always get fresh SSN from SpaceWeatherCard
       let ssn = s.sunspots;
       let ssnSource = s.ssnSource || 'HamQSL';
@@ -534,13 +553,13 @@
 
     renderBandGrid() {
       const timeKey = this.isDay ? 'day' : 'night';
-      
+
       const bandCards = HF_BANDS.map(band => {
         const condition = this.getBandCondition(band.name, timeKey);
         const condInfo = CONDITION_LABELS[condition] || CONDITION_LABELS['Unknown'];
         const mufOpen = this.muf ? band.mhz <= this.muf.value : true;
         const closedClass = !mufOpen ? 'hf-muf-closed' : '';
-        
+
         return `
           <div class="hf-band-card ${condInfo.className} ${closedClass}" 
                title="${band.freq} - ${band.use}${!mufOpen ? ' (Below MUF)' : ''}">
@@ -572,9 +591,9 @@
 
       const mufValue = this.muf.value;
       const dayNight = this.muf.dayNight;
-      
+
       // Get day/night class for styling
-      const dayPhaseClass = dayNight?.status === 'night' ? 'hf-phase-night' : 
+      const dayPhaseClass = dayNight?.status === 'night' ? 'hf-phase-night' :
                             dayNight?.status === 'greyline' ? 'hf-phase-grey' : 'hf-phase-day';
 
       // Get propagation description based on day/night status
@@ -698,7 +717,7 @@
     // ============================================================
     getBandCondition(bandName, timeKey) {
       if (!this.bandConditions) return 'Unknown';
-      
+
       // Try exact match first
       const bandData = this.bandConditions[bandName];
       if (bandData && bandData[timeKey]) {
@@ -742,23 +761,23 @@
       }
 
       const s = this.solarData;
-      
+
       // Calculate overall score
       let score = 0;
-      
+
       // SFI contribution (0-40 points)
       if (s.sfi >= 150) score += 40;
       else if (s.sfi >= 120) score += 30;
       else if (s.sfi >= 100) score += 20;
       else if (s.sfi >= 80) score += 10;
-      
+
       // K-index penalty (-30 to 0)
       if (s.kIndex <= 1) score += 0;
       else if (s.kIndex <= 2) score -= 5;
       else if (s.kIndex <= 3) score -= 10;
       else if (s.kIndex <= 4) score -= 20;
       else score -= 30;
-      
+
       // A-index penalty (-20 to 0)
       if (s.aIndex <= 7) score += 0;
       else if (s.aIndex <= 15) score -= 5;
