@@ -192,7 +192,7 @@ function processResults(data, centerLat, centerLon) {
   }
 
   return {
-    towers: towers.slice(0, 20), // Return top 20 closest
+    towers: towers.slice(0, 50), // Return top 20 closest
     carriers: Object.values(carriers).sort((a, b) => b.count - a.count),
     technologies,
     summary: {
