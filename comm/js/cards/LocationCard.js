@@ -51,8 +51,10 @@
       this.loadRecent();
       this.loadSelected();
 
-      // If we have a persisted location, apply it
+      // If we have a persisted location, ensure it appears in recents
+      // and emit the location-changed event so other cards sync up.
       if (this.selectedLocation) {
+        this.ensureSelectedInRecents();
         this.applyLocation(this.selectedLocation, false);
       }
     }
@@ -617,6 +619,12 @@
       }
     }
 
+    // Ensure the currently selected location is represented in recents
+    ensureSelectedInRecents() {
+      if (!this.selectedLocation || !this.selectedLocation.coords) return;
+      this.addRecent(this.selectedLocation);
+    }
+
     // ============================================================
     // Selected Location Persistence
     // ============================================================
@@ -728,7 +736,7 @@
         const adjLat = lat + 90;
 
         const field1 = String.fromCharCode(65 + Math.floor(adjLon / 20));
-        const field2 = String.fromCharCode(65 + Math.floor(adjLat / 10));
+        const field2 = String.fromCharCode(65 + Math.floor(Math.floor(adjLat / 10)));
 
         const square1 = Math.floor((adjLon % 20) / 2);
         const square2 = Math.floor(adjLat % 10);
