@@ -147,14 +147,25 @@
       try {
         // Use the existing RussellTV.Declination module
         if (window.RussellTV?.Declination?.get) {
-          this.declination = await window.RussellTV.Declination.get(lat, lon);
-          Events.emit('declination:updated', this.declination);
+          const decl = await window.RussellTV.Declination.get(lat, lon);
+          this.declination = decl;
+          
+          // Store globally for other cards
+          window.CommDashboard.currentDeclination = decl;
+          
+          // Emit event and re-render to update bearings
+          Events.emit('declination:updated', decl);
+          this.render();
+          
+          console.log('[CellularCard] Declination loaded:', decl.toFixed(2) + '°');
         }
       } catch (err) {
         console.warn('[CellularCard] Declination fetch failed:', err);
         // Try local estimate as fallback
         if (window.RussellTV?.Declination?.estimateLocal) {
           this.declination = window.RussellTV.Declination.estimateLocal(lat, lon);
+          window.CommDashboard.currentDeclination = this.declination;
+          this.render();
         }
       }
     }
@@ -163,24 +174,38 @@
     // Helpers
     // ----------------------------------------------------------
     getDeclination() {
-      return this.declination 
-        ?? window.CommDashboard?.currentDeclination
-        ?? window.RussellTV?.CommPlanner?.getDeclination?.()
-        ?? null;
+      // Check all possible sources for declination
+      if (this.declination != null && isFinite(this.declination)) {
+        return this.declination;
+      }
+      
+      // Try CommDashboard global
+      if (window.CommDashboard?.currentDeclination != null) {
+        return window.CommDashboard.currentDeclination;
+      }
+      
+      // Try RussellTV CommPlanner (old dashboard)
+      const plannerDecl = window.RussellTV?.CommPlanner?.getDeclination?.();
+      if (plannerDecl != null && isFinite(plannerDecl)) {
+        return plannerDecl;
+      }
+      
+      return null;
     }
 
     formatBearing(trueBearing) {
       if (trueBearing == null || !isFinite(trueBearing)) return '—';
       
+      const trueRounded = Math.round(trueBearing);
       const decl = this.getDeclination();
-      const trueStr = `${Math.round(trueBearing)}°T`;
       
       if (decl != null && isFinite(decl)) {
         const mag = ((trueBearing - decl) % 360 + 360) % 360;
-        return `${trueStr} / ${Math.round(mag)}°M`;
+        return `${trueRounded}°T / ${Math.round(mag)}°M`;
       }
       
-      return trueStr;
+      // Show placeholder for magnetic if declination not loaded
+      return `${trueRounded}°T / --°M`;
     }
 
     formatDistance(meters) {
@@ -209,10 +234,9 @@
       return COVERAGE_CONFIG[key] || COVERAGE_CONFIG.unknown;
     }
 
-    buildMapLink(lat, lon) {
+    buildMapUrl(lat, lon) {
       if (lat == null || lon == null) return '';
-      const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}&basemap=satellite`;
-      return `<a class="cell-map-link" href="${url}" target="_blank" rel="noopener noreferrer" title="View on map">📍</a>`;
+      return `https://www.google.com/maps/search/?api=1&query=${lat},${lon}&basemap=satellite`;
     }
 
     // Parse bands into grouped structure by technology
@@ -402,7 +426,7 @@
       const nearestDist = towers[0]?.distance;
       const summaryText = `${towers.length} tower${towers.length !== 1 ? 's' : ''} · nearest ${this.formatDistance(nearestDist)}`;
 
-      const rows = displayTowers.map(t => this.renderTowerRow(t)).join('');
+      const rows = displayTowers.map(t => this.renderTowerRow(t, false)).join('');
 
       return `
         <details class="cell-dropdown">
@@ -417,7 +441,6 @@
                 <span>Carrier</span>
                 <span>Dist</span>
                 <span>Bearing</span>
-                <span></span>
               </div>
               ${rows}
             </div>
@@ -426,20 +449,39 @@
       `;
     }
 
-    renderTowerRow(tower) {
+    renderTowerRow(tower, hideCarrier = false) {
       const tech = tower.technology || tower.radio || 'Unknown';
       const techCfg = this.getTechConfig(tech);
       const bearing = tower.bearingDeg ?? tower.bearing;
-      const mapLink = this.buildMapLink(tower.lat, tower.lon);
-      const carrierDisplay = `${tower.flag || ''} ${tower.carrier || 'Unknown'}`.trim();
+      const mapUrl = this.buildMapUrl(tower.lat, tower.lon);
+      
+      // Build proper carrier display
+      const flag = tower.flag || '';
+      const carrierName = tower.carrier || 'Unknown';
+      const carrierDisplay = `${flag} ${carrierName}`.trim();
+
+      // Tech pill is clickable and links to map
+      const techPill = mapUrl 
+        ? `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="cell-tower-tech ${techCfg.class}" title="View on map">${escapeHtml(techCfg.label)}</a>`
+        : `<span class="cell-tower-tech ${techCfg.class}">${escapeHtml(techCfg.label)}</span>`;
+
+      if (hideCarrier) {
+        // Simplified row for nested carrier view (no carrier column)
+        return `
+          <div class="cell-tower-row cell-tower-row-compact">
+            ${techPill}
+            <span class="cell-tower-distance">${this.formatDistance(tower.distance)}</span>
+            <span class="cell-tower-bearing">${this.formatBearing(bearing)}</span>
+          </div>
+        `;
+      }
 
       return `
         <div class="cell-tower-row">
-          <span class="cell-tower-tech ${techCfg.class}">${escapeHtml(techCfg.label)}</span>
+          ${techPill}
           <span class="cell-tower-carrier" title="${escapeHtml(carrierDisplay)}">${escapeHtml(carrierDisplay)}</span>
           <span class="cell-tower-distance">${this.formatDistance(tower.distance)}</span>
           <span class="cell-tower-bearing">${this.formatBearing(bearing)}</span>
-          <span class="cell-tower-map">${mapLink}</span>
         </div>
       `;
     }
@@ -495,11 +537,11 @@
       const bandsGrouped = this.parseBands(carrier);
       const bandsHtml = this.renderBandsGrouped(bandsGrouped);
 
-      // Nested tower list
+      // Nested tower list - use compact format (no carrier column)
       const hasTowers = carrierTowers.length > 0;
       const towerRows = carrierTowers
         .slice(0, CONFIG.MAX_CARRIER_TOWERS)
-        .map(t => this.renderTowerRow(t))
+        .map(t => this.renderTowerRow(t, true))  // hideCarrier = true
         .join('');
 
       return `
@@ -521,12 +563,10 @@
                   View ${carrierTowers.length} tower${carrierTowers.length !== 1 ? 's' : ''}
                 </summary>
                 <div class="cell-tower-table cell-carrier-tower-table">
-                  <div class="cell-tower-header">
+                  <div class="cell-tower-header cell-tower-header-compact">
                     <span>Tech</span>
-                    <span>Carrier</span>
                     <span>Dist</span>
                     <span>Bearing</span>
-                    <span></span>
                   </div>
                   ${towerRows}
                 </div>
