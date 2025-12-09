@@ -118,20 +118,26 @@
 
       this.isLoading = true;
       this.error = null;
+      
+      // Get declination FIRST (sync local estimate) so bearings display correctly
+      if (window.RussellTV?.Declination?.estimateLocal) {
+        this.declination = window.RussellTV.Declination.estimateLocal(lat, lon);
+        window.CommDashboard.currentDeclination = this.declination;
+      }
+      
       this.render();
 
-      // Fetch declination in parallel
-      this.fetchDeclination(lat, lon);
+      // Fetch cell data and try NOAA declination in parallel
+      const [cellResult] = await Promise.allSettled([
+        this.fetchCellData(lat, lon),
+        this.fetchDeclinationAsync(lat, lon)
+      ]);
 
-      try {
-        const url = `${CONFIG.API_URL}?lat=${lat}&lon=${lon}&range=${CONFIG.SEARCH_RADIUS}`;
-        const res = await fetch(url);
-        
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        this.data = await res.json();
-      } catch (err) {
-        console.error('[CellularCard] Fetch error:', err);
-        this.error = err.message;
+      if (cellResult.status === 'fulfilled') {
+        this.data = cellResult.value;
+      } else {
+        console.error('[CellularCard] Fetch error:', cellResult.reason);
+        this.error = cellResult.reason?.message || 'Unknown error';
         this.data = { 
           carriers: [], 
           towers: [], 
@@ -143,30 +149,27 @@
       this.render();
     }
 
-    async fetchDeclination(lat, lon) {
+    async fetchCellData(lat, lon) {
+      const url = `${CONFIG.API_URL}?lat=${lat}&lon=${lon}&range=${CONFIG.SEARCH_RADIUS}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }
+
+    async fetchDeclinationAsync(lat, lon) {
+      // Try NOAA API for more accurate value
       try {
-        // Use the existing RussellTV.Declination module
         if (window.RussellTV?.Declination?.get) {
           const decl = await window.RussellTV.Declination.get(lat, lon);
-          this.declination = decl;
-          
-          // Store globally for other cards
-          window.CommDashboard.currentDeclination = decl;
-          
-          // Emit event and re-render to update bearings
-          Events.emit('declination:updated', decl);
-          this.render();
-          
-          console.log('[CellularCard] Declination loaded:', decl.toFixed(2) + '°');
+          if (decl != null && isFinite(decl)) {
+            this.declination = decl;
+            window.CommDashboard.currentDeclination = decl;
+            Events.emit('declination:updated', decl);
+            console.log('[CellularCard] NOAA declination:', decl.toFixed(2) + '°');
+          }
         }
       } catch (err) {
-        console.warn('[CellularCard] Declination fetch failed:', err);
-        // Try local estimate as fallback
-        if (window.RussellTV?.Declination?.estimateLocal) {
-          this.declination = window.RussellTV.Declination.estimateLocal(lat, lon);
-          window.CommDashboard.currentDeclination = this.declination;
-          this.render();
-        }
+        console.warn('[CellularCard] NOAA API failed, using local estimate');
       }
     }
 
@@ -188,6 +191,16 @@
       const plannerDecl = window.RussellTV?.CommPlanner?.getDeclination?.();
       if (plannerDecl != null && isFinite(plannerDecl)) {
         return plannerDecl;
+      }
+      
+      // Last resort: try to compute locally if we have location
+      if (this.location?.coords && window.RussellTV?.Declination?.estimateLocal) {
+        const { lat, lon } = this.location.coords;
+        const estimated = window.RussellTV.Declination.estimateLocal(lat, lon);
+        if (estimated != null && isFinite(estimated)) {
+          this.declination = estimated;
+          return estimated;
+        }
       }
       
       return null;
@@ -422,11 +435,11 @@
     renderNearestTowersDropdown(towers) {
       if (!towers?.length) return '';
 
-      const displayTowers = towers.slice(0, CONFIG.MAX_TOWERS_SUMMARY);
+      // Show all towers (API already limits to top 20)
       const nearestDist = towers[0]?.distance;
       const summaryText = `${towers.length} tower${towers.length !== 1 ? 's' : ''} · nearest ${this.formatDistance(nearestDist)}`;
 
-      const rows = displayTowers.map(t => this.renderTowerRow(t, false)).join('');
+      const rows = towers.map(t => this.renderTowerRow(t, false)).join('');
 
       return `
         <details class="cell-dropdown">
@@ -460,30 +473,33 @@
       const carrierName = tower.carrier || 'Unknown';
       const carrierDisplay = `${flag} ${carrierName}`.trim();
 
-      // Tech pill is clickable and links to map
-      const techPill = mapUrl 
-        ? `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="cell-tower-tech ${techCfg.class}" title="View on map">${escapeHtml(techCfg.label)}</a>`
-        : `<span class="cell-tower-tech ${techCfg.class}">${escapeHtml(techCfg.label)}</span>`;
+      // Tech badge (not a link anymore - whole row is clickable)
+      const techBadge = `<span class="cell-tower-tech ${techCfg.class}">${escapeHtml(techCfg.label)}</span>`;
 
       if (hideCarrier) {
-        // Simplified row for nested carrier view (no carrier column)
-        return `
-          <div class="cell-tower-row cell-tower-row-compact">
-            ${techPill}
-            <span class="cell-tower-distance">${this.formatDistance(tower.distance)}</span>
-            <span class="cell-tower-bearing">${this.formatBearing(bearing)}</span>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="cell-tower-row">
-          ${techPill}
-          <span class="cell-tower-carrier" title="${escapeHtml(carrierDisplay)}">${escapeHtml(carrierDisplay)}</span>
+        // Compact row for nested carrier view (no carrier column)
+        const innerHtml = `
+          ${techBadge}
           <span class="cell-tower-distance">${this.formatDistance(tower.distance)}</span>
           <span class="cell-tower-bearing">${this.formatBearing(bearing)}</span>
-        </div>
+        `;
+        
+        return mapUrl 
+          ? `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="cell-tower-row cell-tower-row-compact cell-tower-link" title="View on map">${innerHtml}</a>`
+          : `<div class="cell-tower-row cell-tower-row-compact">${innerHtml}</div>`;
+      }
+
+      // Full row with carrier
+      const innerHtml = `
+        ${techBadge}
+        <span class="cell-tower-carrier" title="${escapeHtml(carrierDisplay)}">${escapeHtml(carrierDisplay)}</span>
+        <span class="cell-tower-distance">${this.formatDistance(tower.distance)}</span>
+        <span class="cell-tower-bearing">${this.formatBearing(bearing)}</span>
       `;
+      
+      return mapUrl 
+        ? `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="cell-tower-row cell-tower-link" title="View on map">${innerHtml}</a>`
+        : `<div class="cell-tower-row">${innerHtml}</div>`;
     }
 
     renderCarriersDropdown(carriers, allTowers) {
@@ -516,12 +532,14 @@
       const plmn = `${mcc}${mnc}`.replace(/-/g, '');
       const flag = carrier.flag || '';
       const name = carrier.name || `MCC ${mcc} / MNC ${mnc}`;
-      const towerCount = carrier.count || 0;
+      const totalCount = carrier.count || 0;
 
-      // Get this carrier's towers
+      // Get this carrier's towers from the returned data
+      // Note: API only returns top 20 towers total, so this may be a subset
       const carrierTowers = (allTowers || []).filter(t => 
         String(t.mcc) === String(mcc) && String(t.mnc) === String(mnc)
       );
+      const availableCount = carrierTowers.length;
 
       // Tech breakdown
       const techBreakdown = Object.entries(carrier.technologies || {})
@@ -537,12 +555,16 @@
       const bandsGrouped = this.parseBands(carrier);
       const bandsHtml = this.renderBandsGrouped(bandsGrouped);
 
-      // Nested tower list - use compact format (no carrier column)
-      const hasTowers = carrierTowers.length > 0;
+      // Nested tower list - show ALL available towers for this carrier (not limited)
+      const hasTowers = availableCount > 0;
       const towerRows = carrierTowers
-        .slice(0, CONFIG.MAX_CARRIER_TOWERS)
         .map(t => this.renderTowerRow(t, true))  // hideCarrier = true
         .join('');
+
+      // Show "View X of Y" if we don't have all towers
+      const towerLabel = availableCount < totalCount
+        ? `View ${availableCount} of ${totalCount} nearest towers`
+        : `View ${availableCount} tower${availableCount !== 1 ? 's' : ''}`;
 
       return `
         <details class="cell-carrier-item">
@@ -552,7 +574,7 @@
               <span class="cell-carrier-name">${escapeHtml(name)}</span>
               <span class="cell-carrier-plmn">${escapeHtml(plmn)}</span>
             </div>
-            <span class="cell-carrier-count">${towerCount} tower${towerCount !== 1 ? 's' : ''}</span>
+            <span class="cell-carrier-count">${totalCount} tower${totalCount !== 1 ? 's' : ''}</span>
           </summary>
           <div class="cell-carrier-details">
             ${techBreakdown ? `<div class="cell-carrier-techs">${techBreakdown}</div>` : ''}
@@ -560,7 +582,7 @@
             ${hasTowers ? `
               <details class="cell-carrier-towers-dropdown">
                 <summary class="cell-carrier-towers-summary">
-                  View ${carrierTowers.length} tower${carrierTowers.length !== 1 ? 's' : ''}
+                  ${towerLabel}
                 </summary>
                 <div class="cell-tower-table cell-carrier-tower-table">
                   <div class="cell-tower-header cell-tower-header-compact">
@@ -571,7 +593,7 @@
                   ${towerRows}
                 </div>
               </details>
-            ` : ''}
+            ` : '<div class="cell-carrier-no-towers">Towers not in nearest 20</div>'}
           </div>
         </details>
       `;
@@ -602,9 +624,16 @@
 
     renderFooter() {
       const decl = this.getDeclination();
-      const declText = decl != null && isFinite(decl)
-        ? `Declination: ${decl > 0 ? '+' : ''}${decl.toFixed(1)}° (NOAA WMM)`
-        : 'Declination: calculating…';
+      let declText;
+      
+      if (decl != null && isFinite(decl)) {
+        const sign = decl >= 0 ? '+' : '';
+        // Check if we got NOAA or local estimate
+        const source = 'WMM estimate';  // Local estimate uses WMM model approximation
+        declText = `Declination: ${sign}${decl.toFixed(1)}° (${source})`;
+      } else {
+        declText = 'Declination: unavailable';
+      }
 
       return `
         <div class="cell-footer">
