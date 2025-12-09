@@ -14,9 +14,8 @@
   // ============================================================
   const STORAGE_KEY = 'commGnssCache';
   const CELESTRAK_BASE = '/api/gnss/celestrak';
-  const REFRESH_INTERVAL = 60 * 60 * 1000; // 60 minutes (data only updates every 2 hours anyway)
+  const REFRESH_INTERVAL = 60 * 60 * 1000; // 60 minutes
 
-  // Constellation configurations
   const CONSTELLATIONS = {
     gps: {
       id: 'gps',
@@ -68,7 +67,6 @@
     }
   };
 
-  // SBAS Systems
   const SBAS_SYSTEMS = [
     { id: 'waas', name: 'WAAS', fullName: 'Wide Area Augmentation System', region: 'North America', flag: '🇺🇸' },
     { id: 'egnos', name: 'EGNOS', fullName: 'European Geostationary Navigation Overlay Service', region: 'Europe', flag: '🇪🇺' },
@@ -77,7 +75,6 @@
     { id: 'sdcm', name: 'SDCM', fullName: 'System for Differential Corrections and Monitoring', region: 'Russia', flag: '🇷🇺' }
   ];
 
-  // Known interference zones (dynamic updates will supplement this)
   const INTERFERENCE_ZONES = [
     { name: 'Eastern Mediterranean', lat: 35.0, lon: 33.0, radius: 500, severity: 'high', source: 'Ongoing conflict' },
     { name: 'Black Sea', lat: 43.5, lon: 34.0, radius: 400, severity: 'high', source: 'GPS jamming reported' },
@@ -87,9 +84,6 @@
     { name: 'Korean Peninsula', lat: 38.0, lon: 127.0, radius: 150, severity: 'moderate', source: 'Periodic jamming' }
   ];
 
-  // ============================================================
-  // SVG Icons
-  // ============================================================
   const ICONS = {
     satellite: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3-3-7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="rgba(255,255,255,0.1)"/>
@@ -128,16 +122,13 @@
     </svg>`
   };
 
-  // ============================================================
-  // GnssCard Class
-  // ============================================================
   class GnssCard extends BaseCard {
     constructor() {
       super({
         id: 'comm-card-gnss',
         title: 'GPS & PNT Status',
         metaId: 'comm-gnss-meta',
-        bodyId: 'comm-gps-body'   // <-- key wiring fix
+        bodyId: 'comm-gps-body'
       });
 
       this.constellationData = {};
@@ -147,6 +138,9 @@
       this.dopValues = null;
       this.interferenceAlerts = [];
       this.refreshTimer = null;
+
+      this.fetchAttempted = false;
+      this.lastFetchError = null;
     }
 
     init() {
@@ -160,7 +154,6 @@
         this.render();
       });
 
-      // Get existing location
       const locationCard = window.CommDashboard?.CardRegistry?.get('comm-card-location');
       const existingLoc = locationCard?.getSelectedLocation?.();
       if (existingLoc?.coords) {
@@ -177,8 +170,6 @@
     }
 
     startRefreshTimer() {
-      // If BaseCard has its own helper, this is fine.
-      // If not, we can later swap to window.setInterval.
       this.refreshTimer = this.setInterval(() => {
         this.fetchAllData();
       }, REFRESH_INTERVAL);
@@ -190,17 +181,30 @@
 
     async fetchAllData() {
       this.showLoading();
+      this.fetchAttempted = true;
+      this.lastFetchError = null;
+
+      console.log('[GnssCard] fetchAllData started');
+
+      let successCount = 0;
 
       try {
-        // Fetch all constellations in parallel
-        const fetchPromises = Object.keys(CONSTELLATIONS).map(key =>
-          this.fetchConstellation(key)
-        );
+        const constellationPromises = Object.keys(CONSTELLATIONS).map(async (key) => {
+          const ok = await this.fetchConstellation(key);
+          if (ok) successCount++;
+        });
 
-        // Also fetch SBAS
-        fetchPromises.push(this.fetchSBAS());
+        const sbasPromise = this.fetchSBAS();
 
-        await Promise.all(fetchPromises);
+        await Promise.all([...constellationPromises, sbasPromise]);
+
+        if (successCount === 0) {
+          this.lastFetchError = this.lastFetchError ||
+            'No GNSS data returned from API (check /api/gnss/celestrak proxy).';
+          console.warn('[GnssCard] No constellation data loaded');
+        } else {
+          console.log('[GnssCard] Loaded constellations:', Object.keys(this.constellationData));
+        }
 
         this.calculateDOP();
         this.checkInterference();
@@ -209,24 +213,27 @@
 
       } catch (err) {
         console.warn('[GnssCard] Fetch error:', err);
-        this.render(); // Render with whatever data we have
+        this.lastFetchError = err && err.message ? err.message : String(err);
+        this.render();
       }
     }
 
     async fetchConstellation(constellationId) {
       const config = CONSTELLATIONS[constellationId];
-      if (!config) return;
+      if (!config) return false;
+
+      const url = `${CELESTRAK_BASE}${config.endpoint}`;
+      console.log(`[GnssCard] Fetching ${constellationId} from`, url);
 
       try {
-        const res = await fetch(`${CELESTRAK_BASE}${config.endpoint}`);
+        const res = await fetch(url);
         if (!res.ok) {
           console.warn(`[GnssCard] Failed to fetch ${constellationId}: ${res.status}`);
-          return;
+          this.lastFetchError = `HTTP ${res.status} for ${config.endpoint}`;
+          return false;
         }
 
         const data = await res.json();
-
-        // Process GP data
         const satellites = this.processGPData(data, constellationId);
 
         this.constellationData[constellationId] = {
@@ -237,8 +244,13 @@
           lastUpdate: Date.now()
         };
 
+        console.log(`[GnssCard] ${constellationId}:`, satellites.length, 'satellites');
+        return satellites.length > 0;
+
       } catch (err) {
         console.warn(`[GnssCard] Error fetching ${constellationId}:`, err);
+        this.lastFetchError = err && err.message ? err.message : String(err);
+        return false;
       }
     }
 
@@ -246,29 +258,23 @@
       if (!Array.isArray(gpData)) return [];
 
       return gpData.map(sat => {
-        // Parse satellite name for PRN/SVN
         const name = sat.OBJECT_NAME || '';
         const noradId = sat.NORAD_CAT_ID;
 
-        // Determine operational status
         const ecc = parseFloat(sat.ECCENTRICITY) || 0;
         const inc = parseFloat(sat.INCLINATION) || 0;
         const meanMotion = parseFloat(sat.MEAN_MOTION) || 0;
 
-        // Basic health heuristics
         let operational = true;
         let status = 'healthy';
 
-        // Check for anomalous orbital parameters
         if (constellationId === 'gps') {
-          // GPS should have ~55° inclination, ~2 rev/day
           if (inc < 50 || inc > 60 || meanMotion < 1.9 || meanMotion > 2.1) {
             operational = false;
             status = 'maintenance';
           }
         }
 
-        // Extract block type from name if available
         let blockType = 'Unknown';
         if (name.includes('BLOCK')) {
           const blockMatch = name.match(/BLOCK\s+(\S+)/i);
@@ -281,13 +287,12 @@
           blockType = 'Block IIR';
         }
 
-        // Extract PRN from name (e.g., "GPS BIIR-3 (PRN 11)")
         let prn = null;
         const prnMatch = name.match(/PRN\s*(\d+)/i);
         if (prnMatch) prn = parseInt(prnMatch[1]);
 
         return {
-          name: name,
+          name,
           noradId,
           prn,
           blockType,
@@ -306,13 +311,18 @@
     }
 
     async fetchSBAS() {
+      const url = `${CELESTRAK_BASE}/sbas`;
+      console.log('[GnssCard] Fetching SBAS from', url);
+
       try {
-        const res = await fetch(`${CELESTRAK_BASE}/sbas`);
-        if (!res.ok) return;
+        const res = await fetch(url);
+        if (!res.ok) {
+          console.warn('[GnssCard] Failed to fetch SBAS:', res.status);
+          return;
+        }
 
         const data = await res.json();
 
-        // Map SBAS satellites to systems
         this.sbasData = SBAS_SYSTEMS.map(system => {
           const sats = data.filter(sat => {
             const name = (sat.OBJECT_NAME || '').toUpperCase();
@@ -331,13 +341,14 @@
           };
         });
 
+        console.log('[GnssCard] SBAS mapped:', this.sbasData);
       } catch (err) {
         console.warn('[GnssCard] Error fetching SBAS:', err);
       }
     }
 
     // ============================================================
-    // DOP Calculation
+    // DOP Calculation (unchanged)
     // ============================================================
 
     calculateDOP() {
@@ -349,7 +360,6 @@
       const { lat, lon } = this.location.coords;
       const userPos = this.geodToECEF(lat, lon, 0);
 
-      // Collect all visible satellites
       const visibleSats = [];
 
       Object.values(this.constellationData).forEach(constellation => {
@@ -358,14 +368,11 @@
         constellation.satellites.forEach(sat => {
           if (!sat.operational) return;
 
-          // Calculate satellite position from orbital elements
           const satPos = this.calculateSatPosition(sat);
           if (!satPos) return;
 
-          // Calculate elevation angle
           const { elevation, azimuth } = this.calculateElevationAzimuth(userPos, satPos, lat, lon);
 
-          // Only include satellites above 5° elevation
           if (elevation > 5) {
             visibleSats.push({ ...sat, elevation, azimuth, position: satPos });
           }
@@ -373,11 +380,10 @@
       });
 
       if (visibleSats.length < 4) {
-        this.dopValues = { error: 'Insufficient satellites visible' };
+        this.dopValues = { error: 'Insufficient satellites visible', visibleSatellites: visibleSats.length };
         return;
       }
 
-      // Build geometry matrix and calculate DOP
       const dop = this.computeDOPFromSatellites(visibleSats, userPos, lat, lon);
       this.dopValues = {
         ...dop,
@@ -387,8 +393,8 @@
     }
 
     geodToECEF(lat, lon, alt) {
-      const a = 6378137; // WGS84 semi-major axis
-      const e2 = 0.00669437999014; // WGS84 eccentricity squared
+      const a = 6378137;
+      const e2 = 0.00669437999014;
 
       const latRad = lat * Math.PI / 180;
       const lonRad = lon * Math.PI / 180;
@@ -403,50 +409,36 @@
     }
 
     calculateSatPosition(sat) {
-      // Simplified SGP4 - for accurate results, use a proper SGP4 library
-      // This gives approximate positions good enough for DOP estimation
+      const mu = 398600.4418;
+      const n = sat.meanMotion * 2 * Math.PI / 86400;
+      const a = Math.pow(mu / (n * n), 1 / 3);
 
-      const mu = 398600.4418; // Earth's gravitational parameter (km³/s²)
-
-      // Mean motion to semi-major axis
-      const n = sat.meanMotion * 2 * Math.PI / 86400; // rad/s
-      const a = Math.pow(mu / (n * n), 1 / 3); // km
-
-      // Time since epoch (simplified - assumes current time)
       const now = new Date();
       const epoch = new Date(sat.epoch);
-      const dt = (now - epoch) / 1000; // seconds
+      const dt = (now - epoch) / 1000;
 
-      // Mean anomaly at current time
       const M = (sat.meanAnomaly * Math.PI / 180 + n * dt) % (2 * Math.PI);
 
-      // Solve Kepler's equation (simplified - one iteration)
       const e = sat.eccentricity;
       let E = M;
       for (let i = 0; i < 5; i++) {
         E = M + e * Math.sin(E);
       }
 
-      // True anomaly
       const nu = 2 * Math.atan2(
         Math.sqrt(1 + e) * Math.sin(E / 2),
         Math.sqrt(1 - e) * Math.cos(E / 2)
       );
 
-      // Distance from Earth center
       const r = a * (1 - e * Math.cos(E));
-
-      // Position in orbital plane
       const xOrb = r * Math.cos(nu);
       const yOrb = r * Math.sin(nu);
 
-      // Convert to ECEF
       const i = sat.inclination * Math.PI / 180;
       const omega = sat.argOfPerigee * Math.PI / 180;
       const RAAN = sat.raan * Math.PI / 180;
 
-      // Account for Earth rotation since epoch
-      const earthRotRate = 7.2921159e-5; // rad/s
+      const earthRotRate = 7.2921159e-5;
       const adjustedRAAN = RAAN - earthRotRate * dt;
 
       const x = xOrb * (Math.cos(omega) * Math.cos(adjustedRAAN) - Math.sin(omega) * Math.sin(adjustedRAAN) * Math.cos(i)) +
@@ -455,16 +447,14 @@
                 yOrb * (-Math.sin(omega) * Math.sin(adjustedRAAN) + Math.cos(omega) * Math.cos(adjustedRAAN) * Math.cos(i));
       const z = xOrb * Math.sin(omega) * Math.sin(i) + yOrb * Math.cos(omega) * Math.sin(i);
 
-      return { x: x * 1000, y: y * 1000, z: z * 1000 }; // Convert to meters
+      return { x: x * 1000, y: y * 1000, z: z * 1000 };
     }
 
     calculateElevationAzimuth(userPos, satPos, lat, lon) {
-      // Vector from user to satellite
       const dx = satPos.x - userPos.x;
       const dy = satPos.y - userPos.y;
       const dz = satPos.z - userPos.z;
 
-      // Convert to local ENU (East-North-Up) coordinates
       const latRad = lat * Math.PI / 180;
       const lonRad = lon * Math.PI / 180;
 
@@ -479,7 +469,7 @@
       return { elevation, azimuth: (azimuth + 360) % 360 };
     }
 
-    computeDOPFromSatellites(satellites, userPos, lat, lon) {
+    computeDOPFromSatellites(satellites) {
       const H = [];
 
       satellites.forEach(sat => {
@@ -490,7 +480,7 @@
         const n = Math.cos(az) * Math.cos(el);
         const u = Math.sin(el);
 
-        H.push([e, n, u, 1]); // East, North, Up, clock
+        H.push([e, n, u, 1]);
       });
 
       const HtH = this.matrixMultiply(this.transpose(H), H);
@@ -578,9 +568,8 @@
 
       INTERFERENCE_ZONES.forEach(zone => {
         const dist = this.haversineDistance(lat, lon, zone.lat, zone.lon);
-        const distNm = dist * 0.539957; // km to nautical miles
+        const distNm = dist * 0.539957;
 
-        // Alert if within 2000nm of a known interference zone
         if (distNm < 2000) {
           alerts.push({
             ...zone,
@@ -595,12 +584,12 @@
     }
 
     haversineDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371; // Earth's radius in km
+      const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      const a = Math.sin(dLat/2) ** 2 +
                 Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
+                Math.sin(dLon/2) ** 2;
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       return R * c;
     }
@@ -667,6 +656,18 @@
     renderBody() {
       const hasData = Object.keys(this.constellationData).length > 0;
 
+      // If we tried to fetch but got nothing, surface that instead of infinite "loading"
+      if (!hasData && this.fetchAttempted) {
+        const msg = this.lastFetchError ||
+          'Unable to load GNSS data (no satellite data returned from API).';
+        this.updateStatus('<span class="status-pill severity-poor">Offline</span>');
+        return `
+          <div class="gnss-body">
+            <p class="comm-placeholder">${escapeHtml(msg)}</p>
+          </div>
+        `;
+      }
+
       if (!hasData) {
         return '<p class="comm-placeholder">Loading constellation data…</p>';
       }
@@ -711,13 +712,11 @@
         const total = data?.total || 0;
         const nominal = config.nominalCount;
 
-        // Calculate health percentage
         const pct = nominal > 0 ? (healthy / nominal) * 100 : 0;
         let statusClass = 'healthy';
         if (pct < 70) statusClass = 'critical';
         else if (pct < 90) statusClass = 'degraded';
 
-        // Health bar segments
         const segments = Math.min(5, Math.ceil(pct / 20));
         const bars = Array(5).fill(null).map((_, i) =>
           `<span class="health-bar-segment ${i < segments ? 'active' : ''}" style="background: ${i < segments ? config.color : 'rgba(255,255,255,0.1)'}"></span>`
@@ -746,7 +745,6 @@
 
       const satellites = data.satellites || [];
 
-      // Group by status
       const satRows = satellites.slice(0, 20).map(sat => {
         const statusIcon = sat.operational ? ICONS.check : ICONS.degraded;
         const prn = sat.prn ? `PRN ${sat.prn}` : sat.noradId;
@@ -963,13 +961,11 @@
           const id = el.dataset.constellation;
 
           if (this.expandedConstellation === id) {
-            // Collapse
             this.expandedConstellation = null;
             el.classList.remove('expanded');
             if (panel) panel.innerHTML = '';
             panel?.classList.remove('visible');
           } else {
-            // Expand new
             constellations.forEach(c => c.classList.remove('expanded'));
             this.expandedConstellation = id;
             el.classList.add('expanded');
@@ -977,7 +973,6 @@
               panel.innerHTML = this.renderExpandedPanel(id);
               panel.classList.add('visible');
 
-              // Bind close button
               const closeBtn = panel.querySelector('[data-close]');
               if (closeBtn) {
                 closeBtn.addEventListener('click', (e) => {
