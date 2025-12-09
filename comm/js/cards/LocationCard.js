@@ -48,14 +48,15 @@
 
     init() {
       super.init();
+
+      // Load persisted state
       this.loadRecent();
       this.loadSelected();
 
-      // If we have a persisted location, ensure it appears in recents
-      // and emit the location-changed event so other cards sync up.
+      // If we have a persisted selection, make sure it appears in Recents,
+      // but DO NOT emit comm:location-changed or auto-apply it to panels.
       if (this.selectedLocation) {
         this.ensureSelectedInRecents();
-        this.applyLocation(this.selectedLocation, false);
       }
     }
 
@@ -236,6 +237,10 @@
       this.bindTabEvents();
       this.bindInputEvents();
       this.bindRecentEvents();
+
+      // Ensure recents list is in sync with any loaded state
+      this.updateRecentList();
+      this.updateDisplay();
     }
 
     // ============================================================
@@ -553,9 +558,9 @@
 
       this.saveSelected();
       this.updateDisplay();
-      this.updateStatus();
 
-      // Emit event for other cards to consume
+      // Emit event for other cards to consume – this only happens
+      // when the user actively selects/clicks a location.
       Events.emit('comm:location-changed', loc);
     }
 
@@ -619,7 +624,7 @@
       }
     }
 
-    // Ensure the currently selected location is represented in recents
+    // Ensure the stored selected location is represented in recents
     ensureSelectedInRecents() {
       if (!this.selectedLocation || !this.selectedLocation.coords) return;
       this.addRecent(this.selectedLocation);
@@ -685,8 +690,6 @@
 
     // MGRS conversion (simplified - for full accuracy use a library)
     latLonToMgrs(lat, lon) {
-      // Simplified MGRS - returns approximate zone + grid
-      // For production, use mgrs.js library
       try {
         const zone = Math.floor((lon + 180) / 6) + 1;
         const letter = this.getUtmLatitudeBand(lat);
@@ -707,8 +710,6 @@
     }
 
     mgrsToLatLon(mgrs) {
-      // Simplified MGRS parsing
-      // For production, use mgrs.js library
       try {
         const match = mgrs.match(/^(\d{1,2})([C-X])([A-Z]{2})(\d+)$/i);
         if (!match) return null;
@@ -719,7 +720,6 @@
         const easting = parseInt(digits.slice(0, precision), 10);
         const northing = parseInt(digits.slice(precision), 10);
 
-        // Very rough conversion
         const lon = (zone - 1) * 6 - 180 + 3 + (easting / Math.pow(10, precision)) * 6;
         const lat = (northing / Math.pow(10, precision)) * 180 - 90;
 
