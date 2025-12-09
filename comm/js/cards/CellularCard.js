@@ -5,7 +5,7 @@
  * Features:
  * - Collapsible nearest towers summary
  * - Collapsible carriers list with per-carrier tower drill-down
- * - Uses RussellTV.Declination for True/Magnetic bearings
+ * - Uses inline WMM estimate for True/Magnetic bearings
  * - Technology breakdown (5G/LTE/UMTS/GSM/CDMA)
  * - Band display grouped by technology
  * - Coverage quality assessment
@@ -37,13 +37,13 @@
 
   // Technology display config
   const TECH_CONFIG = {
-    '5G':   { priority: 1, class: 'cell-tech-5g',   label: '5G',   color: '#00dca8' },
+    '5G':   { priority: 1, class: 'cell-tech-5g',   label: '5G',    color: '#00dca8' },
     'NR':   { priority: 1, class: 'cell-tech-5g',   label: '5G NR', color: '#00dca8' },
-    'LTE':  { priority: 2, class: 'cell-tech-lte',  label: 'LTE',  color: '#64b4ff' },
-    'UMTS': { priority: 3, class: 'cell-tech-umts', label: 'UMTS', color: '#ffb850' },
-    'HSPA': { priority: 3, class: 'cell-tech-umts', label: 'HSPA', color: '#ffb850' },
-    'GSM':  { priority: 4, class: 'cell-tech-gsm',  label: 'GSM',  color: '#c8a0d8' },
-    'CDMA': { priority: 5, class: 'cell-tech-cdma', label: 'CDMA', color: '#d8c0a0' }
+    'LTE':  { priority: 2, class: 'cell-tech-lte',  label: 'LTE',   color: '#64b4ff' },
+    'UMTS': { priority: 3, class: 'cell-tech-umts', label: 'UMTS',  color: '#ffb850' },
+    'HSPA': { priority: 3, class: 'cell-tech-umts', label: 'HSPA',  color: '#ffb850' },
+    'GSM':  { priority: 4, class: 'cell-tech-gsm',  label: 'GSM',   color: '#c8a0d8' },
+    'CDMA': { priority: 5, class: 'cell-tech-cdma', label: 'CDMA',  color: '#d8c0a0' }
   };
 
   // Coverage quality config
@@ -58,36 +58,19 @@
 
   // ============================================================
   // Inline WMM Declination Calculator
-  // Simplified World Magnetic Model estimation
-  // This avoids dependency on external comm-declination.js
   // ============================================================
   function estimateDeclination(lat, lon, date) {
     const d = date || new Date();
     const year = d.getFullYear();
     const month = d.getMonth();
     const decimalYear = year + month / 12;
-    
-    // WMM 2020-2025 simplified coefficients for declination
-    // This is an approximation good to ~1-2° for most locations
-    const phi = lat * Math.PI / 180;
-    const lambda = lon * Math.PI / 180;
-    
-    // Base declination varies primarily with longitude in a sinusoidal pattern
-    // with latitude-dependent amplitude
-    
-    // Epoch 2025.0 approximate coefficients
+
+    // WMM 2020-2025 simplified coefficients for declination (~1–2°)
     const epoch = 2025.0;
     const yearsSinceEpoch = decimalYear - epoch;
-    
-    // Simplified harmonic model
-    // Main dipole contribution
+
     let decl = 0;
-    
-    // Longitude-dependent variation (agonic line roughly follows 70°W to 130°E)
-    // In North America: east of agonic = west declination, west of agonic = east declination
-    const agonicLon = -70 + (lat > 0 ? -10 : 10); // Rough agonic line longitude
-    
-    // Base calculation using simplified spherical harmonic approximation
+
     if (lat >= 0) {
       // Northern hemisphere
       if (lon < -60) {
@@ -113,23 +96,20 @@
         decl = 5 + (lon - 140) * 0.08;
       }
     }
-    
-    // Secular variation (declination changes ~0.1°/year in most places)
+
+    // Secular variation (~0.1°/year)
     decl += yearsSinceEpoch * 0.1;
-    
-    // Polar regions have extreme declination
+
+    // Polar exaggeration
     if (Math.abs(lat) > 70) {
       const polarFactor = (Math.abs(lat) - 70) / 20;
       if (lat > 0) {
-        // Arctic - declination becomes very large
         decl = decl * (1 + polarFactor * 2);
       } else {
-        // Antarctic
         decl = decl * (1 + polarFactor * 1.5);
       }
     }
-    
-    // Clamp to reasonable range
+
     return Math.max(-180, Math.min(180, decl));
   }
 
@@ -157,7 +137,7 @@
     // ----------------------------------------------------------
     init() {
       super.init();
-      
+
       this.subscribe('comm:location-changed', (loc) => {
         this.location = loc;
         this.fetchData();
@@ -184,10 +164,10 @@
 
       // Skip polar regions
       if (Math.abs(lat) > 85) {
-        this.data = { 
-          carriers: [], 
-          towers: [], 
-          summary: { total: 0, coverage: 'none' } 
+        this.data = {
+          carriers: [],
+          towers: [],
+          summary: { total: 0, coverage: 'none' }
         };
         this.render();
         return;
@@ -195,12 +175,12 @@
 
       this.isLoading = true;
       this.error = null;
-      
+
       // Calculate declination immediately using inline WMM estimate
       this.declination = estimateDeclination(lat, lon);
       window.CommDashboard.currentDeclination = this.declination;
       console.log('[CellularCard] Declination:', this.declination.toFixed(1) + '°');
-      
+
       this.render();
 
       // Fetch cell data
@@ -212,10 +192,10 @@
       } catch (err) {
         console.error('[CellularCard] Fetch error:', err);
         this.error = err.message;
-        this.data = { 
-          carriers: [], 
-          towers: [], 
-          summary: { total: 0, coverage: 'unknown' } 
+        this.data = {
+          carriers: [],
+          towers: [],
+          summary: { total: 0, coverage: 'unknown' }
         };
       }
 
@@ -227,43 +207,39 @@
     // Helpers
     // ----------------------------------------------------------
     getDeclination() {
-      // If we already calculated it, use cached value
       if (this.declination != null && isFinite(this.declination)) {
         return this.declination;
       }
-      
-      // Calculate from location using inline WMM estimate
+
       if (this.location?.coords) {
         const { lat, lon } = this.location.coords;
         this.declination = estimateDeclination(lat, lon);
         return this.declination;
       }
-      
-      // Try external sources as fallback
+
       if (window.CommDashboard?.currentDeclination != null) {
         return window.CommDashboard.currentDeclination;
       }
-      
+
       const plannerDecl = window.RussellTV?.CommPlanner?.getDeclination?.();
       if (plannerDecl != null && isFinite(plannerDecl)) {
         return plannerDecl;
       }
-      
+
       return null;
     }
 
     formatBearing(trueBearing) {
       if (trueBearing == null || !isFinite(trueBearing)) return '—';
-      
+
       const trueRounded = Math.round(trueBearing);
       const decl = this.getDeclination();
-      
+
       if (decl != null && isFinite(decl)) {
         const mag = ((trueBearing - decl) % 360 + 360) % 360;
         return `${trueRounded}°T / ${Math.round(mag)}°M`;
       }
-      
-      // Show placeholder for magnetic if declination not loaded
+
       return `${trueRounded}°T / --°M`;
     }
 
@@ -275,8 +251,10 @@
 
     formatTimestamp() {
       const d = new Date();
-      const time = d.toLocaleTimeString(undefined, { 
-        hour: '2-digit', minute: '2-digit', hour12: false 
+      const time = d.toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
       }).replace(':', '');
       const day = String(d.getDate()).padStart(2, '0');
       const month = d.toLocaleDateString(undefined, { month: 'short' });
@@ -301,7 +279,7 @@
     // Parse bands into grouped structure by technology
     parseBands(carrier) {
       const result = {};
-      
+
       // First try bands_structured (from DB - already grouped)
       if (carrier.bands_structured && typeof carrier.bands_structured === 'object') {
         for (const [tech, bands] of Object.entries(carrier.bands_structured)) {
@@ -319,8 +297,8 @@
 
       // Fallback: parse bands array/string
       const bandsRaw = carrier.bands || [];
-      const bandsArr = Array.isArray(bandsRaw) 
-        ? bandsRaw 
+      const bandsArr = Array.isArray(bandsRaw)
+        ? bandsRaw
         : String(bandsRaw).split(/[\/,]/).map(b => b.trim()).filter(Boolean);
 
       for (const band of bandsArr) {
@@ -368,7 +346,7 @@
       if (this.isLoading) {
         return '<span class="status-pill">Loading…</span>';
       }
-      
+
       if (!this.data) {
         return '<span class="status-pill">Awaiting Location</span>';
       }
@@ -426,7 +404,7 @@
 
     renderFullCard() {
       const { summary, carriers, towers, technologies, roamingCountries } = this.data;
-      
+
       return [
         this.renderSummary(summary, technologies),
         this.renderRoamingWarning(roamingCountries || summary?.roamingCountries),
@@ -437,7 +415,6 @@
     }
 
     renderSummary(summary, technologies) {
-      const coverage = this.getCoverageConfig(summary?.coverage);
       const total = summary?.total || 0;
       const nearest = summary?.nearestTower;
 
@@ -453,10 +430,6 @@
       return `
         <div class="cell-summary">
           <div class="cell-summary-row">
-            <div class="cell-coverage-pill ${coverage.class}">
-              <span class="cell-coverage-icon">${coverage.icon}</span>
-              <span class="cell-coverage-label">${escapeHtml(coverage.label)}</span>
-            </div>
             <div class="cell-summary-stats">
               <span class="cell-stat"><strong>${total}</strong> towers</span>
               ${nearest ? `<span class="cell-stat"><strong>${this.formatDistance(nearest)}</strong> nearest</span>` : ''}
@@ -513,37 +486,33 @@
       const techCfg = this.getTechConfig(tech);
       const bearing = tower.bearingDeg ?? tower.bearing;
       const mapUrl = this.buildMapUrl(tower.lat, tower.lon);
-      
-      // Build proper carrier display
+
       const flag = tower.flag || '';
       const carrierName = tower.carrier || 'Unknown';
       const carrierDisplay = `${flag} ${carrierName}`.trim();
 
-      // Tech badge (not a link anymore - whole row is clickable)
       const techBadge = `<span class="cell-tower-tech ${techCfg.class}">${escapeHtml(techCfg.label)}</span>`;
 
       if (hideCarrier) {
-        // Compact row for nested carrier view (no carrier column)
         const innerHtml = `
           ${techBadge}
           <span class="cell-tower-distance">${this.formatDistance(tower.distance)}</span>
           <span class="cell-tower-bearing">${this.formatBearing(bearing)}</span>
         `;
-        
-        return mapUrl 
+
+        return mapUrl
           ? `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="cell-tower-row cell-tower-row-compact cell-tower-link" title="View on map">${innerHtml}</a>`
           : `<div class="cell-tower-row cell-tower-row-compact">${innerHtml}</div>`;
       }
 
-      // Full row with carrier
       const innerHtml = `
         ${techBadge}
         <span class="cell-tower-carrier" title="${escapeHtml(carrierDisplay)}">${escapeHtml(carrierDisplay)}</span>
         <span class="cell-tower-distance">${this.formatDistance(tower.distance)}</span>
         <span class="cell-tower-bearing">${this.formatBearing(bearing)}</span>
       `;
-      
-      return mapUrl 
+
+      return mapUrl
         ? `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="cell-tower-row cell-tower-link" title="View on map">${innerHtml}</a>`
         : `<div class="cell-tower-row">${innerHtml}</div>`;
     }
@@ -580,13 +549,13 @@
       const name = carrier.name || `MCC ${mcc} / MNC ${mnc}`;
       const totalCount = carrier.count || 0;
 
-      // Get this carrier's towers from the returned data
-      // API returns a nearest sample (currently up to 50 towers total), so this may be a subset
-      const carrierTowers = (allTowers || []).filter(t => 
+      // Get this carrier's towers from the returned nearest sample (up to ~50)
+      const carrierTowers = (allTowers || []).filter(t =>
         String(t.mcc) === String(mcc) && String(t.mnc) === String(mnc)
       );
       const availableCount = carrierTowers.length;
       const nearestSampleSize = (allTowers || []).length;
+
       const noTowersLabel = nearestSampleSize
         ? `Towers not in nearest ${nearestSampleSize}`
         : 'Towers not in nearest sample';
@@ -605,16 +574,14 @@
       const bandsGrouped = this.parseBands(carrier);
       const bandsHtml = this.renderBandsGrouped(bandsGrouped);
 
-      // Nested tower list - show ALL available towers for this carrier (not limited)
       const hasTowers = availableCount > 0;
       const towerRows = carrierTowers
         .map(t => this.renderTowerRow(t, true))  // hideCarrier = true
         .join('');
 
-      // Show "View X of Y" if we don't have all towers
       const towerLabel = availableCount < totalCount
-        ? `View ${availableCount} of ${totalCount} nearest towers`
-        : `View ${availableCount} tower${availableCount !== 1 ? 's' : ''}`;
+        ? `View ${availableCount} of ${totalCount} towers (nearest ${nearestSampleSize})`
+        : `View ${availableCount} tower${availableCount !== 1 ? 's' : ''} (nearest ${nearestSampleSize})`;
 
       return `
         <details class="cell-carrier-item">
@@ -675,11 +642,10 @@
     renderFooter() {
       const decl = this.getDeclination();
       let declText;
-      
+
       if (decl != null && isFinite(decl)) {
         const sign = decl >= 0 ? '+' : '';
-        // Check if we got NOAA or local estimate
-        const source = 'WMM estimate';  // Local estimate uses WMM model approximation
+        const source = 'WMM estimate';
         declText = `Declination: ${sign}${decl.toFixed(1)}° (${source})`;
       } else {
         declText = 'Declination: unavailable';
