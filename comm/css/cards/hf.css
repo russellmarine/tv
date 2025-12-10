@@ -375,7 +375,7 @@
 }
 
 /* ============================================================
-   Waiting for Location State
+   Waiting for Location State (duplicate-safe)
    ============================================================ */
 .hf-waiting-location {
   display: flex;
@@ -421,6 +421,154 @@
 }
 
 /* ============================================================
+   NVIS Row
+   ============================================================ */
+.hf-nvis-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.45rem 0.15rem 0.1rem;
+  margin-top: 0.35rem;
+  border-top: 1px solid rgba(255, 200, 150, 0.18);
+  font-size: 0.78rem;
+}
+
+.hf-nvis-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  opacity: 0.8;
+  color: rgba(255, 220, 180, 0.9);
+}
+
+.hf-nvis-hint {
+  font-size: 0.76rem;
+  opacity: 0.9;
+  font-style: italic;
+  color: rgba(255, 240, 210, 0.95);
+}
+
+/* ============================================================
+   Field Antenna Helper
+   ============================================================ */
+.hf-antenna-section {
+  margin-top: 0.6rem;
+}
+
+.hf-antenna-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.45rem;
+}
+
+.hf-antenna-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  flex: 1 1 120px;
+}
+
+.hf-antenna-input,
+.hf-antenna-select {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 200, 150, 0.35);
+  background: rgba(0, 0, 0, 0.5);
+  color: #ffe9cf;
+  font-size: 0.75rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.hf-antenna-input::placeholder {
+  color: rgba(255, 230, 200, 0.4);
+}
+
+.hf-antenna-input:focus,
+.hf-antenna-select:focus {
+  border-color: rgba(255, 210, 160, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 200, 150, 0.4);
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.hf-antenna-btn {
+  align-self: flex-end;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 190, 130, 0.7);
+  background: linear-gradient(135deg, rgba(255, 170, 100, 0.25), rgba(40, 20, 0, 0.8));
+  color: #ffe9cf;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+}
+
+.hf-antenna-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(135deg, rgba(255, 190, 120, 0.35), rgba(50, 25, 0, 0.85));
+}
+
+.hf-antenna-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.hf-antenna-results {
+  font-size: 0.75rem;
+}
+
+.hf-antenna-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.hf-ant-card {
+  padding: 0.4rem 0.35rem;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 190, 130, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.hf-ant-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+  color: rgba(255, 220, 180, 0.9);
+}
+
+.hf-ant-main {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffe9cf;
+}
+
+.hf-ant-sub {
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+.hf-ant-note {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  font-style: italic;
+  margin: 0;
+}
+
+/* ============================================================
    Responsive Adjustments
    ============================================================ */
 @media (max-width: 350px) {
@@ -440,6 +588,26 @@
   }
   
   .hf-band-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hf-antenna-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .hf-antenna-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hf-antenna-btn {
+    align-self: stretch;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .hf-antenna-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
