@@ -754,6 +754,129 @@
       `;
     }
 
+    // ============================================================
+    // NVIS Section (0–400 km)
+    // ============================================================
+    getNvisInfo() {
+      if (!this.location?.coords || !this.muf || !this.solarData) return null;
+
+      const lat = this.location.coords.lat;
+      const absLat = Math.abs(lat);
+      const status = this.muf.dayNight?.status || (this.isDay ? 'day' : 'night');
+      const muf = this.muf.value || 10;
+      const sfi = this.solarData.sfi || 0;
+      const k = this.solarData.kIndex || 0;
+
+      // --- Pick a primary NVIS band based on MUF + time of day ---
+      let primaryBand = '40m';
+      let primaryFreq = '7 MHz';
+
+      if (status === 'night') {
+        // Night: bias to 80m if MUF is low
+        if (muf <= 6) {
+          primaryBand = '80m';
+          primaryFreq = '3.5–4 MHz';
+        } else {
+          primaryBand = '40m';
+          primaryFreq = '7–7.3 MHz';
+        }
+      } else {
+        // Day / greyline
+        if (muf < 8) {
+          primaryBand = '80m';
+          primaryFreq = '3.5–4 MHz';
+        } else if (muf < 15) {
+          primaryBand = '40m';
+          primaryFreq = '7–7.3 MHz';
+        } else {
+          primaryBand = '30m';
+          primaryFreq = '10.1–10.15 MHz';
+        }
+      }
+
+      // --- Quality from overall HF condition ---
+      const overall = this.getOverallCondition();
+      const quality = overall.label || 'Good';
+
+      // --- Alternates: simple “quick pick” guidance ---
+      const alternates = [];
+
+      // Always offer a night-focused option (80m) and a day-focused (30m) when different from primary
+      if (primaryBand !== '80m') {
+        alternates.push({
+          band: '80m',
+          icon: '🟦',
+          label: 'Night',
+          text: '🟦 80m (Night)'
+        });
+      }
+      if (primaryBand !== '30m') {
+        alternates.push({
+          band: '30m',
+          icon: '☀️',
+          label: 'Day',
+          text: '☀️ 30m (Day)'
+        });
+      }
+
+      // --- Tooltip text for RO / watchstander ---
+      const tooltipLines = [
+        'NVIS – Near Vertical Incidence Skywave',
+        'Short-range HF (~0–400 km) using high-angle F-layer returns.',
+        '',
+        `Primary band now: ${primaryBand} (${primaryFreq}) – ${quality} short-range coverage.`,
+        '',
+        'Rules of thumb:',
+        '• 80m: Night regional comms, best after sunset',
+        '• 40m: Day/night general-purpose tactical NVIS',
+        '• 30m: Daytime NVIS when MUF and SFI are high'
+      ];
+
+      return {
+        primaryBand,
+        primaryFreq,
+        quality,
+        alternates,
+        tooltip: tooltipLines.join('\n')
+      };
+    }
+
+    renderNvisSection() {
+      const info = this.getNvisInfo();
+      if (!info) return '';
+
+      const summary = `${info.primaryBand} (${info.primaryFreq}) — ${info.quality} short-range coverage`;
+      const tooltip = escapeHtml(info.tooltip || '');
+
+      return `
+        <div class="hf-nvis-row" title="${tooltip}">
+          <div class="hf-nvis-label">NVIS (0–400 km)</div>
+          <div class="hf-nvis-hint">${escapeHtml(summary)}</div>
+        </div>
+        ${this.renderNvisAlternates(info)}
+      `;
+    }
+
+    renderNvisAlternates(info) {
+      if (!info?.alternates || info.alternates.length === 0) return '';
+
+      const chips = info.alternates.map(alt => `
+        <span class="hf-nvis-chip" title="${escapeHtml(`${alt.band} – ${alt.label} operations`)}">
+          ${escapeHtml(alt.text)}
+        </span>
+      `).join('');
+
+      return `
+        <div class="hf-nvis-alt-row">
+          <span class="hf-nvis-alt-label">Other options</span>
+          <div class="hf-nvis-alt-chips">
+            ${chips}
+          </div>
+        </div>
+      `;
+    }
+
+
     renderMufSection() {
       // If we have no MUF data at all (no location selected)
       if (!this.muf) {
