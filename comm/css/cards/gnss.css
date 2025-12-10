@@ -8,6 +8,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* Section Container */
@@ -16,6 +19,9 @@
   border: 1px solid rgba(255, 200, 150, 0.2);
   border-radius: 10px;
   padding: 0.6rem;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .gnss-section-header {
@@ -74,6 +80,8 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .gnss-constellation:hover {
@@ -105,6 +113,10 @@
   font-size: 0.68rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .constellation-count {
@@ -137,6 +149,8 @@
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
   margin-top: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .gnss-expanded-panel.visible {
@@ -180,12 +194,15 @@
   display: flex;
   gap: 1rem;
   margin-bottom: 0.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .expanded-meta .meta-item {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+  min-width: 0; /* allow shrink in constrained iframes */
 }
 
 .expanded-meta .meta-label {
@@ -206,6 +223,8 @@
   align-items: center;
   gap: 0.4rem;
   margin-bottom: 0.6rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .bands-label {
@@ -236,6 +255,8 @@
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.5);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .sat-row {
@@ -246,6 +267,8 @@
   font-size: 0.7rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   align-items: center;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .sat-row:hover {
@@ -308,6 +331,8 @@
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 0.4rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .dop-card {
@@ -320,6 +345,9 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   transition: all 0.2s ease;
+  min-width: 0; /* prevent overflow in constrained layouts */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .dop-card.good {
@@ -442,6 +470,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .interference-item {
@@ -453,6 +483,8 @@
   background: rgba(0, 0, 0, 0.2);
   border-radius: 6px;
   font-size: 0.7rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .interference-item.active {
@@ -495,6 +527,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .sbas-item {
@@ -506,6 +540,9 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   font-size: 0.7rem;
+  min-width: 0; /* allow shrinking in Menlo / proxied browsers */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .sbas-item.operational {
@@ -523,6 +560,10 @@
 .sbas-name {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .sbas-status {
