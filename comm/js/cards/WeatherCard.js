@@ -388,27 +388,31 @@
       return `
         <div class="comm-weather-right">
           <div class="weather-historical">
-            <div class="historical-label">${ICONS.history} Historical Avg (${h.yearsOfData})</div>
+            <div class="historical-label">
+              ${ICONS.history} Last Year's Temps on This Date
+            </div>
             <div class="historical-values">
               <div class="historical-item">
-                <span class="hist-label">Avg High</span>
+                <span class="hist-label">High</span>
                 <span class="hist-value">${this.formatTempValue(h.avgHigh)}</span>
               </div>
               <div class="historical-item">
-                <span class="hist-label">Avg Low</span>
+                <span class="hist-label">Low</span>
                 <span class="hist-value">${this.formatTempValue(h.avgLow)}</span>
               </div>
               ${h.recordHigh != null ? `
-              <div class="historical-item record">
-                <span class="hist-label">Record</span>
-                <span class="hist-value">${this.formatTempValue(h.recordHigh)} / ${this.formatTempValue(h.recordLow)}</span>
-              </div>
+                <div class="historical-item record">
+                  <span class="hist-label">Record</span>
+                  <span class="hist-value">
+                    ${this.formatTempValue(h.recordHigh)} /
+                    ${this.formatTempValue(h.recordLow)}
+                  </span>
+                </div>
               ` : ''}
             </div>
           </div>
         </div>
       `;
-    }
 
     renderHourlyCharts() {
       if (!this.hourly?.time || !this.hourly?.temperature_2m) return '';
