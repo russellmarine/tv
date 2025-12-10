@@ -150,8 +150,6 @@
       // Wire antenna calculator events (global, but id-scoped)
       setupHfAntennaCalculator();
 
-      // DON'T load cached or fetch data until location is selected
-
       // Subscribe to location changes
       this.subscribe('comm:location-changed', (loc) => {
         this.location = loc;
@@ -160,10 +158,8 @@
         this.updateDayNight();
 
         if (!this.hasLoadedData) {
-          // First time a location is selected: load any cached data and fetch fresh data
           this.loadCached();
 
-          // If we have cached solar data, compute MUF immediately for this location
           if (this.solarData) {
             this.calculateMuf();
           }
@@ -171,16 +167,13 @@
           this.fetchData();
           this.hasLoadedData = true;
 
-          // Set up periodic updates only after location is set
           this.updateTimer = this.setInterval(() => this.fetchData(), UPDATE_INTERVAL);
 
           // Update day/night every minute
           this.setInterval(() => this.updateDayNight(), 60000);
 
-          // Render after initial setup
           this.render();
         } else {
-          // Subsequent location changes: reuse existing solar data, just recompute MUF
           if (this.solarData) {
             this.calculateMuf();
           }
@@ -191,18 +184,14 @@
       // Subscribe to space weather updates - re-merge NOAA SSN when it updates
       this.subscribe('spaceweather:data-updated', (data) => {
         this.spaceWeather = data;
-        // Re-merge NOAA data if we have solar data loaded
         if (this.solarData) {
           this.mergeNoaaData();
-          // MUF depends on solar/geomag too, so recompute for current location
           if (this.location?.coords) {
             this.calculateMuf();
           }
           this.render();
         }
       });
-
-      // Don't start updates until location is selected
     }
 
     destroy() {
@@ -237,7 +226,6 @@
       // Solar declination approximation
       const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * (Math.PI / 180));
 
-      // Hour angle for sunrise/sunset
       const latRad = lat * (Math.PI / 180);
       const decRad = declination * (Math.PI / 180);
 
@@ -249,11 +237,9 @@
 
       const hourAngle = Math.acos(cosHourAngle) * (180 / Math.PI);
 
-      // Convert to hours
       const sunriseHour = 12 - (hourAngle / 15);
       const sunsetHour = 12 + (hourAngle / 15);
 
-      // Get local solar time (approximate)
       const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
       const localSolarHours = (utcHours + lon / 15 + 24) % 24;
 
@@ -271,17 +257,14 @@
           this.solarData = hamqsl.solar;
           this.bandConditions = hamqsl.bands;
 
-          // Always try to override SSN with NOAA data from SpaceWeatherCard
           this.mergeNoaaData();
 
-          // Calculate MUF from HamQSL/NOAA data for the current location
           this.calculateMuf();
 
           this.lastUpdate = new Date();
           this.cacheData();
           this.render();
 
-          // Emit event for other cards
           Events.emit('hf:data-updated', {
             bands: this.bandConditions,
             solar: this.solarData,
@@ -295,12 +278,10 @@
     }
 
     mergeNoaaData() {
-      // Get SSN from SpaceWeatherCard via CardRegistry if available
       const spacewxCard = window.CommDashboard?.CardRegistry?.get('comm-card-spacewx');
       console.log('[HfPropagationCard] Trying to merge NOAA data, spacewxCard:', !!spacewxCard);
 
       if (spacewxCard) {
-        // Access sunspotData directly from card instance (not via getData())
         const sunspots = spacewxCard.sunspotData;
         console.log('[HfPropagationCard] SpaceWeatherCard.sunspotData:', sunspots?.length, 'entries');
 
@@ -318,7 +299,6 @@
           console.log('[HfPropagationCard] No sunspot data available from SpaceWeatherCard');
         }
 
-        // Also grab Kp from the card's data
         const swData = spacewxCard.getData?.();
         if (swData?.kpIndex !== undefined) {
           this.solarData.kIndex = swData.kpIndex;
@@ -329,8 +309,6 @@
     }
 
     calculateMuf() {
-      // Use location-based MUF estimation (like old dashboard)
-      // This is based on empirical formulas, not real-time ionosonde data
       if (!this.location?.coords) {
         this.muf = null;
         return;
@@ -342,40 +320,32 @@
       const now = new Date();
       const month = now.getMonth();
 
-      // Get day/night status with greyline detection
       const dayNight = this.getDayNightStatus(lat, lon);
 
-      // Base MUF varies by time of day
       let baseMUF = dayNight.status === 'day' ? 21 :
                     dayNight.status === 'greyline' ? 18 : 10;
 
-      // Seasonal adjustment - summer has higher MUF
       const isNorthernHemisphere = lat >= 0;
       const isSummer = (isNorthernHemisphere && month >= 4 && month <= 8) ||
                        (!isNorthernHemisphere && (month >= 10 || month <= 2));
       if (isSummer && dayNight.status === 'day') baseMUF += 4;
 
-      // Latitude adjustment - higher latitudes have lower MUF
       if (absLat > 60) baseMUF -= 5;
       else if (absLat > 45) baseMUF -= 2;
 
-      // Geomagnetic conditions penalty (Kp index)
       const kp = this.solarData?.kIndex || this.spaceWeather?.kpIndex || 0;
       if (kp >= 6) baseMUF -= 4;
       else if (kp >= 4) baseMUF -= 2;
 
-      // Solar flare penalty (R-scale)
       const rScale = this.spaceWeather?.scales?.R || 0;
       if (rScale >= 3) baseMUF -= 6;
       else if (rScale >= 2) baseMUF -= 3;
 
-      // SFI bonus - higher solar flux supports higher MUF
       const sfi = this.solarData?.sfi || 0;
       if (sfi >= 150) baseMUF += 3;
       else if (sfi >= 120) baseMUF += 2;
       else if (sfi >= 100) baseMUF += 1;
 
-      // Clamp to reasonable range
       const finalMuf = Math.max(5, Math.min(35, Math.round(baseMUF)));
 
       this.muf = {
@@ -390,14 +360,12 @@
       const now = new Date();
       const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
 
-      // Solar declination
       const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * (Math.PI / 180));
       const latRad = lat * (Math.PI / 180);
       const decRad = declination * (Math.PI / 180);
 
       const cosHourAngle = -Math.tan(latRad) * Math.tan(decRad);
 
-      // Handle polar day/night
       if (cosHourAngle < -1) return { status: 'day', label: 'Polar Day' };
       if (cosHourAngle > 1) return { status: 'night', label: 'Polar Night' };
 
@@ -405,11 +373,9 @@
       const sunriseHour = 12 - (hourAngle / 15);
       const sunsetHour = 12 + (hourAngle / 15);
 
-      // Get local solar time
       const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
       const localSolarHours = (utcHours + lon / 15 + 24) % 24;
 
-      // Check for greyline (within 30 min of sunrise/sunset)
       const greylineWindow = 0.5; // hours
       if (Math.abs(localSolarHours - sunriseHour) < greylineWindow) {
         return { status: 'greyline', label: 'Sunrise Greyline' };
@@ -484,7 +450,6 @@
           bands[name][time] = condition;
         });
 
-        // Also try the vhfconditions if present
         const vhf = solar.querySelectorAll('calculatedvhfconditions phenomenon');
         const vhfConditions = {};
         vhf.forEach(p => {
@@ -516,18 +481,15 @@
           this.bandConditions = cached.bands || null;
           this.lastUpdate = new Date(cached.timestamp);
 
-          // Try to merge NOAA SSN immediately (SpaceWeatherCard might already have data)
           if (this.solarData) {
             this.mergeNoaaData();
           }
 
           this.render();
 
-          // Also retry after a short delay in case SpaceWeatherCard loads after us
           this.setTimeout(() => {
             if (this.solarData) {
               this.mergeNoaaData();
-              // Recompute MUF for current location if available
               if (this.location?.coords) {
                 this.calculateMuf();
               }
@@ -539,10 +501,9 @@
     }
 
     cacheData() {
-      // Cache solar data but exclude sunspots - we always want fresh NOAA SSN
       const solarForCache = this.solarData ? {
         ...this.solarData,
-        sunspots: null,  // Don't cache SSN - always get from SpaceWeatherCard
+        sunspots: null,
         ssnSource: null
       } : null;
 
@@ -554,7 +515,7 @@
     }
 
     // ============================================================
-    // NVIS Assessment
+    // Legacy basic NVIS (still here for reuse if needed)
     // ============================================================
     getNvisAssessment() {
       if (!this.muf || !this.solarData) {
@@ -644,10 +605,294 @@
     }
 
     // ============================================================
-    // Rendering
+    // NVIS Section (0–400 km) – enhanced UI
     // ============================================================
+    getNvisInfo() {
+      if (!this.location?.coords || !this.muf || !this.solarData) return null;
+
+      const lat = this.location.coords.lat;
+      const absLat = Math.abs(lat);
+      const status = this.muf.dayNight?.status || (this.isDay ? 'day' : 'night');
+      const muf = this.muf.value || 10;
+      const sfi = this.solarData.sfi || 0;
+      const k = this.solarData.kIndex || 0;
+
+      let primaryBand = '40m';
+      let primaryFreq = '7 MHz';
+
+      if (status === 'night') {
+        if (muf <= 6) {
+          primaryBand = '80m';
+          primaryFreq = '3.5–4 MHz';
+        } else {
+          primaryBand = '40m';
+          primaryFreq = '7–7.3 MHz';
+        }
+      } else {
+        if (muf < 8) {
+          primaryBand = '80m';
+          primaryFreq = '3.5–4 MHz';
+        } else if (muf < 15) {
+          primaryBand = '40m';
+          primaryFreq = '7–7.3 MHz';
+        } else {
+          primaryBand = '30m';
+          primaryFreq = '10.1–10.15 MHz';
+        }
+      }
+
+      const overall = this.getOverallCondition();
+      const quality = overall.label || 'Good';
+
+      const alternates = [];
+      if (primaryBand !== '80m') {
+        alternates.push({
+          band: '80m',
+          icon: '🟦',
+          label: 'Night',
+          text: '🟦 80m (Night)'
+        });
+      }
+      if (primaryBand !== '30m') {
+        alternates.push({
+          band: '30m',
+          icon: '☀️',
+          label: 'Day',
+          text: '☀️ 30m (Day)'
+        });
+      }
+
+      const tooltipLines = [
+        'NVIS – Near Vertical Incidence Skywave',
+        'Short-range HF (~0–400 km) using high-angle F-layer returns.',
+        '',
+        `Primary band now: ${primaryBand} (${primaryFreq}) – ${quality} short-range coverage.`,
+        '',
+        'Rules of thumb:',
+        '• 80m: Night regional comms, best after sunset',
+        '• 40m: Day/night general-purpose tactical NVIS',
+        '• 30m: Daytime NVIS when MUF and SFI are high'
+      ];
+
+      return {
+        primaryBand,
+        primaryFreq,
+        quality,
+        alternates,
+        tooltip: tooltipLines.join('\n')
+      };
+    }
+
+    renderNvisSection() {
+      const info = this.getNvisInfo();
+      if (!info) return '';
+
+      const summary = `${info.primaryBand} (${info.primaryFreq}) — ${info.quality} short-range coverage`;
+      const tooltip = escapeHtml(info.tooltip || '');
+
+      return `
+        <div class="hf-nvis-row" title="${tooltip}">
+          <div class="hf-nvis-label">NVIS (0–400 km)</div>
+          <div class="hf-nvis-hint">${escapeHtml(summary)}</div>
+        </div>
+        ${this.renderNvisAlternates(info)}
+      `;
+    }
+
+    renderNvisAlternates(info) {
+      if (!info?.alternates || info.alternates.length === 0) return '';
+
+      const chips = info.alternates.map(alt => `
+        <span class="hf-nvis-chip" title="${escapeHtml(`${alt.band} – ${alt.label} operations`)}">
+          ${escapeHtml(alt.text)}
+        </span>
+      `).join('');
+
+      return `
+        <div class="hf-nvis-alt-row">
+          <span class="hf-nvis-alt-label">Other options</span>
+          <div class="hf-nvis-alt-chips">
+            ${chips}
+          </div>
+        </div>
+      `;
+    }
+
+    // ============================================================
+    // MUF section
+    // ============================================================
+    renderMufSection() {
+      if (!this.muf) {
+        return '';
+      }
+
+      const mufValue = this.muf.value;
+      const dayNight = this.muf.dayNight;
+
+      const propDesc = this.getDayNightDescription(dayNight?.status);
+
+      return `
+        <div class="hf-muf-section">
+          <div class="hf-muf-row">
+            <div class="hf-muf-primary">
+              <div class="hf-muf-label">Est. MUF</div>
+              <div class="hf-muf-value">${mufValue} MHz</div>
+            </div>
+          </div>
+          <p class="hf-muf-desc">${propDesc}</p>
+        </div>
+      `;
+    }
+
+    getDayNightDescription(status) {
+      switch (status) {
+        case 'greyline':
+          return 'Excellent DX window. Greyline propagation enhances long-distance paths on 20m–40m.';
+        case 'night':
+          return 'Nighttime favors lower bands (40m–160m). F2 layer may support 20m long-path DX.';
+        case 'day':
+        default:
+          return 'Daytime favors higher bands (10m–20m). F2 layer supporting normal skip distances.';
+      }
+    }
+
+    getDayPhaseIcon(status) {
+      switch (status) {
+        case 'day':
+          return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="5" fill="#ffcc00" stroke="#ff9900" stroke-width="1"/>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" 
+                  stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>`;
+        case 'night':
+          return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="#6699cc" stroke="#4477aa" stroke-width="1"/>
+          </svg>`;
+        case 'greyline':
+          return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
+            <defs>
+              <linearGradient id="greyGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffcc66"/>
+                <stop offset="100%" stop-color="#4466aa"/>
+              </linearGradient>
+            </defs>
+            <circle cx="12" cy="12" r="8" fill="url(#greyGrad)" stroke="#cc8844" stroke-width="1"/>
+          </svg>`;
+        default:
+          return '';
+      }
+    }
+
+    renderPropagationNotes() {
+      const notes = [];
+      const s = this.solarData;
+
+      if (s.kIndex >= 4) {
+        notes.push({
+          type: 'warning',
+          text: `Elevated K-index (${s.kIndex}) may cause polar path degradation`
+        });
+      }
+
+      if (s.aIndex >= 20) {
+        notes.push({
+          type: 'warning',
+          text: 'High A-index indicates recent geomagnetic disturbance'
+        });
+      }
+
+      if (s.sfi >= 150) {
+        notes.push({
+          type: 'good',
+          text: 'Excellent SFI supports higher band openings (15m, 12m, 10m)'
+        });
+      } else if (s.sfi < 90) {
+        notes.push({
+          type: 'info',
+          text: 'Low SFI favors lower bands (40m, 80m) for reliable propagation'
+        });
+      }
+
+      if (s.aurora && s.aurora !== '--' && parseInt(s.aurora) > 5) {
+        notes.push({
+          type: 'warning',
+          text: `Aurora activity (${s.aurora}) may affect high-latitude paths`
+        });
+      }
+
+      if (notes.length === 0) {
+        return '';
+      }
+
+      const noteHtml = notes.map(n => `
+        <div class="hf-note hf-note-${n.type}">
+          <span class="hf-note-icon">${this.getNoteIcon(n.type)}</span>
+          <span class="hf-note-text">${n.text}</span>
+        </div>
+      `).join('');
+
+      return `
+        <div class="hf-notes-section">
+          ${noteHtml}
+        </div>
+      `;
+    }
+
+    // ============================================================
+    // Card Rendering + header phase badge
+    // ============================================================
+    render() {
+      super.render();
+      this.updatePhaseBadge();
+    }
+
+    updatePhaseBadge() {
+      const cardEl = this.card || document.getElementById('comm-card-hf');
+      if (!cardEl) return;
+
+      const header = cardEl.querySelector('.comm-card-header');
+      if (!header) return;
+
+      // Remove any existing badge if no MUF / location yet
+      const existing = header.querySelector('.hf-phase-badge');
+      if (!this.muf) {
+        if (existing) existing.remove();
+        return;
+      }
+
+      const status = this.muf.dayNight?.status || (this.isDay ? 'day' : 'night');
+      const baseLabel =
+        this.muf.dayNight?.label ||
+        (status === 'day' ? 'Daytime' : status === 'night' ? 'Nighttime' : 'Greyline');
+
+      let suffix = '';
+      if (status === 'day') suffix = ' (Day)';
+      else if (status === 'night') suffix = ' (Night)';
+      else if (status === 'greyline') suffix = ' (Greyline)';
+
+      const label = baseLabel + suffix;
+
+      const phaseClass =
+        status === 'night' ? 'night' :
+        status === 'greyline' ? 'grey' : 'day';
+
+      const icon = this.getDayPhaseIcon(status);
+      const title = this.getDayNightDescription(status);
+
+      const html = `
+        <div class="hf-phase-badge ${phaseClass}" title="${escapeHtml(title)}">
+          ${icon}<span>${escapeHtml(label)}</span>
+        </div>
+      `;
+
+      if (existing) {
+        existing.outerHTML = html;
+      } else {
+        header.insertAdjacentHTML('beforeend', html);
+      }
+    }
+
     renderBody() {
-      // Wait for location to be selected
       if (!this.location) {
         return `
           <div class="hf-waiting-location">
@@ -684,7 +929,6 @@
       const kColor = this.getKpColor(s.kIndex);
       const aColor = this.getAIndexColor(s.aIndex);
 
-      // Always get fresh SSN from SpaceWeatherCard
       let ssn = s.sunspots;
       let ssnSource = s.ssnSource || 'HamQSL';
       const spacewxCard = window.CommDashboard?.CardRegistry?.get('comm-card-spacewx');
@@ -755,270 +999,16 @@
     }
 
     // ============================================================
-    // NVIS Section (0–400 km)
-    // ============================================================
-    getNvisInfo() {
-      if (!this.location?.coords || !this.muf || !this.solarData) return null;
-
-      const lat = this.location.coords.lat;
-      const absLat = Math.abs(lat);
-      const status = this.muf.dayNight?.status || (this.isDay ? 'day' : 'night');
-      const muf = this.muf.value || 10;
-      const sfi = this.solarData.sfi || 0;
-      const k = this.solarData.kIndex || 0;
-
-      // --- Pick a primary NVIS band based on MUF + time of day ---
-      let primaryBand = '40m';
-      let primaryFreq = '7 MHz';
-
-      if (status === 'night') {
-        // Night: bias to 80m if MUF is low
-        if (muf <= 6) {
-          primaryBand = '80m';
-          primaryFreq = '3.5–4 MHz';
-        } else {
-          primaryBand = '40m';
-          primaryFreq = '7–7.3 MHz';
-        }
-      } else {
-        // Day / greyline
-        if (muf < 8) {
-          primaryBand = '80m';
-          primaryFreq = '3.5–4 MHz';
-        } else if (muf < 15) {
-          primaryBand = '40m';
-          primaryFreq = '7–7.3 MHz';
-        } else {
-          primaryBand = '30m';
-          primaryFreq = '10.1–10.15 MHz';
-        }
-      }
-
-      // --- Quality from overall HF condition ---
-      const overall = this.getOverallCondition();
-      const quality = overall.label || 'Good';
-
-      // --- Alternates: simple “quick pick” guidance ---
-      const alternates = [];
-
-      // Always offer a night-focused option (80m) and a day-focused (30m) when different from primary
-      if (primaryBand !== '80m') {
-        alternates.push({
-          band: '80m',
-          icon: '🟦',
-          label: 'Night',
-          text: '🟦 80m (Night)'
-        });
-      }
-      if (primaryBand !== '30m') {
-        alternates.push({
-          band: '30m',
-          icon: '☀️',
-          label: 'Day',
-          text: '☀️ 30m (Day)'
-        });
-      }
-
-      // --- Tooltip text for RO / watchstander ---
-      const tooltipLines = [
-        'NVIS – Near Vertical Incidence Skywave',
-        'Short-range HF (~0–400 km) using high-angle F-layer returns.',
-        '',
-        `Primary band now: ${primaryBand} (${primaryFreq}) – ${quality} short-range coverage.`,
-        '',
-        'Rules of thumb:',
-        '• 80m: Night regional comms, best after sunset',
-        '• 40m: Day/night general-purpose tactical NVIS',
-        '• 30m: Daytime NVIS when MUF and SFI are high'
-      ];
-
-      return {
-        primaryBand,
-        primaryFreq,
-        quality,
-        alternates,
-        tooltip: tooltipLines.join('\n')
-      };
-    }
-
-    renderNvisSection() {
-      const info = this.getNvisInfo();
-      if (!info) return '';
-
-      const summary = `${info.primaryBand} (${info.primaryFreq}) — ${info.quality} short-range coverage`;
-      const tooltip = escapeHtml(info.tooltip || '');
-
-      return `
-        <div class="hf-nvis-row" title="${tooltip}">
-          <div class="hf-nvis-label">NVIS (0–400 km)</div>
-          <div class="hf-nvis-hint">${escapeHtml(summary)}</div>
-        </div>
-        ${this.renderNvisAlternates(info)}
-      `;
-    }
-
-    renderNvisAlternates(info) {
-      if (!info?.alternates || info.alternates.length === 0) return '';
-
-      const chips = info.alternates.map(alt => `
-        <span class="hf-nvis-chip" title="${escapeHtml(`${alt.band} – ${alt.label} operations`)}">
-          ${escapeHtml(alt.text)}
-        </span>
-      `).join('');
-
-      return `
-        <div class="hf-nvis-alt-row">
-          <span class="hf-nvis-alt-label">Other options</span>
-          <div class="hf-nvis-alt-chips">
-            ${chips}
-          </div>
-        </div>
-      `;
-    }
-
-
-    renderMufSection() {
-      // If we have no MUF data at all (no location selected)
-      if (!this.muf) {
-        return '';
-      }
-
-      const mufValue = this.muf.value;
-      const dayNight = this.muf.dayNight;
-
-      // Get day/night class for styling
-      const dayPhaseClass = dayNight?.status === 'night' ? 'hf-phase-night' :
-                            dayNight?.status === 'greyline' ? 'hf-phase-grey' : 'hf-phase-day';
-
-      // Get propagation description based on day/night status
-      const propDesc = this.getDayNightDescription(dayNight?.status);
-
-      return `
-        <div class="hf-muf-section">
-          <div class="hf-muf-row">
-            <div class="hf-muf-primary">
-              <div class="hf-muf-label">Est. MUF</div>
-              <div class="hf-muf-value">${mufValue} MHz</div>
-            </div>
-            <div class="hf-muf-tag ${dayPhaseClass}">
-              ${this.getDayPhaseIcon(dayNight?.status)}
-              <span>${dayNight?.label || ''}</span>
-            </div>
-          </div>
-          <p class="hf-muf-desc">${propDesc}</p>
-        </div>
-      `;
-    }
-
-    getDayNightDescription(status) {
-      switch (status) {
-        case 'greyline':
-          return 'Excellent DX window. Greyline propagation enhances long-distance paths on 20m–40m.';
-        case 'night':
-          return 'Nighttime favors lower bands (40m–160m). F2 layer may support 20m long-path DX.';
-        case 'day':
-        default:
-          return 'Daytime favors higher bands (10m–20m). F2 layer supporting normal skip distances.';
-      }
-    }
-
-    getDayPhaseIcon(status) {
-      switch (status) {
-        case 'day':
-          return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="5" fill="#ffcc00" stroke="#ff9900" stroke-width="1"/>
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" 
-                  stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>`;
-        case 'night':
-          return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
-            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="#6699cc" stroke="#4477aa" stroke-width="1"/>
-          </svg>`;
-        case 'greyline':
-          return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
-            <defs>
-              <linearGradient id="greyGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffcc66"/>
-                <stop offset="100%" stop-color="#4466aa"/>
-              </linearGradient>
-            </defs>
-            <circle cx="12" cy="12" r="8" fill="url(#greyGrad)" stroke="#cc8844" stroke-width="1"/>
-          </svg>`;
-        default:
-          return '';
-      }
-    }
-
-    renderPropagationNotes() {
-      const notes = [];
-      const s = this.solarData;
-
-      // Add relevant notes based on conditions
-      if (s.kIndex >= 4) {
-        notes.push({
-          type: 'warning',
-          text: `Elevated K-index (${s.kIndex}) may cause polar path degradation`
-        });
-      }
-
-      if (s.aIndex >= 20) {
-        notes.push({
-          type: 'warning',
-          text: 'High A-index indicates recent geomagnetic disturbance'
-        });
-      }
-
-      if (s.sfi >= 150) {
-        notes.push({
-          type: 'good',
-          text: 'Excellent SFI supports higher band openings (15m, 12m, 10m)'
-        });
-      } else if (s.sfi < 90) {
-        notes.push({
-          type: 'info',
-          text: 'Low SFI favors lower bands (40m, 80m) for reliable propagation'
-        });
-      }
-
-      // Check for aurora
-      if (s.aurora && s.aurora !== '--' && parseInt(s.aurora) > 5) {
-        notes.push({
-          type: 'warning',
-          text: `Aurora activity (${s.aurora}) may affect high-latitude paths`
-        });
-      }
-
-      if (notes.length === 0) {
-        return '';
-      }
-
-      const noteHtml = notes.map(n => `
-        <div class="hf-note hf-note-${n.type}">
-          <span class="hf-note-icon">${this.getNoteIcon(n.type)}</span>
-          <span class="hf-note-text">${n.text}</span>
-        </div>
-      `).join('');
-
-      return `
-        <div class="hf-notes-section">
-          ${noteHtml}
-        </div>
-      `;
-    }
-
-    // ============================================================
     // Condition Helpers
     // ============================================================
     getBandCondition(bandName, timeKey) {
       if (!this.bandConditions) return 'Unknown';
 
-      // Try exact match first
       const bandData = this.bandConditions[bandName];
       if (bandData && bandData[timeKey]) {
         return this.normalizeCondition(bandData[timeKey]);
       }
 
-      // Try mapping common variations
       const variations = {
         '80m': ['80m-40m', '80m'],
         '40m': ['80m-40m', '40m'],
@@ -1056,29 +1046,24 @@
 
       const s = this.solarData;
 
-      // Calculate overall score
       let score = 0;
 
-      // SFI contribution (0-40 points)
       if (s.sfi >= 150) score += 40;
       else if (s.sfi >= 120) score += 30;
       else if (s.sfi >= 100) score += 20;
       else if (s.sfi >= 80) score += 10;
 
-      // K-index penalty (-30 to 0)
       if (s.kIndex <= 1) score += 0;
       else if (s.kIndex <= 2) score -= 5;
       else if (s.kIndex <= 3) score -= 10;
       else if (s.kIndex <= 4) score -= 20;
       else score -= 30;
 
-      // A-index penalty (-20 to 0)
       if (s.aIndex <= 7) score += 0;
       else if (s.aIndex <= 15) score -= 5;
       else if (s.aIndex <= 30) score -= 10;
       else score -= 20;
 
-      // Determine label
       if (score >= 30) {
         return { label: 'Excellent', desc: 'Outstanding HF conditions. All bands likely open.' };
       } else if (score >= 15) {
