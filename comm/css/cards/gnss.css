@@ -321,23 +321,26 @@
 
 .dop-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.4rem;
+  /* keep 5 cards, but allow them to shrink */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.3rem;
   box-sizing: border-box;
   max-width: 100%;
 }
 
 .dop-card {
+  position: relative; /* needed for tooltip */
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.5rem 0.3rem;
+  gap: 0.1rem;
+  padding: 0.4rem 0.2rem; /* slightly tighter */
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   transition: all 0.2s ease;
   box-sizing: border-box;
+  min-width: 0; /* allow shrink in narrow/Menlo views */
 }
 
 .dop-card.good {
@@ -356,21 +359,51 @@
 }
 
 .dop-value {
-  font-size: 1.1rem;
+  font-size: 1rem;       /* slightly smaller */
   font-weight: 700;
   color: #fff;
 }
 
 .dop-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;    /* slightly smaller */
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* Tooltip instead of inline descriptor text */
 .dop-desc {
-  font-size: 0.55rem;
-  color: rgba(255, 255, 255, 0.5);
-  text-transform: uppercase;
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: 0.25rem;
+  padding: 0.2rem 0.4rem;
+  background: rgba(0, 0, 0, 0.95);
+  border-radius: 4px;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 20;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.15s ease;
+}
+
+/* little tooltip arrow */
+.dop-desc::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: transparent transparent rgba(0, 0, 0, 0.95) transparent;
+}
+
+.dop-card:hover .dop-desc {
+  opacity: 1;
 }
 
 .dop-footer {
