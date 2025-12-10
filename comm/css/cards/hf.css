@@ -470,54 +470,62 @@
   flex: 1 1 120px;
 }
 
+/* Input + select styled like menu buttons */
 .hf-antenna-input,
 .hf-antenna-select {
   width: 100%;
-  padding: 0.3rem 0.75rem;
+  padding: 0.35rem 0.9rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 190, 130, 0.7);
-  background: linear-gradient(135deg, rgba(40, 20, 0, 0.9), rgba(10, 5, 0, 0.95));
+  border: 1px solid rgba(255, 190, 130, 0.8);
+  background: linear-gradient(135deg, rgba(50, 25, 0, 0.95), rgba(20, 8, 0, 0.98));
   color: #ffe9cf;
   font-size: 0.75rem;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    transform 0.1s ease;
+  text-align: left;
 }
 
 .hf-antenna-input::placeholder {
   color: rgba(255, 230, 200, 0.45);
 }
 
-/* Themed dropdown arrow */
+/* Hide spinner arrows on number input (freq) */
+.hf-antenna-input::-webkit-outer-spin-button,
+.hf-antenna-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.hf-antenna-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Themed dropdown arrow – pill like the menu items */
 #comm-card-hf .hf-antenna-select {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  padding-right: 1.7rem;
+  padding-right: 1.9rem;
+  cursor: pointer;
   background-image:
-    linear-gradient(135deg, rgba(40, 20, 0, 0.9), rgba(10, 5, 0, 0.95)),
+    linear-gradient(135deg, rgba(50, 25, 0, 0.95), rgba(20, 8, 0, 0.98)),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23ffd8aa' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
   background-repeat: no-repeat, no-repeat;
-  background-position: left top, right 0.65rem center;
+  background-position: left top, right 0.75rem center;
   background-size: auto, 10px 6px;
 }
 
+/* Focus state – same glow as your buttons */
 .hf-antenna-input:focus,
 .hf-antenna-select:focus {
-  border-color: rgba(255, 210, 160, 0.85);
-  box-shadow: 0 0 0 1px rgba(255, 200, 150, 0.55);
-  background: linear-gradient(135deg, rgba(55, 30, 0, 0.95), rgba(15, 8, 0, 1));
+  border-color: rgba(255, 210, 160, 0.95);
+  box-shadow: 0 0 0 1px rgba(255, 200, 150, 0.6);
+  background: linear-gradient(135deg, rgba(65, 32, 0, 0.98), rgba(25, 10, 0, 1));
   transform: translateY(-1px);
-}
-
-.hf-antenna-input::placeholder {
-  color: rgba(255, 230, 200, 0.4);
-}
-
-.hf-antenna-input:focus,
-.hf-antenna-select:focus {
-  border-color: rgba(255, 210, 160, 0.7);
-  box-shadow: 0 0 0 1px rgba(255, 200, 150, 0.4);
-  background: rgba(0, 0, 0, 0.7);
 }
 
 .hf-antenna-btn {
