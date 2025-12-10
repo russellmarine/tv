@@ -107,6 +107,17 @@
   transition: all 0.2s ease;
 }
 
+#comm-card-hf .hf-band-card {
+  text-align: center;
+}
+
+#comm-card-hf .hf-band-name,
+#comm-card-hf .hf-band-condition,
+#comm-card-hf .hf-band-freq {
+  width: 100%;
+  text-align: center;
+}
+
 .hf-band-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -517,7 +528,8 @@
   color: rgba(255, 240, 210, 0.98);
   font-style: italic;
   text-align: right;
-  white-space: nowrap;
+  white-space: normal;     /* allow wrap */
+  overflow-wrap: anywhere; /* prevent spill */
 }
 
 /* Stack nicely on narrow screens */
