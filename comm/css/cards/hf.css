@@ -421,31 +421,53 @@
 }
 
 /* ============================================================
-   NVIS Row
+   NVIS Highlight Row
    ============================================================ */
 .hf-nvis-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  padding: 0.45rem 0.15rem 0.1rem;
-  margin-top: 0.35rem;
-  border-top: 1px solid rgba(255, 200, 150, 0.18);
+  align-items: center;
+  margin-top: 0.55rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 15, 5, 0.96),
+    rgba(65, 30, 8, 0.97)
+  );
+  border: 1px solid rgba(255, 200, 150, 0.45);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
   font-size: 0.78rem;
 }
 
 .hf-nvis-label {
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 0.72rem;
-  opacity: 0.8;
-  color: rgba(255, 220, 180, 0.9);
+  font-size: 0.7rem;
+  opacity: 0.85;
+  color: rgba(255, 220, 180, 0.96);
 }
 
 .hf-nvis-hint {
-  font-size: 0.76rem;
-  opacity: 0.9;
+  font-size: 0.78rem;
+  color: rgba(255, 240, 210, 0.98);
   font-style: italic;
-  color: rgba(255, 240, 210, 0.95);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Stack nicely on narrow screens */
+@media (max-width: 400px) {
+  .hf-nvis-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+  }
+
+  .hf-nvis-hint {
+    text-align: left;
+    white-space: normal;
+  }
 }
 
 /* ============================================================
