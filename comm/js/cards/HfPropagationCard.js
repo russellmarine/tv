@@ -666,7 +666,7 @@
         ${this.renderMufSection()}
         ${this.renderSolarIndices()}
         ${this.renderBandGrid()}
-        ${this.renderNvisRow()}
+        ${this.renderNvisSection()}
         ${this.renderPropagationNotes()}
         ${this.renderAntennaHelper()}
         
