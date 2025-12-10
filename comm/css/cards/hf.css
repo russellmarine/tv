@@ -470,23 +470,20 @@
   flex: 1 1 120px;
 }
 
-/* Input + select styled like menu buttons */
+/* Input + select styled like panel menu items */
 .hf-antenna-input,
 .hf-antenna-select {
   width: 100%;
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 190, 130, 0.8);
-  background: linear-gradient(135deg, rgba(50, 25, 0, 0.95), rgba(20, 8, 0, 0.98));
-  color: #ffe9cf;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 180, 120, 0.3);
+  background: rgba(255, 120, 0, 0.10);
+  color: rgba(255, 220, 180, 0.9);
   font-size: 0.75rem;
   outline: none;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    background 0.15s ease,
-    transform 0.1s ease;
   text-align: left;
+  cursor: text;
+  transition: all 0.15s ease;
 }
 
 .hf-antenna-input::placeholder {
@@ -504,28 +501,36 @@
   -moz-appearance: textfield;
 }
 
-/* Themed dropdown arrow – pill like the menu items */
+/* Dropdown styled like panel menu item, with custom chevron */
 #comm-card-hf .hf-antenna-select {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
   padding-right: 1.9rem;
   cursor: pointer;
-  background-image:
-    linear-gradient(135deg, rgba(50, 25, 0, 0.95), rgba(20, 8, 0, 0.98)),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23ffd8aa' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
-  background-repeat: no-repeat, no-repeat;
-  background-position: left top, right 0.75rem center;
-  background-size: auto, 10px 6px;
+  background:
+    rgba(255, 120, 0, 0.10)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23ffd8aa' d='M1 1l4 4 4-4'/%3E%3C/svg%3E")
+    no-repeat right 0.75rem center / 10px 6px;
 }
 
-/* Focus state – same glow as your buttons */
+/* Hover/focus – mirror panel-toggle hover/active */
+.hf-antenna-input:hover,
+.hf-antenna-select:hover {
+  background: rgba(255, 140, 0, 0.20);
+  border-color: rgba(255, 200, 140, 0.6);
+}
+
 .hf-antenna-input:focus,
 .hf-antenna-select:focus {
-  border-color: rgba(255, 210, 160, 0.95);
-  box-shadow: 0 0 0 1px rgba(255, 200, 150, 0.6);
-  background: linear-gradient(135deg, rgba(65, 32, 0, 0.98), rgba(25, 10, 0, 1));
-  transform: translateY(-1px);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 150, 80, 0.35),
+    rgba(120, 40, 0, 0.4)
+  );
+  border-color: rgba(255, 200, 140, 0.7);
+  color: #ffe7c8;
+  box-shadow: 0 0 0 1px rgba(255, 200, 140, 0.65);
 }
 
 .hf-antenna-btn {
