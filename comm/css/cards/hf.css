@@ -514,6 +514,19 @@
     no-repeat right 0.75rem center / 10px 6px;
 }
 
+/* Dark theme for dropdown list options */
+#comm-card-hf .hf-antenna-select option {
+  background-color: rgba(20, 10, 5, 0.98);
+  color: rgba(255, 220, 180, 0.95);
+}
+
+/* Hover / selected states */
+#comm-card-hf .hf-antenna-select option:checked,
+#comm-card-hf .hf-antenna-select option:hover {
+  background-color: rgba(255, 150, 80, 0.35);
+  color: #ffe7c8;
+}
+
 /* Hover/focus – mirror panel-toggle hover/active */
 .hf-antenna-input:hover,
 .hf-antenna-select:hover {
