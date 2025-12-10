@@ -231,6 +231,13 @@
   color: #ffe3c4;
 }
 
+.hf-muf-bands {
+  font-size: 0.7rem;
+  opacity: 0.85;
+  margin-top: 0.1rem;
+  color: rgba(255, 235, 210, 0.95);
+}
+
 .hf-muf-tag {
   padding: 0.35rem 0.7rem;
   border-radius: 10px;
