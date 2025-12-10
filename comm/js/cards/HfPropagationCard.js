@@ -8,6 +8,8 @@
  * - MUF (Maximum Usable Frequency) for location
  * - Solar/geomagnetic impact integration
  * - Visual condition indicators (Good/Fair/Poor)
+ * - NVIS (0–400 km) assessment
+ * - Field antenna helper (½-wave / ¼-wave / ⅝-wave lengths)
  */
 
 (function () {
@@ -47,6 +49,80 @@
   };
 
   // ============================================================
+  // Field Antenna Helper – global event delegation
+  // ============================================================
+  function computeAntennaResults() {
+    const freqInput = document.getElementById('hf-ant-freq');
+    const vfSelect = document.getElementById('hf-ant-vf');
+    const results = document.getElementById('hf-ant-results');
+
+    if (!freqInput || !vfSelect || !results) return;
+
+    const f = parseFloat(freqInput.value);
+    const vf = parseFloat(vfSelect.value || '1');
+
+    if (!f || f <= 0) {
+      results.innerHTML = '<p class="comm-placeholder">Enter a valid frequency in MHz.</p>';
+      return;
+    }
+
+    // 1/2-wave approximations with velocity factor
+    const halfWave_m = (142.5 / f) * vf;
+    const halfWave_ft = (468 / f) * vf;
+
+    const quarterWave_m = halfWave_m / 2;
+    const quarterWave_ft = halfWave_ft / 2;
+
+    // 5/8-wave (use 300 m/µs for speed of light approximation)
+    const wavelength_m = 300 / f;
+    const fiveEighth_m = 0.625 * wavelength_m * vf;
+    const fiveEighth_ft = fiveEighth_m * 3.28084;
+
+    results.innerHTML = `
+      <div class="hf-antenna-grid">
+        <div class="hf-ant-card">
+          <div class="hf-ant-title">½-wave wire</div>
+          <div class="hf-ant-main">${halfWave_m.toFixed(1)} m</div>
+          <div class="hf-ant-sub">${halfWave_ft.toFixed(1)} ft</div>
+        </div>
+        <div class="hf-ant-card">
+          <div class="hf-ant-title">¼-wave wire</div>
+          <div class="hf-ant-main">${quarterWave_m.toFixed(1)} m</div>
+          <div class="hf-ant-sub">${quarterWave_ft.toFixed(1)} ft</div>
+        </div>
+        <div class="hf-ant-card">
+          <div class="hf-ant-title">⅝-wave (vertical)</div>
+          <div class="hf-ant-main">${fiveEighth_m.toFixed(1)} m</div>
+          <div class="hf-ant-sub">${fiveEighth_ft.toFixed(1)} ft</div>
+        </div>
+      </div>
+      <p class="hf-ant-note">
+        Values include velocity factor (${vf.toFixed(2)}). Round in the field and trim-to-tune with an analyzer or SWR meter.
+      </p>
+    `;
+  }
+
+  function setupHfAntennaCalculator() {
+    if (window.__HF_ANTENNA_HELPER_BOUND__) return;
+    window.__HF_ANTENNA_HELPER_BOUND__ = true;
+
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('#hf-ant-calc');
+      if (!btn) return;
+      e.preventDefault();
+      computeAntennaResults();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      const input = e.target.closest('#hf-ant-freq');
+      if (!input) return;
+      e.preventDefault();
+      computeAntennaResults();
+    });
+  }
+
+  // ============================================================
   // HfPropagationCard Class
   // ============================================================
   class HfPropagationCard extends BaseCard {
@@ -70,6 +146,9 @@
 
     init() {
       super.init();
+
+      // Wire antenna calculator events (global, but id-scoped)
+      setupHfAntennaCalculator();
 
       // DON'T load cached or fetch data until location is selected
 
@@ -475,6 +554,96 @@
     }
 
     // ============================================================
+    // NVIS Assessment
+    // ============================================================
+    getNvisAssessment() {
+      if (!this.muf || !this.solarData) {
+        return {
+          recommended: '40–80m',
+          quality: 'Unknown (awaiting data)'
+        };
+      }
+
+      const muf = this.muf.value;
+      const sfi = this.solarData.sfi || 0;
+      const kp = this.solarData.kIndex || this.spaceWeather?.kpIndex || 0;
+
+      let recommended;
+      if (muf <= 5) {
+        recommended = '80m (3.5–4 MHz)';
+      } else if (muf <= 8) {
+        recommended = '60m/80m (3–8 MHz)';
+      } else if (muf <= 12) {
+        recommended = '40m/60m (4–8 MHz)';
+      } else {
+        recommended = '40m (7 MHz)';
+      }
+
+      let qualityScore = 0;
+      if (sfi >= 120) qualityScore += 1;
+      if (sfi >= 150) qualityScore += 1;
+      if (kp >= 4) qualityScore -= 1;
+      if (kp >= 6) qualityScore -= 1;
+
+      const quality =
+        qualityScore >= 2 ? 'Excellent' :
+        qualityScore >= 1 ? 'Good' :
+        qualityScore >= 0 ? 'Fair' :
+        'Poor';
+
+      return { recommended, quality };
+    }
+
+    renderNvisRow() {
+      const nvis = this.getNvisAssessment();
+      return `
+        <div class="hf-nvis-row">
+          <span class="hf-nvis-label">NVIS (0–400 km)</span>
+          <span class="hf-nvis-hint">${escapeHtml(nvis.recommended)} — ${escapeHtml(nvis.quality)}</span>
+        </div>
+      `;
+    }
+
+    // ============================================================
+    // Field Antenna Helper (UI)
+    // ============================================================
+    renderAntennaHelper() {
+      return `
+        <div class="hf-section hf-antenna-section">
+          <div class="hf-section-header">
+            <span class="hf-section-title">Field Antenna Helper</span>
+            <span class="hf-section-subtitle">Quick ½-wave & ¼-wave lengths</span>
+          </div>
+          <div class="hf-antenna-form">
+            <label class="hf-antenna-label">
+              Frequency (MHz)
+              <input type="number" min="1" max="60" step="0.1"
+                     class="hf-antenna-input"
+                     id="hf-ant-freq"
+                     placeholder="e.g. 7.2">
+            </label>
+            <label class="hf-antenna-label">
+              Velocity factor
+              <select id="hf-ant-vf" class="hf-antenna-select">
+                <option value="1.0">Bare wire / theoretical (1.00)</option>
+                <option value="0.97">Typical copper wire (0.97)</option>
+                <option value="0.95" selected>Insulated field wire (0.95)</option>
+              </select>
+            </label>
+            <button class="hf-antenna-btn" id="hf-ant-calc">
+              Compute lengths
+            </button>
+          </div>
+          <div class="hf-antenna-results" id="hf-ant-results">
+            <p class="comm-placeholder">
+              Enter a frequency to compute ½-wave, ¼-wave, and ⅝-wave wire lengths.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    // ============================================================
     // Rendering
     // ============================================================
     renderBody() {
@@ -484,7 +653,7 @@
           <div class="hf-waiting-location">
             <div class="hf-waiting-icon">📻</div>
             <p class="comm-placeholder">Select a location to view HF propagation conditions.</p>
-            <p class="hf-waiting-hint">Band conditions, solar indices, and MUF will be calculated for your location.</p>
+            <p class="hf-waiting-hint">Band conditions, solar indices, NVIS and MUF will be calculated for your location.</p>
           </div>
         `;
       }
@@ -497,7 +666,9 @@
         ${this.renderMufSection()}
         ${this.renderSolarIndices()}
         ${this.renderBandGrid()}
+        ${this.renderNvisRow()}
         ${this.renderPropagationNotes()}
+        ${this.renderAntennaHelper()}
         
         <div class="comm-card-micro comm-card-footer">
           Source: <a class="inline-link" href="https://www.hamqsl.com/solar.html" target="_blank">HamQSL</a> • 
@@ -619,7 +790,7 @@
     getDayNightDescription(status) {
       switch (status) {
         case 'greyline':
-          return 'Excellent DX window! Greyline propagation enhances long-distance paths on 20m–40m.';
+          return 'Excellent DX window. Greyline propagation enhances long-distance paths on 20m–40m.';
         case 'night':
           return 'Nighttime favors lower bands (40m–160m). F2 layer may support 20m long-path DX.';
         case 'day':
@@ -642,13 +813,13 @@
           </svg>`;
         case 'greyline':
           return `<svg class="hf-phase-icon" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="8" fill="url(#greyGrad)" stroke="#cc8844" stroke-width="1"/>
             <defs>
               <linearGradient id="greyGrad" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stop-color="#ffcc66"/>
                 <stop offset="100%" stop-color="#4466aa"/>
               </linearGradient>
             </defs>
+            <circle cx="12" cy="12" r="8" fill="url(#greyGrad)" stroke="#cc8844" stroke-width="1"/>
           </svg>`;
         default:
           return '';
