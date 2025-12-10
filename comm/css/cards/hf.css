@@ -271,6 +271,63 @@
   line-height: 1.35;
 }
 
+/* ============================================================
+   HF Day/Night Phase Badge in Card Header
+   ============================================================ */
+
+#comm-card-hf .hf-phase-badge {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(255, 210, 160, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+  z-index: 2;
+}
+
+#comm-card-hf .hf-phase-badge span {
+  white-space: nowrap;
+}
+
+/* Day / Night / Greyline variants */
+#comm-card-hf .hf-phase-badge.day {
+  background: linear-gradient(135deg,
+    rgba(255, 210, 140, 0.28),
+    rgba(120, 60, 0, 0.75)
+  );
+  color: #ffefcc;
+}
+
+#comm-card-hf .hf-phase-badge.night {
+  background: linear-gradient(135deg,
+    rgba(90, 140, 255, 0.22),
+    rgba(10, 20, 45, 0.85)
+  );
+  color: #d7e5ff;
+}
+
+#comm-card-hf .hf-phase-badge.grey {
+  background: linear-gradient(135deg,
+    rgba(255, 180, 120, 0.26),
+    rgba(30, 18, 0, 0.85)
+  );
+  color: #ffe9cf;
+}
+
+/* SVG icon inside badge */
+#comm-card-hf .hf-phase-badge .hf-phase-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 /* Waiting for location state */
 .hf-waiting-location {
   display: flex;
