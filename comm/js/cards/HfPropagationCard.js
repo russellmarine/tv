@@ -515,7 +515,7 @@
     }
 
     // ============================================================
-    // Legacy basic NVIS (still here for reuse if needed)
+    // Legacy basic NVIS (kept for reuse if needed)
     // ============================================================
     getNvisAssessment() {
       if (!this.muf || !this.solarData) {
@@ -728,8 +728,8 @@
 
       const mufValue = this.muf.value;
       const dayNight = this.muf.dayNight;
-
       const propDesc = this.getDayNightDescription(dayNight?.status);
+      const bandSummary = this.getMufBandSummary(mufValue, dayNight?.status);
 
       return `
         <div class="hf-muf-section">
@@ -737,6 +737,7 @@
             <div class="hf-muf-primary">
               <div class="hf-muf-label">Est. MUF</div>
               <div class="hf-muf-value">${mufValue} MHz</div>
+              <div class="hf-muf-bands">${escapeHtml(bandSummary)}</div>
             </div>
           </div>
           <p class="hf-muf-desc">${propDesc}</p>
@@ -754,6 +755,35 @@
         default:
           return 'Daytime favors higher bands (10m–20m). F2 layer supporting normal skip distances.';
       }
+    }
+
+    getMufBandSummary(mufValue, status) {
+      if (!mufValue) return 'Use 40–20m as a starting point.';
+
+      let low, high, label;
+      if (mufValue <= 8) {
+        low = '80m';
+        high = '40m';
+      } else if (mufValue <= 15) {
+        low = '40m';
+        high = '20m';
+      } else if (mufValue <= 25) {
+        low = '30m';
+        high = '15m';
+      } else {
+        low = '20m';
+        high = '10m';
+      }
+
+      if (status === 'night') {
+        label = `Night NVIS: favor ${low}, check ${high} for DX.`;
+      } else if (status === 'greyline') {
+        label = `Greyline: ${low}–${high} likely open for long-path DX.`;
+      } else {
+        label = `Work roughly ${low}–${high} based on mission and distance.`;
+      }
+
+      return label;
     }
 
     getDayPhaseIcon(status) {
@@ -861,16 +891,17 @@
       }
 
       const status = this.muf.dayNight?.status || (this.isDay ? 'day' : 'night');
+
+      // Clean, non-redundant label for the pill
       const baseLabel =
         this.muf.dayNight?.label ||
-        (status === 'day' ? 'Daytime' : status === 'night' ? 'Nighttime' : 'Greyline');
-
-      let suffix = '';
-      if (status === 'day') suffix = ' (Day)';
-      else if (status === 'night') suffix = ' (Night)';
-      else if (status === 'greyline') suffix = ' (Greyline)';
-
-      const label = baseLabel + suffix;
+        (status === 'day'
+          ? 'Daytime'
+          : status === 'night'
+          ? 'Nighttime'
+          : status === 'greyline'
+          ? 'Greyline'
+          : 'Phase');
 
       const phaseClass =
         status === 'night' ? 'night' :
@@ -881,7 +912,7 @@
 
       const html = `
         <div class="hf-phase-badge ${phaseClass}" title="${escapeHtml(title)}">
-          ${icon}<span>${escapeHtml(label)}</span>
+          ${icon}<span>${escapeHtml(baseLabel)}</span>
         </div>
       `;
 
