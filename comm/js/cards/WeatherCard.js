@@ -80,21 +80,34 @@
 
     init() {
       super.init();
-      this.loadCached();
 
+      // Start empty; wait for the user to select a location
+      this.location = null;
+      this.currentWeather = null;
+      this.forecast = null;
+      this.hourly = null;
+      this.historical = null;
+
+      // Initial render shows empty "select location" state
+      this.render();
+      this.updateStatus('<span class="status-pill severity-fair">Select a location</span>');
+
+      // Only fetch when the location card broadcasts a change
       this.subscribe('comm:location-changed', (loc) => {
         this.location = loc;
+
         if (loc?.coords) {
           this.fetchWeather(loc.coords.lat, loc.coords.lon);
+        } else {
+          // No coords (e.g., cleared selection) -> reset to empty state
+          this.currentWeather = null;
+          this.forecast = null;
+          this.hourly = null;
+          this.historical = null;
+          this.render();
+          this.updateStatus('<span class="status-pill severity-fair">Select a location</span>');
         }
       });
-
-      const locationCard = window.CommDashboard?.CardRegistry?.get('comm-card-location');
-      const existingLoc = locationCard?.getSelectedLocation?.();
-      if (existingLoc?.coords) {
-        this.location = existingLoc;
-        this.fetchWeather(existingLoc.coords.lat, existingLoc.coords.lon);
-      }
     }
 
     destroy() {
@@ -123,7 +136,11 @@
           this.historical = historical;
           this.cacheData();
           this.render();
-          Events.emit('weather:data-updated', { weather, forecast: this.forecast, hourly: this.hourly });
+          Events.emit('weather:data-updated', {
+            weather,
+            forecast: this.forecast,
+            hourly: this.hourly
+          });
         }
       } catch (err) {
         console.warn('[WeatherCard] Fetch error:', err);
@@ -157,7 +174,7 @@
 
     async fetchHistoricalAverages(lat, lon) {
       try {
-        // Get last year's data for this date (single request - avoids rate limits)
+        // Last year's temps for this date
         const today = new Date();
         const lastYear = today.getFullYear() - 1;
         const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -181,7 +198,7 @@
           avgLow: low != null ? Math.round(low) : null,
           recordHigh: null,
           recordLow: null,
-          yearsOfData: 'Last year'
+          yearsOfData: 'Last year (this date)'
         };
       } catch (err) {
         console.warn('[WeatherCard] Historical fetch failed:', err);
@@ -190,7 +207,7 @@
     }
 
     // ============================================================
-    // Caching
+    // Caching (still used, but not auto-loaded on init)
     // ============================================================
 
     loadCached() {
@@ -264,8 +281,43 @@
     }
 
     renderBody() {
-      if (!this.currentWeather || !this.currentWeather.main) {
-        return '<p class="comm-placeholder">Select a location to view weather.</p>';
+      // Empty / initial state: no location selected or no weather yet
+      if (!this.location?.coords || !this.currentWeather || !this.currentWeather.main) {
+        return `
+          <div class="weather-empty-state">
+            <div class="weather-empty-icon">
+              <svg width="72" height="72" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <linearGradient id="weatherEmptyGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="rgba(255,210,150,0.95)"/>
+                    <stop offset="100%" stop-color="rgba(255,140,80,0.9)"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="32" cy="32" r="20" fill="url(#weatherEmptyGrad)" opacity="0.95"/>
+                <path d="M22 38c0-4.4 3.6-8 8-8 1.1 0 2.2.2 3.1.7 1.4-3.1 4.5-5.2 8.1-5.2 4.9 0 8.8 3.9 8.8 8.8 0 .6-.1 1.3-.2 1.9"
+                      fill="none"
+                      stroke="rgba(10,10,15,0.95)"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      opacity="0.9"/>
+                <path d="M18 27c1.3-4.6 5.5-8 10.5-8"
+                      fill="none"
+                      stroke="rgba(10,10,15,0.75)"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      opacity="0.8"/>
+              </svg>
+            </div>
+            <div class="weather-empty-title">
+              Select a location
+            </div>
+            <div class="weather-empty-text">
+              Choose a location in the Location card to view local weather, a 9-day outlook, and last year's temps for this date.
+            </div>
+          </div>
+        `;
       }
 
       const wx = this.currentWeather;
@@ -328,7 +380,11 @@
                     <div class="comm-weather-feels">Feels like ${this.formatTemp(feelsF)}</div>
                   </div>
                 </div>
-                ${summaryParts.length ? `<div class="comm-weather-summary-row">${summaryParts.map((s) => escapeHtml(s)).join(' <span>•</span> ')}</div>` : ''}
+                ${summaryParts.length
+                  ? `<div class="comm-weather-summary-row">${summaryParts
+                      .map((s) => escapeHtml(s))
+                      .join(' <span>•</span> ')}</div>`
+                  : ''}
               </div>
               ${historicalHtml}
             </div>
@@ -337,8 +393,12 @@
           <div class="comm-weather-grid">
             ${humidity != null ? this.metricHtml('Humidity', `${humidity}%`, ICONS.humidity) : ''}
             ${pressure != null ? this.metricHtml('Pressure', `${pressure} hPa`, ICONS.pressure) : ''}
-            ${wind.speed != null ? this.metricHtml('Wind', `${Math.round(wind.speed)} mph${windDir ? ' ' + windDir : ''}`, ICONS.wind) : ''}
-            ${visibility != null ? this.metricHtml('Visibility', `${(visibility / 1609).toFixed(1)} mi`, ICONS.visibility) : ''}
+            ${wind.speed != null
+              ? this.metricHtml('Wind', `${Math.round(wind.speed)} mph${windDir ? ' ' + windDir : ''}`, ICONS.wind)
+              : ''}
+            ${visibility != null
+              ? this.metricHtml('Visibility', `${(visibility / 1609).toFixed(1)} mi`, ICONS.visibility)
+              : ''}
             ${this.metricHtml('Local Time', this.formatLocalClock(timezone), ICONS.time, 'weather-local-time')}
             ${this.metricHtml('UTC Time', this.formatUtcClock(), ICONS.time, 'weather-utc-time')}
             ${sunriseLabel ? this.metricHtml('Sunrise', sunriseLabel, ICONS.sunrise) : ''}
@@ -350,7 +410,15 @@
           ${forecastHtml}
 
           <div class="comm-card-micro comm-card-footer">
-            Source: <a class="inline-link" href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">OpenWeather</a> / <a class="inline-link" href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> • ${escapeHtml(updatedLocal)}
+            Source:
+            <a class="inline-link" href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer">
+              OpenWeather
+            </a>
+            /
+            <a class="inline-link" href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">
+              Open-Meteo
+            </a>
+            • ${escapeHtml(updatedLocal)}
           </div>
         </div>
       `;
@@ -388,15 +456,6 @@
       }
 
       const h = this.historical;
-      let recordHtml = '';
-
-      if (h.recordHigh != null && h.recordLow != null) {
-        recordHtml = `
-              <div class="historical-item record">
-                <span class="hist-label">Record</span>
-                <span class="hist-value">${this.formatTempValue(h.recordHigh)} / ${this.formatTempValue(h.recordLow)}</span>
-              </div>`;
-      }
 
       return `
         <div class="comm-weather-right">
@@ -413,7 +472,6 @@
                 <span class="hist-label">Low</span>
                 <span class="hist-value">${this.formatTempValue(h.avgLow)}</span>
               </div>
-              ${recordHtml}
             </div>
           </div>
         </div>
