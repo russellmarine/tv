@@ -361,6 +361,7 @@
         if (!this.forecast?.temperature_2m_max || !this.forecast?.temperature_2m_min) {
           return '';
         }
+
         const todayHigh = this.forecast.temperature_2m_max[0];
         const todayLow = this.forecast.temperature_2m_min[0];
         if (todayHigh == null && todayLow == null) return '';
@@ -368,7 +369,9 @@
         return `
           <div class="comm-weather-right">
             <div class="weather-historical">
-              <div class="historical-label">${ICONS.history} Today's Forecast</div>
+              <div class="historical-label">
+                ${ICONS.history} Today's Forecast
+              </div>
               <div class="historical-values">
                 <div class="historical-item">
                   <span class="hist-label">High</span>
@@ -385,6 +388,16 @@
       }
 
       const h = this.historical;
+      let recordHtml = '';
+
+      if (h.recordHigh != null && h.recordLow != null) {
+        recordHtml = `
+              <div class="historical-item record">
+                <span class="hist-label">Record</span>
+                <span class="hist-value">${this.formatTempValue(h.recordHigh)} / ${this.formatTempValue(h.recordLow)}</span>
+              </div>`;
+      }
+
       return `
         <div class="comm-weather-right">
           <div class="weather-historical">
@@ -400,19 +413,12 @@
                 <span class="hist-label">Low</span>
                 <span class="hist-value">${this.formatTempValue(h.avgLow)}</span>
               </div>
-              ${h.recordHigh != null ? `
-                <div class="historical-item record">
-                  <span class="hist-label">Record</span>
-                  <span class="hist-value">
-                    ${this.formatTempValue(h.recordHigh)} /
-                    ${this.formatTempValue(h.recordLow)}
-                  </span>
-                </div>
-              ` : ''}
+              ${recordHtml}
             </div>
           </div>
         </div>
       `;
+    }
 
     renderHourlyCharts() {
       if (!this.hourly?.time || !this.hourly?.temperature_2m) return '';
